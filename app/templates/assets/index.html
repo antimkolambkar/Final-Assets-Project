@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}Asset Inventory | Enterprise ITAM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="fas fa-laptop-code text-primary me-2"></i>Enterprise Asset Inventory</h3>
+        <p class="text-muted small mb-0">Manage hardware assets, user assignments, multi-laptop replacements, vendor repairs, and complete audit history logs.</p>
+    </div>
+    {% if current_user.is_it_admin %}
+    <div class="d-flex gap-2">
+        <button class="btn btn-warning btn-sm rounded-pill px-3 shadow-sm text-dark fw-semibold" data-bs-toggle="modal" data-bs-target="#replaceAssetModal">
+            <i class="fas fa-sync me-1"></i>Replace Laptop
+        </button>
+        <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#addAssetModal">
+            <i class="fas fa-plus me-1"></i>Add New Asset
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Search & Filter Bar -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3">
+        <form action="{{ url_for('assets.index') }}" method="GET" class="row g-2">
+            <div class="col-12 col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" name="q" value="{{ search_q }}" class="form-control border-start-0 bg-light" placeholder="Search Asset ID, brand, model, serial number, user name...">
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <select name="status" class="form-select bg-light">
+                    <option value="">All Asset Statuses</option>
+                    <option value="Available" {% if status_filter == 'Available' %}selected{% endif %}>Available</option>
+                    <option value="Assigned" {% if status_filter == 'Assigned' %}selected{% endif %}>Assigned</option>
+                    <option value="Repair" {% if status_filter == 'Repair' %}selected{% endif %}>Under Repair</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <select name="vendor_id" class="form-select bg-light">
+                    <option value="">All Vendors</option>
+                    {% for v in vendors %}
+                    <option value="{{ v.id }}" {% if vendor_filter == v.id %}selected{% endif %}>{{ v.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-dark flex-grow-1"><i class="fas fa-filter me-1"></i>Filter</button>
+                <a href="{{ url_for('assets.index') }}" class="btn btn-outline-secondary" title="Reset Filters"><i class="fas fa-undo"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Assets Table -->
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-custom mb-0">
+            <thead>
+                <tr>
+                    <th>Asset ID</th>
+                    <th>Brand & Model</th>
+                    <th>Serial Number</th>
+                    <th>Specifications</th>
+                    <th>Vendor</th>
+                    <th>Status</th>
+                    <th>Assigned User Name</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ast in assets %}
+                <tr>
+                    <td><strong class="text-primary">{{ ast.asset_id }}</strong></td>
+                    <td>
+                        <div class="fw-bold">{{ ast.brand }} {{ ast.model }}</div>
+                    </td>
+                    <td><code>{{ ast.serial_number }}</code></td>
+                    <td>
+                        <small class="text-muted">
+                            <i class="fas fa-microchip me-1"></i>{{ ast.processor }}<br>
+                            <i class="fas fa-memory me-1"></i>{{ ast.ram }} | <i class="fas fa-hard-drive me-1"></i>{{ ast.ssd }}
+                        </small>
+                    </td>
+                    <td><span class="badge bg-light text-dark border">{{ ast.vendor.name if ast.vendor else 'N/A' }}</span></td>
+                    <td>
+                        <span class="badge badge-status badge-{{ ast.status.lower() }}">
+                            <i class="fas {% if ast.status == 'Available' %}fa-box-open{% elif ast.status == 'Assigned' %}fa-user-check{% else %}fa-wrench{% endif %}"></i>
+                            {{ ast.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if ast.assigned_employee %}
+                        <div class="fw-bold text-dark"><i class="fas fa-user me-1 text-primary"></i>{{ ast.assigned_employee.name }}</div>
+                        <small class="text-muted">{{ ast.assigned_employee.employee_id }} &bull; {{ ast.assigned_employee.department }}</small>
+                        {% else %}
+                        <span class="text-muted fs-7"><em>Unassigned (In Stock)</em></span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <div class="dropdown">
+                            <button class="btn btn-light btn-sm rounded-circle p-2" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v text-secondary"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                <li>
+                                    <button class="dropdown-item btn-view-asset-history" data-asset-id="{{ ast.id }}">
+                                        <i class="fas fa-history text-info me-2"></i>View Replacement History
+                                    </button>
+                                </li>
+                                {% if current_user.is_it_admin %}
+                                    {% if ast.status == 'Available' %}
+                                    <li>
+                                        <button class="dropdown-item text-primary" data-bs-toggle="modal" data-bs-target="#assignModal{{ ast.id }}">
+                                            <i class="fas fa-user-plus me-2"></i>Assign to Employee
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item text-warning" data-bs-toggle="modal" data-bs-target="#repairModal{{ ast.id }}">
+                                            <i class="fas fa-wrench me-2"></i>Send to Repair
+                                        </button>
+                                    </li>
+                                    {% elif ast.status == 'Assigned' %}
+                                    <li>
+                                        <form action="{{ url_for('assets.return_asset', asset_id=ast.id) }}" method="POST">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="dropdown-item text-success" onclick="return confirm('Return this laptop from employee back to available stock?')">
+                                                <i class="fas fa-undo me-2"></i>Return to Available
+                                            </button>
+                                        </form>
+                                    </li>
+                                    {% endif %}
+                                {% endif %}
+                                {% if current_user.can_delete_assets() %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form action="{{ url_for('assets.delete_asset', asset_id=ast.id) }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Are you sure you want to delete asset {{ ast.asset_id }}?')">
+                                            <i class="fas fa-trash me-2"></i>Delete Asset
+                                        </button>
+                                    </form>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+
+                        <!-- Assign Modal per asset -->
+                        {% if ast.status == 'Available' and current_user.is_it_admin %}
+                        <div class="modal fade text-start" id="assignModal{{ ast.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow-lg">
+                                    <div class="modal-header bg-primary text-white">
+                                        <h5 class="modal-title fw-bold"><i class="fas fa-user-check me-2"></i>Assign Asset {{ ast.asset_id }}</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form action="{{ url_for('assets.assign_asset') }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="asset_id" value="{{ ast.id }}">
+                                        <div class="modal-body p-4">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Select Employee</label>
+                                                <select name="employee_id" class="form-select" required>
+                                                    <option value="">-- Choose Entra ID Employee --</option>
+                                                    {% for emp in active_employees %}
+                                                    <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.employee_id }} - {{ emp.department }})</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Allocation Notes</label>
+                                                <textarea name="notes" class="form-control" rows="2" placeholder="Reason for allocation..."></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary">Confirm Assignment</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Repair Modal per asset -->
+                        <div class="modal fade text-start" id="repairModal{{ ast.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow-lg">
+                                    <div class="modal-header bg-warning text-dark">
+                                        <h5 class="modal-title fw-bold"><i class="fas fa-wrench me-2"></i>Dispatch to Repair</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form action="{{ url_for('assets.send_to_repair') }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="asset_id" value="{{ ast.id }}">
+                                        <div class="modal-body p-4">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Select Repair Vendor</label>
+                                                <select name="vendor_id" class="form-select" required>
+                                                    {% for v in vendors %}
+                                                    <option value="{{ v.id }}" {% if ast.vendor_id == v.id %}selected{% endif %}>{{ v.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Hardware Fault Description</label>
+                                                <textarea name="notes" class="form-control" rows="3" placeholder="Describe hardware issue..." required></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-warning text-dark fw-bold">Create Vendor Repair Ticket</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="fas fa-laptop fa-2x mb-2 d-block text-secondary"></i>
+                        No assets found in inventory matching filter criteria.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+        <small class="text-muted">Showing page {{ pagination.page }} of {{ pagination.pages }}</small>
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('assets.index', page=pagination.prev_num, q=search_q, status=status_filter, vendor_id=vendor_filter) }}">Previous</a>
+            </li>
+            {% for p in pagination.iter_pages() %}
+                {% if p %}
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('assets.index', page=p, q=search_q, status=status_filter, vendor_id=vendor_filter) }}">{{ p }}</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('assets.index', page=pagination.next_num, q=search_q, status=status_filter, vendor_id=vendor_filter) }}">Next</a>
+            </li>
+        </ul>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal: Add New Asset -->
+<div class="modal fade" id="addAssetModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-plus me-2 text-primary"></i>Add New Enterprise Asset</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('assets.add_asset') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body p-4">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Brand / Manufacturer</label>
+                            <input type="text" name="brand" class="form-control" placeholder="e.g. Dell, Lenovo, Apple, HP" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Model Name / Number</label>
+                            <input type="text" name="model" class="form-control" placeholder="e.g. ThinkPad X1, Latitude 7420" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Hardware Serial Number</label>
+                            <input type="text" name="serial_number" class="form-control" placeholder="Unique Manufacturer Serial No" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Vendor Supplier</label>
+                            <select name="vendor_id" class="form-select" required>
+                                <option value="">-- Select Vendor --</option>
+                                {% for v in vendors %}
+                                <option value="{{ v.id }}">{{ v.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Processor Specs</label>
+                            <input type="text" name="processor" class="form-control" placeholder="e.g. Intel Core i7-1185G7" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">RAM Capacity</label>
+                            <input type="text" name="ram" class="form-control" placeholder="e.g. 16 GB, 32 GB" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">SSD Storage Capacity</label>
+                            <input type="text" name="ssd" class="form-control" placeholder="e.g. 512 GB SSD, 1 TB SSD" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">Save Asset Record</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Replace Laptop (Multi-Replacement Tracking Workflow) -->
+<div class="modal fade" id="replaceAssetModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold"><i class="fas fa-sync me-2"></i>Laptop Multi-Replacement Workflow</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('assets.replace_asset') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body p-4">
+                    <div class="alert alert-info py-2 small">
+                        <i class="fas fa-info-circle me-1"></i> Swapping an assigned laptop logs an explicit replacement history record linking old & new asset IDs.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Select Currently Assigned Laptop to Replace (Old Asset)</label>
+                        <select name="old_asset_id" class="form-select" required>
+                            <option value="">-- Choose Assigned Laptop --</option>
+                            {% for a in assets %}
+                                {% if a.status == 'Assigned' and a.assigned_employee %}
+                                <option value="{{ a.id }}">{{ a.asset_id }} - {{ a.brand }} {{ a.model }} (Assigned to: {{ a.assigned_employee.name }})</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Select Replacement Laptop to Allocate (New Available Asset)</label>
+                        <select name="new_asset_id" class="form-select" required>
+                            <option value="">-- Choose Available Replacement Laptop --</option>
+                            {% for a in available_assets %}
+                            <option value="{{ a.id }}">{{ a.asset_id }} - {{ a.brand }} {{ a.model }} (SN: {{ a.serial_number }} &bull; {{ a.ram }}/{{ a.ssd }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Replacement Reason / Notes</label>
+                        <textarea name="reason" class="form-control" rows="2" placeholder="e.g. Hardware upgrade requested, motherboard defect, user role change..." required></textarea>
+                    </div>
+
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="return_to_repair" id="return_to_repair" checked>
+                        <label class="form-check-label text-dark fw-semibold" for="return_to_repair">
+                            Send old replaced laptop directly to Repair status
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning text-dark fw-bold">Execute Laptop Replacement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Asset History Log -->
+<div class="modal fade" id="assetHistoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-history me-2 text-info"></i>Asset History & Replacement Log</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3 p-3 bg-light rounded-3 border">
+                    <strong class="text-dark">Asset ID:</strong> <span id="modal-hist-asset-id" class="text-primary fw-bold">-</span> | 
+                    <strong class="text-dark">Model:</strong> <span id="modal-hist-brand-model">-</span> | 
+                    <strong class="text-dark">Serial:</strong> <span id="modal-hist-serial">-</span> | 
+                    <strong class="text-dark">Current User:</strong> <span id="modal-hist-user">-</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped align-middle small mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action</th>
+                                <th>Employee Name</th>
+                                <th>Replacement / Notes</th>
+                                <th>Logged By</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modal-asset-hist-body">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings | Enterprise ITAM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="fas fa-sliders text-primary me-2"></i>System Settings & Entra Configuration</h3>
+        <p class="text-muted small mb-0">Configure Microsoft Entra ID (Azure AD), Outlook mail integration, system parameters, and administrative accounts.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Entra ID & Integration Settings -->
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white fw-bold">
+                <i class="fab fa-microsoft me-2 text-primary"></i>Microsoft Entra ID (Azure AD) Sync Settings
+            </div>
+            <div class="card-body p-4">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Azure Application (Client) ID</label>
+                    <input type="text" class="form-control" value="{{ config.AZURE_CLIENT_ID }}" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Directory (Tenant) ID</label>
+                    <input type="text" class="form-control" value="{{ config.AZURE_TENANT_ID }}" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Microsoft Graph Integration Engine Mode</label>
+                    <select class="form-select" disabled>
+                        <option value="MOCK" {% if config.GRAPH_INTEGRATION_MODE == 'MOCK' %}selected{% endif %}>MOCK MODE (Built-in M365 Entra Directory Engine)</option>
+                        <option value="LIVE" {% if config.GRAPH_INTEGRATION_MODE == 'LIVE' %}selected{% endif %}>LIVE MODE (Active Azure Graph API)</option>
+                    </select>
+                    <small class="text-muted">Mode can be toggled via GRAPH_INTEGRATION_MODE environment variable.</small>
+                </div>
+                <div class="p-3 bg-light rounded-3 border">
+                    <h6 class="fw-bold text-dark mb-1"><i class="fas fa-check-circle text-success me-1"></i>Auto-Offboarding Return Trigger</h6>
+                    <p class="small text-muted mb-0">When employee status in Entra ID changes to Offboarded, all assigned laptops are automatically marked Available and history is logged immediately.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white fw-bold">
+                <i class="fas fa-envelope me-2 text-primary"></i>Microsoft Outlook Inbox Ticketing Config
+            </div>
+            <div class="card-body p-4">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Support Mailbox Address</label>
+                    <input type="email" class="form-control" value="itsupport@company.com" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Inbox Polling Frequency</label>
+                    <input type="text" class="form-control" value="Every 5 Minutes (Automatic Background Polling)" readonly>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User & RBAC Management -->
+    <div class="col-12 col-lg-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white fw-bold d-flex align-items-center justify-content-between">
+                <span><i class="fas fa-user-shield me-2 text-primary"></i>Administrative Users & Roles</span>
+                <button class="btn btn-primary btn-sm rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                    <i class="fas fa-plus me-1"></i>Add Admin User
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th>User Name</th>
+                            <th>Role</th>
+                            <th>Department</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold text-dark">{{ u.full_name }}</div>
+                                <small class="text-muted">{{ u.email }}</small>
+                            </td>
+                            <td>
+                                <span class="badge {% if u.role == 'Super Administrator' %}bg-danger{% elif u.role == 'IT Administrator' %}bg-primary{% else %}bg-secondary{% endif %}">
+                                    {{ u.role }}
+                                </span>
+                            </td>
+                            <td><small class="text-muted">{{ u.department }}</small></td>
+                            <td>
+                                <button class="btn btn-outline-secondary btn-sm rounded-circle p-1 px-2" data-bs-toggle="modal" data-bs-target="#editRoleModal{{ u.id }}" title="Change Role">
+                                    <i class="fas fa-user-pen"></i>
+                                </button>
+
+                                <!-- Modal: Edit User Role -->
+                                <div class="modal fade text-start" id="editRoleModal{{ u.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content border-0 shadow-lg">
+                                            <div class="modal-header bg-dark text-white">
+                                                <h5 class="modal-title fw-bold">Change Role for {{ u.full_name }}</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="{{ url_for('settings.update_user_role', user_id=u.id) }}" method="POST">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <div class="modal-body p-4">
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Select Role</label>
+                                                        <select name="role" class="form-select" required>
+                                                            {% for r in roles %}
+                                                            <option value="{{ r }}" {% if u.role == r %}selected{% endif %}>{{ r }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary fw-bold">Update Role</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add User -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2 text-primary"></i>Create Administrative User Account</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('settings.add_user') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Full Name</label>
+                        <input type="text" name="full_name" class="form-control" placeholder="e.g. Anish Sharma" required>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Username</label>
+                            <input type="text" name="username" class="form-control" placeholder="asharma" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email Address</label>
+                            <input type="email" name="email" class="form-control" placeholder="asharma@company.com" required>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">System Role</label>
+                            <select name="role" class="form-select" required>
+                                {% for r in roles %}
+                                <option value="{{ r }}" {% if r == 'IT Engineer' %}selected{% endif %}>{{ r }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Password</label>
+                            <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

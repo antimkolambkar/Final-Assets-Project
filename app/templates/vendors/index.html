@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Vendors & Repair Tickets | Enterprise ITAM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="fas fa-handshake text-primary me-2"></i>Vendor Directory & Hardware Repair Tickets</h3>
+        <p class="text-muted small mb-0">Manage enterprise supplier vendors (Techvity, Spurge, WBG, Exalogic) and track hardware warranty repairs.</p>
+    </div>
+    {% if current_user.is_it_admin %}
+    <div>
+        <button class="btn btn-primary rounded-pill px-4 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#addVendorModal">
+            <i class="fas fa-plus me-1"></i>Add Vendor
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Default Vendor Cards Row -->
+<div class="row g-3 mb-4">
+    {% for v in vendors %}
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <h5 class="fw-bold text-dark mb-0">{{ v.name }}</h5>
+                    <span class="badge bg-primary bg-opacity-10 text-primary">{{ v.assets.count() }} Assets</span>
+                </div>
+                <div class="small text-muted vstack gap-1">
+                    <div><i class="fas fa-user-tie me-2 text-secondary"></i><strong>Contact:</strong> {{ v.contact_person or 'N/A' }}</div>
+                    <div><i class="fas fa-envelope me-2 text-secondary"></i><strong>Email:</strong> {{ v.email or 'N/A' }}</div>
+                    <div><i class="fas fa-phone me-2 text-secondary"></i><strong>Phone:</strong> {{ v.phone or 'N/A' }}</div>
+                    <div><i class="fas fa-location-dot me-2 text-secondary"></i><strong>Address:</strong> {{ v.address or 'N/A' }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Vendor Repair Tickets Table -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-transparent fw-bold py-3 border-bottom d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-wrench me-2 text-warning"></i>Active & Past Vendor Hardware Repair Tickets</span>
+        <span class="badge bg-light text-dark border">{{ repair_tickets|length }} Repair Tickets</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-custom mb-0">
+            <thead>
+                <tr>
+                    <th>Repair Ticket No</th>
+                    <th>Asset ID & Model</th>
+                    <th>Serial Number</th>
+                    <th>Vendor Supplier</th>
+                    <th>Repair Status</th>
+                    <th>Sent Date</th>
+                    <th>Returned Date</th>
+                    <th>Notes</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for vrt in repair_tickets %}
+                <tr>
+                    <td><strong class="text-primary">{{ vrt.vendor_ticket_number }}</strong></td>
+                    <td>
+                        <div class="fw-bold text-dark">{{ vrt.asset.asset_id if vrt.asset else 'N/A' }}</div>
+                        <small class="text-muted">{{ vrt.asset.brand }} {{ vrt.asset.model }}</small>
+                    </td>
+                    <td><code>{{ vrt.asset.serial_number if vrt.asset else 'N/A' }}</code></td>
+                    <td><span class="badge bg-light text-dark border">{{ vrt.vendor.name if vrt.vendor else 'N/A' }}</span></td>
+                    <td>
+                        <span class="badge {% if vrt.repair_status == 'Returned' %}bg-success{% elif vrt.repair_status == 'Repaired' %}bg-info{% else %}bg-warning text-dark{% endif %}">
+                            {{ vrt.repair_status }}
+                        </span>
+                    </td>
+                    <td><small class="text-muted">{{ vrt.sent_date.strftime('%Y-%m-%d') if vrt.sent_date else '-' }}</small></td>
+                    <td><small class="text-muted">{{ vrt.returned_date.strftime('%Y-%m-%d') if vrt.returned_date else '-' }}</small></td>
+                    <td class="text-truncate" style="max-width: 180px;">{{ vrt.notes or '-' }}</td>
+                    <td class="text-end">
+                        {% if vrt.repair_status != 'Returned' %}
+                        <button class="btn btn-outline-warning btn-sm rounded-pill text-dark fw-semibold" data-bs-toggle="modal" data-bs-target="#updateRepairModal{{ vrt.id }}">
+                            <i class="fas fa-pen me-1"></i>Update Status
+                        </button>
+
+                        <!-- Modal: Update Repair Status -->
+                        <div class="modal fade text-start" id="updateRepairModal{{ vrt.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content border-0 shadow-lg">
+                                    <div class="modal-header bg-dark text-white">
+                                        <h5 class="modal-title fw-bold">Update Repair Ticket {{ vrt.vendor_ticket_number }}</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form action="{{ url_for('vendors.update_repair_status', ticket_id=vrt.id) }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <div class="modal-body p-4">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Repair Status</label>
+                                                <select name="repair_status" class="form-select" required>
+                                                    {% for st in repair_statuses %}
+                                                    <option value="{{ st }}" {% if vrt.repair_status == st %}selected{% endif %}>{{ st }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <small class="text-muted">Setting to 'Returned' automatically marks the asset status back to 'Available' in stock.</small>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Status Update Notes</label>
+                                                <textarea name="notes" class="form-control" rows="2" placeholder="e.g. Motherboard replaced under warranty, testing passed..."></textarea>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" class="btn btn-primary fw-bold">Save Status Update</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <span class="badge bg-secondary">Completed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        <i class="fas fa-wrench fa-2x mb-2 d-block text-secondary"></i>
+                        No active vendor repair tickets found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal: Add Vendor -->
+<div class="modal fade" id="addVendorModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-handshake me-2 text-primary"></i>Add Supplier Vendor</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('vendors.add_vendor') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Vendor Company Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Techvity, Spurge, WBG..." required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Contact Person</label>
+                        <input type="text" name="contact_person" class="form-control" placeholder="Contact person name...">
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email Address</label>
+                            <input type="email" name="email" class="form-control" placeholder="vendor@domain.com">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Phone Number</label>
+                            <input type="text" name="phone" class="form-control" placeholder="+91 98765 43210">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Office Address</label>
+                        <textarea name="address" class="form-control" rows="2" placeholder="Vendor office address..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">Save Vendor</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

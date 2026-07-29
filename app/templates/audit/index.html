@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}System Audit Logs | Enterprise ITAM{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="fas fa-shield-halved text-primary me-2"></i>System Security & Action Audit Logs</h3>
+        <p class="text-muted small mb-0">Immutable system audit logging capturing all asset modifications, employee sync events, ticket state changes, and IP addresses.</p>
+    </div>
+</div>
+
+<!-- Search & Action Filter Bar -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3">
+        <form action="{{ url_for('audit.index') }}" method="GET" class="row g-2">
+            <div class="col-12 col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" name="q" value="{{ search_q }}" class="form-control border-start-0 bg-light" placeholder="Search user name, action, details, IP address...">
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <select name="action" class="form-select bg-light">
+                    <option value="">All Action Types</option>
+                    {% for act in actions %}
+                    <option value="{{ act }}" {% if action_filter == act %}selected{% endif %}>{{ act }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-dark flex-grow-1"><i class="fas fa-filter me-1"></i>Filter</button>
+                <a href="{{ url_for('audit.index') }}" class="btn btn-outline-secondary" title="Reset Filters"><i class="fas fa-undo"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Audit Log Table -->
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-custom mb-0">
+            <thead>
+                <tr>
+                    <th>Audit ID</th>
+                    <th>Timestamp</th>
+                    <th>User & Role</th>
+                    <th>Action Performed</th>
+                    <th>Target Entity</th>
+                    <th>IP Address</th>
+                    <th>Action Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td><strong class="text-primary">#{{ log.id }}</strong></td>
+                    <td><small class="text-muted"><i class="far fa-clock me-1"></i>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small></td>
+                    <td>
+                        <div class="fw-bold text-dark">{{ log.user_name }}</div>
+                        <small class="text-muted">{{ log.user_role or 'System' }}</small>
+                    </td>
+                    <td><span class="badge bg-primary bg-opacity-10 text-primary fw-semibold">{{ log.action }}</span></td>
+                    <td>
+                        {% if log.entity_type %}
+                        <span class="badge bg-light text-dark border">{{ log.entity_type }}: {{ log.entity_id or 'N/A' }}</span>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ log.ip_address or '127.0.0.1' }}</code></td>
+                    <td class="text-secondary style-preserve-line">{{ log.details or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="fas fa-shield-halved fa-2x mb-2 d-block text-secondary"></i>
+                        No audit logs recorded for this query.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Pagination -->
+    {% if pagination.pages > 1 %}
+    <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+        <small class="text-muted">Showing page {{ pagination.page }} of {{ pagination.pages }}</small>
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('audit.index', page=pagination.prev_num, q=search_q, action=action_filter) }}">Previous</a>
+            </li>
+            {% for p in pagination.iter_pages() %}
+                {% if p %}
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('audit.index', page=p, q=search_q, action=action_filter) }}">{{ p }}</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('audit.index', page=pagination.next_num, q=search_q, action=action_filter) }}">Next</a>
+            </li>
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

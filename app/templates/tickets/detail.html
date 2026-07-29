@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket {{ ticket.ticket_id }} | ITAM Helpdesk{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{{ url_for('tickets.index') }}" class="text-decoration-none text-muted small"><i class="fas fa-arrow-left me-1"></i>Back to Helpdesk Tickets</a>
+</div>
+
+<div class="row g-4">
+    <!-- Main Ticket Thread -->
+    <div class="col-12 col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-dark text-white p-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="badge bg-primary me-2">{{ ticket.ticket_id }}</span>
+                    <span class="badge bg-secondary">{{ ticket.category }}</span>
+                </div>
+                <div>
+                    <span class="badge {% if ticket.priority == 'Critical' %}bg-danger{% elif ticket.priority == 'High' %}bg-warning text-dark{% else %}bg-info{% endif %}">
+                        {{ ticket.priority }} Priority
+                    </span>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <h4 class="fw-bold text-dark mb-3">{{ ticket.subject }}</h4>
+                <div class="p-3 bg-light rounded-3 border mb-4">
+                    <p class="mb-0 text-secondary style-preserve-line">{{ ticket.description }}</p>
+                </div>
+
+                <!-- Attachments List -->
+                {% if ticket.attachments.count() > 0 %}
+                <h6 class="fw-bold text-dark mb-2"><i class="fas fa-paperclip me-1 text-primary"></i>Attachments</h6>
+                <div class="d-flex flex-wrap gap-2 mb-4">
+                    {% for att in ticket.attachments %}
+                    <a href="{{ url_for('tickets.download_attachment', attachment_id=att.id) }}" class="btn btn-outline-secondary btn-sm rounded-pill">
+                        <i class="fas fa-file-download me-1 text-primary"></i>{{ att.filename }}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- File Uploader Form -->
+                <form action="{{ url_for('tickets.upload_attachment', ticket_id=ticket.ticket_id) }}" method="POST" enctype="multipart/form-data" class="mb-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="input-group input-group-sm">
+                        <input type="file" name="file" class="form-control" required>
+                        <button type="submit" class="btn btn-outline-primary"><i class="fas fa-upload me-1"></i>Attach File</button>
+                    </div>
+                </form>
+
+                <hr class="my-4">
+
+                <!-- Conversation Thread -->
+                <h5 class="fw-bold text-dark mb-3"><i class="fas fa-comments me-2 text-primary"></i>Discussion & Resolution Updates</h5>
+                
+                <div class="vstack gap-3 mb-4">
+                    {% for c in ticket.comments %}
+                    <div class="card border {% if c.is_internal %}border-warning bg-warning bg-opacity-10{% else %}border-light bg-light{% endif %} rounded-3">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <strong class="text-dark">{{ c.author_name }}</strong>
+                                <small class="text-muted">{{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </div>
+                            {% if c.is_internal %}
+                            <div class="badge bg-warning text-dark mb-2"><i class="fas fa-lock me-1"></i>Internal IT Note</div>
+                            {% endif %}
+                            <p class="mb-0 text-secondary">{{ c.comment_text }}</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-muted text-center py-3 small">No comments or updates posted yet.</div>
+                    {% endfor %}
+                </div>
+
+                <!-- Add Comment Form -->
+                <form action="{{ url_for('tickets.add_comment', ticket_id=ticket.ticket_id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <textarea name="comment_text" class="form-control" rows="3" placeholder="Write a response or update to the employee..." required></textarea>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_internal" id="is_internal">
+                            <label class="form-check-label small text-muted" for="is_internal">
+                                Internal IT Engineer Note (Hidden from employee)
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">Post Comment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ticket Sidebar Controls -->
+    <div class="col-12 col-lg-4">
+        <!-- Ticket Info Card -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent fw-bold border-bottom">
+                <i class="fas fa-circle-info me-2 text-primary"></i>Ticket Overview
+            </div>
+            <div class="card-body p-3 small vstack gap-2">
+                <div><strong class="text-muted">Status:</strong> <span class="badge bg-info text-dark fw-bold ms-2">{{ ticket.status }}</span></div>
+                <div><strong class="text-muted">Requester:</strong> <span class="text-dark fw-bold ms-1">{{ ticket.employee.name if ticket.employee else 'N/A' }}</span></div>
+                <div><strong class="text-muted">Email:</strong> <span class="text-muted ms-1">{{ ticket.employee.email if ticket.employee else 'N/A' }}</span></div>
+                <div><strong class="text-muted">Department:</strong> <span class="text-muted ms-1">{{ ticket.department or 'N/A' }}</span></div>
+                <div><strong class="text-muted">Created Date:</strong> <span class="text-muted ms-1">{{ ticket.created_at.strftime('%Y-%m-%d %H:%M') }}</span></div>
+                {% if ticket.closed_at %}
+                <div><strong class="text-muted">Closed Date:</strong> <span class="text-muted ms-1">{{ ticket.closed_at.strftime('%Y-%m-%d %H:%M') }}</span></div>
+                <div><strong class="text-muted">Resolution Time:</strong> <span class="badge bg-success ms-1">{{ ticket.resolution_time_hours }} Hours</span></div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Assign Engineer Card -->
+        {% if current_user.can_assign_tickets() %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent fw-bold border-bottom">
+                <i class="fas fa-user-gear me-2 text-primary"></i>Assign Ticket
+            </div>
+            <div class="card-body p-3">
+                <form action="{{ url_for('tickets.assign_ticket', ticket_id=ticket.ticket_id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">IT Engineer</label>
+                        <select name="engineer_id" class="form-select form-select-sm" required>
+                            <option value="">-- Choose Engineer --</option>
+                            {% for eng in engineers %}
+                            <option value="{{ eng.id }}" {% if ticket.assigned_engineer_id == eng.id %}selected{% endif %}>{{ eng.full_name }} ({{ eng.role }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-dark btn-sm w-100 fw-semibold">Assign Engineer</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Update Status Card -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent fw-bold border-bottom">
+                <i class="fas fa-sliders me-2 text-primary"></i>Update Ticket Status
+            </div>
+            <div class="card-body p-3">
+                <form action="{{ url_for('tickets.update_status', ticket_id=ticket.ticket_id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Select New Status</label>
+                        <select name="status" class="form-select form-select-sm" required>
+                            {% for st in statuses %}
+                            <option value="{{ st }}" {% if ticket.status == st %}selected{% endif %}>{{ st }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-semibold">Update Status</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
