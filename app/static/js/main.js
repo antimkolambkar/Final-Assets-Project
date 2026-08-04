@@ -136,4 +136,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(err => console.error('Error fetching asset history:', err));
         });
     });
+    const editBtn = document.getElementById("editProfileBtn");
+
+if (editBtn) {
+    editBtn.addEventListener("click", function () {
+
+        const empId = this.dataset.empId;
+
+        if (!empId) {
+            alert("Please open an employee profile first.");
+            return;
+        }
+
+        alert("Employee ID = " + empId);
+
+    });
+}
 });
