@@ -218,9 +218,31 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
             <div class="modal-header bg-dark text-white border-0 py-3">
-                <h5 class="modal-title fw-bold"><i class="fas fa-id-card me-2 text-primary"></i>Employee Profile & Assigned Laptops</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+    <h5 class="modal-title fw-bold">
+        <i class="fas fa-id-card me-2 text-primary"></i>
+        Employee Profile & Assigned Laptops
+    </h5>
+
+    <div class="d-flex align-items-center gap-2">
+
+        {% if current_user.is_it_admin %}
+        <button
+            type="button"
+            class="btn btn-warning btn-sm"
+            id="editProfileBtn">
+            <i class="fas fa-edit"></i> Edit Profile
+        </button>
+        {% endif %}
+
+        <button
+            type="button"
+            class="btn-close btn-close-white"
+            data-bs-dismiss="modal"
+            aria-label="Close">
+        </button>
+
+    </div>
+</div>
             <div class="modal-body p-4">
                 <!-- Employee Summary Header -->
                 <div class="row g-3 mb-4 p-3 bg-light rounded-3 border">
