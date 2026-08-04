@@ -139,17 +139,36 @@ document.addEventListener('DOMContentLoaded', function() {
     const editBtn = document.getElementById("editProfileBtn");
 
 if (editBtn) {
+
     editBtn.addEventListener("click", function () {
 
         const empId = this.dataset.empId;
 
         if (!empId) {
-            alert("Please open an employee profile first.");
+            alert("Open an employee first.");
             return;
         }
 
-        alert("Employee ID = " + empId);
+        fetch(`/employees/${empId}/json`)
+            .then(r => r.json())
+            .then(emp => {
+
+                document.getElementById("editName").value = emp.name;
+                document.getElementById("editDepartment").value = emp.department;
+                document.getElementById("editDesignation").value = emp.designation;
+                document.getElementById("editManager").value = emp.manager;
+                document.getElementById("editOffice").value = emp.office_location;
+                document.getElementById("editStatus").value = emp.account_status;
+
+                document.getElementById("editEmployeeForm").action =
+                    `/employees/${empId}/edit`;
+
+                new bootstrap.Modal(
+                    document.getElementById("editEmployeeModal")
+                ).show();
+
+            });
 
     });
+
 }
-});
