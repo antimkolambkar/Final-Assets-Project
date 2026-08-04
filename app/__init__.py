@@ -1,4 +1,3 @@
-import os
 from flask import Flask
 from config import Config
 from app.extensions import db, login_manager, csrf
@@ -45,7 +44,7 @@ def create_app(config_class=Config):
     from app.commands import register_commands
     register_commands(app)
 
-        with app.app_context():
+    with app.app_context():
         db.create_all()
 
         from app.models.user import User, Role
@@ -57,29 +56,23 @@ def create_app(config_class=Config):
                 full_name="System Administrator",
                 role=Role.SUPER_ADMIN,
                 department="IT Support",
-                is_active=True
+                is_active=True,
             )
             admin.set_password("Admin@123")
-
             db.session.add(admin)
             db.session.commit()
 
-            print("Default Super Administrator created.")
-
-    # Context processors
     @app.context_processor
     def inject_global_context():
-        from app.models.ticket import TicketStatus
-        from app.models.ticket import Ticket
+        from app.models.ticket import Ticket, TicketStatus
 
-        open_ticket_count = 0
         try:
             open_ticket_count = Ticket.query.filter(
                 Ticket.status == TicketStatus.OPEN
             ).count()
         except Exception:
-            pass
+            open_ticket_count = 0
 
-        return dict(global_open_ticket_count=open_ticket_count)
+        return {"global_open_ticket_count": open_ticket_count}
 
     return app
