@@ -4,6 +4,7 @@ from config import Config
 from app.extensions import db, login_manager, csrf
 from app.models.user import User
 
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -43,38 +44,42 @@ def create_app(config_class=Config):
     # Register CLI commands
     from app.commands import register_commands
     register_commands(app)
-with app.app_context():
-    db.create_all()
 
-    from app.models.user import User, Role
+    with app.app_context():
+        db.create_all()
 
-    if User.query.count() == 0:
-        admin = User(
-            username="admin",
-            email="admin@company.com",
-            full_name="System Administrator",
-            role=Role.SUPER_ADMIN,
-            department="IT Support",
-            is_active=True
-        )
-        admin.set_password("Admin@123")
+        from app.models.user import User, Role
 
-        db.session.add(admin)
-        db.session.commit()
+        if User.query.count() == 0:
+            admin = User(
+                username="admin",
+                email="admin@company.com",
+                full_name="System Administrator",
+                role=Role.SUPER_ADMIN,
+                department="IT Support",
+                is_active=True
+            )
+            admin.set_password("Admin@123")
 
-        print("Default Super Administrator created.")
+            db.session.add(admin)
+            db.session.commit()
+
+            print("Default Super Administrator created.")
+
     # Context processors
     @app.context_processor
     def inject_global_context():
         from app.models.ticket import TicketStatus
         from app.models.ticket import Ticket
+
         open_ticket_count = 0
         try:
-            open_ticket_count = Ticket.query.filter(Ticket.status == TicketStatus.OPEN).count()
+            open_ticket_count = Ticket.query.filter(
+                Ticket.status == TicketStatus.OPEN
+            ).count()
         except Exception:
             pass
-        return dict(
-            global_open_ticket_count=open_ticket_count
-        )
+
+        return dict(global_open_ticket_count=open_ticket_count)
 
     return app
