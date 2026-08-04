@@ -172,4 +172,41 @@ if (editBtn) {
     });
 
 }
+  // =======================
+// Save Employee Edit Form
+// =======================
+const editForm = document.getElementById("editEmployeeForm");
+
+if (editForm) {
+    editForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        fetch(this.action, {
+            method: "POST",
+            body: new FormData(this)
+        })
+        .then(response => response.json())
+        .then(data => {
+
+            if (data.success) {
+
+                alert(data.message);
+
+                bootstrap.Modal.getInstance(
+                    document.getElementById("editEmployeeModal")
+                ).hide();
+
+                location.reload();
+
+            } else {
+                alert(data.message);
+            }
+
+        })
+        .catch(error => {
+            console.error(error);
+            alert("Error updating employee.");
+        });
+    });
+}
 });
