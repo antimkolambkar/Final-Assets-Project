@@ -152,30 +152,9 @@ def sync_employees():
 @employees_bp.route('/<int:emp_id>/json')
 @login_required
 def get_employee_json(emp_id):
-    @employees_bp.route('/<int:emp_id>/edit', methods=['POST'])
-@login_required
-def edit_employee(emp_id):
-    if not current_user.is_it_admin:
-        return jsonify({"success": False, "message": "Permission denied"}), 403
-
-    emp = Employee.query.get_or_404(emp_id)
-
-    emp.name = request.form.get("name")
-    emp.department = request.form.get("department")
-    emp.designation = request.form.get("designation")
-    emp.manager = request.form.get("manager")
-    emp.office_location = request.form.get("office_location")
-    emp.account_status = request.form.get("account_status")
-
-    db.session.commit()
-
-    return jsonify({
-        "success": True,
-        "message": "Employee updated successfully"
-    })
     emp = Employee.query.get_or_404(emp_id)
     assigned_assets = Asset.query.filter_by(assigned_employee_id=emp.id).all()
-    
+
     assets_data = []
     for a in assigned_assets:
         assets_data.append({
@@ -203,4 +182,30 @@ def edit_employee(emp_id):
         'office_location': emp.office_location or '-',
         'account_status': emp.account_status,
         'assigned_assets': assets_data
+    })
+
+
+@employees_bp.route('/<int:emp_id>/edit', methods=['POST'])
+@login_required
+def edit_employee(emp_id):
+    if not current_user.is_it_admin:
+        return jsonify({
+            "success": False,
+            "message": "Permission denied"
+        }), 403
+
+    emp = Employee.query.get_or_404(emp_id)
+
+    emp.name = request.form.get("name", emp.name)
+    emp.department = request.form.get("department", emp.department)
+    emp.designation = request.form.get("designation", emp.designation)
+    emp.manager = request.form.get("manager", emp.manager)
+    emp.office_location = request.form.get("office_location", emp.office_location)
+    emp.account_status = request.form.get("account_status", emp.account_status)
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "Employee updated successfully"
     })
