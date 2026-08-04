@@ -43,7 +43,26 @@ def create_app(config_class=Config):
     # Register CLI commands
     from app.commands import register_commands
     register_commands(app)
+with app.app_context():
+    db.create_all()
 
+    from app.models.user import User, Role
+
+    if User.query.count() == 0:
+        admin = User(
+            username="admin",
+            email="admin@company.com",
+            full_name="System Administrator",
+            role=Role.SUPER_ADMIN,
+            department="IT Support",
+            is_active=True
+        )
+        admin.set_password("Admin@123")
+
+        db.session.add(admin)
+        db.session.commit()
+
+        print("Default Super Administrator created.")
     # Context processors
     @app.context_processor
     def inject_global_context():
