@@ -45,7 +45,7 @@ def create_app(config_class=Config):
     from app.commands import register_commands
     register_commands(app)
 
-    with app.app_context():
+        with app.app_context():
         db.create_all()
 
         from app.models.user import User, Role
