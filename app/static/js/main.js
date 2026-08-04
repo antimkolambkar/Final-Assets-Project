@@ -210,3 +210,44 @@ if (editForm) {
     });
 }
 });
+// Handle Edit Employee Form
+const editForm = document.getElementById("editEmployeeForm");
+
+if (editForm) {
+
+    editForm.addEventListener("submit", function(e) {
+
+        e.preventDefault();
+
+        fetch(this.action, {
+            method: "POST",
+            body: new FormData(this)
+        })
+        .then(res => res.json())
+        .then(data => {
+
+            if (data.success) {
+
+                alert("✅ " + data.message);
+
+                bootstrap.Modal.getInstance(
+                    document.getElementById("editEmployeeModal")
+                ).hide();
+
+                location.reload();
+
+            } else {
+
+                alert(data.message);
+
+            }
+
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Something went wrong.");
+        });
+
+    });
+
+}
