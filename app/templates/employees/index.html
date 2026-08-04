@@ -286,4 +286,99 @@
         </div>
     </div>
 </div>
+<!-- Edit Employee Modal -->
+<div class="modal fade" id="editEmployeeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <form id="editEmployeeForm" method="POST">
+
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit me-2"></i>Edit Employee
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label>Name</label>
+                        <input class="form-control"
+                               id="editName"
+                               name="name">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Department</label>
+                        <input class="form-control"
+                               id="editDepartment"
+                               name="department">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Designation</label>
+                        <input class="form-control"
+                               id="editDesignation"
+                               name="designation">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Manager</label>
+                        <input class="form-control"
+                               id="editManager"
+                               name="manager">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Office</label>
+                        <input class="form-control"
+                               id="editOffice"
+                               name="office_location">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Status</label>
+
+                        <select class="form-select"
+                                id="editStatus"
+                                name="account_status">
+
+                            <option>Onboarded</option>
+                            <option>Active</option>
+                            <option>Blocked</option>
+                            <option>Disabled</option>
+                            <option>Offboarded</option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button class="btn btn-secondary"
+                            type="button"
+                            data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+
+                    <button class="btn btn-success"
+                            type="submit">
+                        Save Changes
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
 {% endblock %}
