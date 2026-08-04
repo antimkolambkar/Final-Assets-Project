@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(`/employees/${empId}/json`)
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById("editProfileBtn").setAttribute("data-emp-id", data.id);
+                    document.getElementById("editProfileBtn").dataset.empId = data.id;
                     document.getElementById('modal-emp-name').textContent = data.name;
                     document.getElementById('modal-emp-id').textContent = data.employee_id;
                     document.getElementById('modal-emp-email').textContent = data.email;
@@ -172,3 +172,4 @@ if (editBtn) {
     });
 
 }
+});
