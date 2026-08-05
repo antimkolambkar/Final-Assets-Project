@@ -61,20 +61,79 @@ document.addEventListener('DOMContentLoaded', function() {
                     statusBadge.textContent = data.account_status;
                     statusBadge.className = `badge badge-status badge-${data.account_status.toLowerCase()}`;
 
-                    const assetsTableBody = document.getElementById('modal-emp-assets-body');
-                    assetsTableBody.innerHTML = '';
-                    
-                    if (data.assigned_assets.length === 0) {
+                    const assetsTableBody = document.getElementById("modal-emp-assets-body");
+assetsTableBody.innerHTML = "";
 
-    assetsTableBody.innerHTML =
-        '<div class="alert alert-secondary text-center">No company assets assigned.</div>';
+if (data.assigned_assets.length === 0) {
+
+    assetsTableBody.innerHTML = `
+        <div class="alert alert-secondary text-center">
+            No company assets assigned.
+        </div>
+    `;
 
 } else {
 
     data.assigned_assets.forEach(ast => {
 
         const row = `
-            ...
+            <div class="card border shadow-sm mb-3">
+
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+
+                    <strong>
+                        💻 ${ast.asset_type || "Laptop"}
+                    </strong>
+
+                    <span class="badge bg-success">
+                        Assigned
+                    </span>
+
+                </div>
+
+                <div class="card-body">
+
+                    <h5 class="fw-bold mb-3">
+                        ${ast.brand} ${ast.model}
+                    </h5>
+
+                    <div class="row">
+
+                        <div class="col-md-6 mb-2">
+                            <strong>Asset ID</strong><br>
+                            ${ast.asset_id}
+                        </div>
+
+                        <div class="col-md-6 mb-2">
+                            <strong>Serial Number</strong><br>
+                            ${ast.serial_number}
+                        </div>
+
+                        <div class="col-md-6 mb-2">
+                            <strong>Processor</strong><br>
+                            ${ast.processor}
+                        </div>
+
+                        <div class="col-md-6 mb-2">
+                            <strong>RAM / SSD</strong><br>
+                            ${ast.ram} / ${ast.ssd}
+                        </div>
+
+                        <div class="col-md-6 mb-2">
+                            <strong>Vendor</strong><br>
+                            ${ast.vendor_name}
+                        </div>
+
+                        <div class="col-md-6 mb-2">
+                            <strong>Assigned Date</strong><br>
+                            ${ast.assignment_date}
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
         `;
 
         assetsTableBody.innerHTML += row;
@@ -82,63 +141,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
 }
-    <div class="asset-card">
 
-        <div class="asset-header">
+const empModal = new bootstrap.Modal(
+    document.getElementById("employeeDetailModal")
+);
 
-            <div class="asset-type">
-                💻 ${ast.asset_type || "Laptop"}
-            </div>
-
-            <div class="asset-status">
-                Assigned
-            </div>
-
-        </div>
-
-        <div class="asset-grid">
-
-            <div class="asset-label">Asset ID</div>
-            <div class="asset-value">${ast.asset_id}</div>
-
-            <div class="asset-label">Brand</div>
-            <div class="asset-value">${ast.brand}</div>
-
-            <div class="asset-label">Model</div>
-            <div class="asset-value">${ast.model}</div>
-
-            <div class="asset-label">Serial Number</div>
-            <div class="asset-value">${ast.serial_number}</div>
-
-            <div class="asset-label">Configuration</div>
-            <div class="asset-value">
-                ${ast.processor}<br>
-                ${ast.ram} RAM • ${ast.ssd} SSD
-            </div>
-
-            <div class="asset-label">Vendor</div>
-            <div class="asset-value">${ast.vendor_name}</div>
-
-            <div class="asset-label">Assigned Date</div>
-            <div class="asset-value">
-                <span class="asset-date">
-                    ${ast.assignment_date}
-                </span>
-            </div>
-
-        </div>
-
-    </div>
-    `;
-
-    assetsTableBody.innerHTML += row;
-
-});
-                        });
-                    }
-
-                    var empModal = new bootstrap.Modal(document.getElementById('employeeDetailModal'));
-                    empModal.show();
+empModal.show();
                 })
                 .catch(err => console.error('Error fetching employee details:', err));
         });
