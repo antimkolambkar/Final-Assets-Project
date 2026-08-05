@@ -68,17 +68,60 @@ document.addEventListener('DOMContentLoaded', function() {
                         assetsTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No assets currently assigned to this employee.</td></tr>';
                     } else {
                         data.assigned_assets.forEach(ast => {
-                            const row = `
-                                <tr>
-                                    <td><strong class="text-primary">${ast.asset_id}</strong></td>
-                                    <td>${ast.brand} ${ast.model}</td>
-                                    <td><code>${ast.serial_number}</code></td>
-                                    <td><small>${ast.processor}<br>${ast.ram} / ${ast.ssd}</small></td>
-                                    <td>${ast.vendor_name}</td>
-                                    <td><span class="badge bg-primary">${ast.assignment_date}</span></td>
-                                </tr>
-                            `;
-                            assetsTableBody.innerHTML += row;
+
+    const row = `
+    <div class="asset-card">
+
+        <div class="asset-header">
+
+            <div class="asset-type">
+                💻 ${ast.asset_type || "Laptop"}
+            </div>
+
+            <div class="asset-status">
+                Assigned
+            </div>
+
+        </div>
+
+        <div class="asset-grid">
+
+            <div class="asset-label">Asset ID</div>
+            <div class="asset-value">${ast.asset_id}</div>
+
+            <div class="asset-label">Brand</div>
+            <div class="asset-value">${ast.brand}</div>
+
+            <div class="asset-label">Model</div>
+            <div class="asset-value">${ast.model}</div>
+
+            <div class="asset-label">Serial Number</div>
+            <div class="asset-value">${ast.serial_number}</div>
+
+            <div class="asset-label">Configuration</div>
+            <div class="asset-value">
+                ${ast.processor}<br>
+                ${ast.ram} RAM • ${ast.ssd} SSD
+            </div>
+
+            <div class="asset-label">Vendor</div>
+            <div class="asset-value">${ast.vendor_name}</div>
+
+            <div class="asset-label">Assigned Date</div>
+            <div class="asset-value">
+                <span class="asset-date">
+                    ${ast.assignment_date}
+                </span>
+            </div>
+
+        </div>
+
+    </div>
+    `;
+
+    assetsTableBody.innerHTML += row;
+
+});
                         });
                     }
 
