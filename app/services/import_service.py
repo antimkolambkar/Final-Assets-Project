@@ -388,9 +388,15 @@ if user_name:
     'User Name'
 ]
         sample = [
-            'Dell', 'Latitude 7430', 'DL-7430-XXXX', 'Intel Core i7-1265U',
-            '16 GB', '512 GB SSD', 'Techvity', 'vikram@company.com'
-        ]
+    'Dell',
+    'Latitude 7430',
+    'DL-7430-XXXX',
+    'Intel Core i7-1265U',
+    '16 GB',
+    '512 GB SSD',
+    'Techvity',
+    'Vikram Singh'
+]
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(headers)
