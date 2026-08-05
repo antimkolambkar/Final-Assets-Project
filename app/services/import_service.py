@@ -172,7 +172,7 @@ class ExcelImportService:
             office_location = row.get('office_location', '').strip()
             status_raw = row.get('account_status', '').strip()
 
-            if not name or not email:
+            if not name:
                 result.add_error(row_num, f"Name and Email are required. Got: name='{name}', email='{email}'")
                 continue
 
@@ -192,7 +192,9 @@ class ExcelImportService:
 
             # Check if employee already exists by ID
             existing_by_id = Employee.query.filter_by(employee_id=emp_id_raw).first()
-            existing_by_email = Employee.query.filter_by(email=email).first()
+            existing_by_email = None
+if email:
+    existing_by_email = Employee.query.filter_by(email=email).first()
 
             if existing_by_id:
                 # Update existing record
