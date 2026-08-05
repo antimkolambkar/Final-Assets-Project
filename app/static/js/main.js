@@ -211,43 +211,23 @@ if (editForm) {
 }
 });
 // Handle Edit Employee Form
-const editForm = document.getElementById("editEmployeeForm");
+const assetsTableBody = document.getElementById('modal-emp-assets-body');
+assetsTableBody.innerHTML = '';
 
-if (editForm) {
-
-    editForm.addEventListener("submit", function(e) {
-
-        e.preventDefault();
-
-        fetch(this.action, {
-            method: "POST",
-            body: new FormData(this)
-        })
-        .then(res => res.json())
-        .then(data => {
-
-            if (data.success) {
-
-                alert("✅ " + data.message);
-
-                bootstrap.Modal.getInstance(
-                    document.getElementById("editEmployeeModal")
-                ).hide();
-
-                location.reload();
-
-            } else {
-
-                alert(data.message);
-
-            }
-
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Something went wrong.");
-        });
-
+if (data.assigned_assets.length === 0) {
+    assetsTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No assets currently assigned to this employee.</td></tr>';
+} else {
+    data.assigned_assets.forEach(ast => {
+        const row = `
+            <tr>
+                <td><strong class="text-primary">${ast.asset_id}</strong></td>
+                <td>${ast.brand} ${ast.model}</td>
+                <td><code>${ast.serial_number}</code></td>
+                <td><small>${ast.processor}<br>${ast.ram} / ${ast.ssd}</small></td>
+                <td>${ast.vendor_name}</td>
+                <td><span class="badge bg-primary">${ast.assignment_date}</span></td>
+            </tr>
+        `;
+        assetsTableBody.innerHTML += row;
     });
-
 }
