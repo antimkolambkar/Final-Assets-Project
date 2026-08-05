@@ -62,18 +62,18 @@
     <div class="table-responsive">
         <table class="table table-custom mb-0">
             <thead>
-                <tr>
-                    <th>Employee ID</th>
-                    <th>Employee Name</th
-                    <th>Department</th>
-                    <th>Designation</th>
-                    <th>Assets</th>
-                    <th>Serial Numbers</th>
-                    <th>Office Location</th>
-                    <th>Account Status</th>
-                    <th class="text-end">Actions</th>
-                </tr>
-            </thead>
+            <tr>
+                <th style="width:110px;">Employee ID</th>
+                <th style="width:240px;">Employee Name</th>
+                <th style="width:140px;">Department</th>
+                <th style="width:160px;">Designation</th>
+                <th style="width:80px;" class="text-center">Assets</th>
+                <th style="width:180px;">Serial Numbers</th>
+                <th style="width:140px;">Office Location</th>
+                <th style="width:140px;">Account Status</th>
+               <th style="width:170px;" class="text-end">Actions</th>
+          </tr>
+          </thead>
             <tbody>
                 {% for emp in employees %}
                 <tr>
@@ -250,30 +250,31 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
             <div class="modal-header bg-dark text-white border-0 py-3">
-    <h5 class="modal-title fw-bold">
+
+    <h5 class="modal-title fw-bold d-flex align-items-center mb-0">
         <i class="fas fa-id-card me-2 text-primary"></i>
         Employee Profile & Assigned Laptops
     </h5>
 
-    <div class="d-flex align-items-center gap-2">
+    <div class="ms-auto d-flex align-items-center">
 
         {% if current_user.is_it_admin %}
         <button
             type="button"
-            class="btn btn-warning btn-sm"
+            class="btn btn-warning btn-sm me-2"
             id="editProfileBtn">
-            <i class="fas fa-edit"></i> Edit Profile
+            <i class="fas fa-edit me-1"></i>Edit Profile
         </button>
         {% endif %}
 
         <button
             type="button"
-            class="btn-close btn-close-white"
-            data-bs-dismiss="modal"
-            aria-label="Close">
+            class="btn-close btn-close-white m-0"
+            data-bs-dismiss="modal">
         </button>
 
     </div>
+
 </div>
             <div class="modal-body p-4">
                 <!-- Employee Summary Header -->
