@@ -283,14 +283,15 @@ class ExcelImportService:
                 result.add_skip(row_num, f"Serial Number '{serial_number}' already exists (Asset {existing.asset_id}). Skipped.")
                 continue
 
-            # Match vendor
+            # Match or create vendor
             vendor_id = None
             if vendor_name:
                 vendor = Vendor.query.filter(Vendor.name.ilike(f'%{vendor_name}%')).first()
-                if vendor:
-                    vendor_id = vendor.id
-                else:
-                    result.add_warning(row_num, f"Vendor '{vendor_name}' not found in system. Asset added without vendor.")
+                if not vendor:
+                    vendor = Vendor(name=vendor_name, contact_person='Imported Vendor', email='', phone='', address='')
+                    db.session.add(vendor)
+                    db.session.flush()
+                vendor_id = vendor.id
 
             # Auto-generate Asset ID
             year = datetime.utcnow().strftime('%Y')
