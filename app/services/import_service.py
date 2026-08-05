@@ -329,35 +329,35 @@ class ExcelImportService:
             db.session.add(new_asset)
             db.session.flush()
 
-            # Assign asset to employee by matching Name
+                        # Assign asset to employee by matching Name
             if user_name:
                 employee = Employee.query.filter(
-                    Employee.name.ilike(user_name)
+                    Employee.name.ilike(user_name.strip())
                 ).first()
 
-                 if employee:
-                     new_asset.assigned_employee_id = employee.id
-                     new_asset.status = AssetStatus.ASSIGNED
-                     new_asset.assignment_date = datetime.utcnow()
+                if employee:
+                    new_asset.assigned_employee_id = employee.id
+                    new_asset.status = AssetStatus.ASSIGNED
+                    new_asset.assignment_date = datetime.utcnow()
 
-                     hist = AssetAssignmentHistory(
+                    hist = AssetAssignmentHistory(
                         asset_id=new_asset.id,
                         employee_id=employee.id,
                         employee_name=employee.name,
                         action="Assigned (Excel Import)",
                         notes=f"Imported and assigned to {employee.name}",
                         performed_by=performed_by
-                     )
+                    )
 
                     db.session.add(hist)
-              else:
-                  result.add_warning(
-                      row_num,
-                      f"Employee '{user_name}' not found. Asset imported but not assigned."
-                  )
 
-         result.add_success(asset_id)
+                else:
+                    result.add_warning(
+                        row_num,
+                        f"Employee '{user_name}' not found. Asset imported but not assigned."
+                    )
 
+            result.add_success(asset_id)
         try:
             db.session.commit()
         except Exception as e:
