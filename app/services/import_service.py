@@ -320,7 +320,7 @@ class ExcelImportService:
                 vendor_id=vendor_id,
                 status=AssetStatus.AVAILABLE
             )
-                        db.session.add(new_asset)
+            db.session.add(new_asset)
             db.session.flush()
 
             # Save username exactly as written in Excel
