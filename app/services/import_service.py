@@ -320,28 +320,26 @@ class ExcelImportService:
                 vendor_id=vendor_id,
                 status=AssetStatus.AVAILABLE
             )
-            db.session.add(new_asset)
+                        db.session.add(new_asset)
             db.session.flush()
 
             # Save username exactly as written in Excel
-if user_name:
+            if user_name:
+                new_asset.status = AssetStatus.ASSIGNED
 
-    new_asset.status = AssetStatus.ASSIGNED
+                # Save the username only
+                new_asset.assigned_to = user_name
+                new_asset.assignment_date = datetime.utcnow()
 
-    # Save the username only
-    new_asset.assigned_to = user_name
+                hist = AssetAssignmentHistory(
+                    asset_id=new_asset.id,
+                    employee_name=user_name,
+                    action="Assigned (Excel Import)",
+                    notes=f"Imported and assigned to {user_name}",
+                    performed_by=performed_by
+                )
 
-    new_asset.assignment_date = datetime.utcnow()
-
-    hist = AssetAssignmentHistory(
-        asset_id=new_asset.id,
-        employee_name=user_name,
-        action="Assigned (Excel Import)",
-        notes=f"Imported and assigned to {user_name}",
-        performed_by=performed_by
-    )
-
-    db.session.add(hist)
+                db.session.add(hist)
 
             result.add_success(asset_id)
 
