@@ -78,9 +78,15 @@ class ExcelImportService:
     # -------------------------------------------------------
 
     ASSET_COLUMNS = [
-        'brand', 'model', 'serial_number', 'processor',
-        'ram', 'ssd', 'vendor_name', 'assigned_employee_email'
-    ]
+    'brand',
+    'model',
+    'serial_number',
+    'processor',
+    'ram',
+    'ssd',
+    'vendor_name',
+    'user_name'
+]
 
     @staticmethod
     def _read_file(file_obj, filename):
@@ -271,7 +277,7 @@ class ExcelImportService:
             ram = row.get('ram', '').strip()
             ssd = row.get('ssd', '').strip()
             vendor_name = row.get('vendor_name', '').strip()
-            assigned_email = row.get('assigned_employee_email', '').strip()
+            user_name = row.get('user_name', '').strip()
 
             if not brand or not model or not serial_number:
                 result.add_error(row_num, f"Brand, Model, and Serial Number are required. Got: brand='{brand}', model='{model}', serial='{serial_number}'")
@@ -317,26 +323,25 @@ class ExcelImportService:
             db.session.add(new_asset)
             db.session.flush()
 
-            # Auto-assign to employee if email provided
-            if assigned_email:
-                emp = Employee.query.filter_by(email=assigned_email).first()
-                if emp and emp.account_status != AccountStatus.OFFBOARDED:
-                    new_asset.status = AssetStatus.ASSIGNED
-                    new_asset.assigned_employee_id = emp.id
-                    new_asset.assignment_date = datetime.utcnow()
+            # Save username exactly as written in Excel
+if user_name:
 
-                    hist = AssetAssignmentHistory(
-                        asset_id=new_asset.id,
-                        employee_id=emp.id,
-                        employee_name=emp.name,
-                        action='Assigned (Excel Import)',
-                        notes=f'Auto-assigned during Excel import for {emp.name}',
-                        performed_by=performed_by
-                    )
-                    db.session.add(hist)
-                    result.add_warning(row_num, f"Auto-assigned to employee {emp.name} ({emp.employee_id})")
-                elif assigned_email:
-                    result.add_warning(row_num, f"Employee email '{assigned_email}' not found. Asset added without assignment.")
+    new_asset.status = AssetStatus.ASSIGNED
+
+    # Save the username only
+    new_asset.assigned_to = user_name
+
+    new_asset.assignment_date = datetime.utcnow()
+
+    hist = AssetAssignmentHistory(
+        asset_id=new_asset.id,
+        employee_name=user_name,
+        action="Assigned (Excel Import)",
+        notes=f"Imported and assigned to {user_name}",
+        performed_by=performed_by
+    )
+
+    db.session.add(hist)
 
             result.add_success(asset_id)
 
@@ -373,11 +378,26 @@ class ExcelImportService:
     @staticmethod
     def generate_asset_template():
         """Returns a CSV template string for asset import"""
-        headers = ['Brand', 'Model', 'Serial Number', 'Processor', 'RAM', 'SSD', 'Vendor Name', 'Assigned Employee Email']
+        headers = [
+    'Brand',
+    'Model',
+    'Serial Number',
+    'Processor',
+    'RAM',
+    'SSD',
+    'Vendor Name',
+    'User Name'
+]
         sample = [
-            'Dell', 'Latitude 7430', 'DL-7430-XXXX', 'Intel Core i7-1265U',
-            '16 GB', '512 GB SSD', 'Techvity', 'vikram@company.com'
-        ]
+    'Dell',
+    'Latitude 7430',
+    'DL-7430-XXXX',
+    'Intel Core i7-1265U',
+    '16 GB',
+    '512 GB SSD',
+    'Techvity',
+    'Vikram Singh'
+]
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(headers)
