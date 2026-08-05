@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <td>${h.notes} ${oldNewInfo}</td>
                                     <td><small class="text-secondary">${h.performed_by}</small></td>
                                 </tr>
-                            `;
+                            ;
                             histTableBody.innerHTML += row;
                         });
                     }
