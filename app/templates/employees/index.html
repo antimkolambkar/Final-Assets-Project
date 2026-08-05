@@ -64,8 +64,7 @@
             <thead>
                 <tr>
                     <th>Employee ID</th>
-                    <th>Employee Name</th>
-                    <th>Email Address</th>
+                    <th>Employee Name</th
                     <th>Department</th>
                     <th>Designation</th>
                     <th>Assets</th>
@@ -81,9 +80,20 @@
                     <td><strong class="text-primary">{{ emp.employee_id }}</strong></td>
                     <td>
                         <div class="fw-bold">{{ emp.name }}</div>
-                        <small class="text-muted"><i class="fas fa-user-tie me-1"></i>Manager: {{ emp.manager or 'N/A' }}</small>
+
+<small class="text-muted d-block">
+    <i class="fas fa-user-tie me-1"></i>
+    Manager: {{ emp.manager or 'N/A' }}
+</small>
+
+<!-- Uncomment if you still want the email under the name -->
+<!--
+<small class="text-muted d-block">
+    <i class="fas fa-envelope me-1"></i>
+    {{ emp.email }}
+</small>
+-->
                     </td>
-                    <td><a href="mailto:{{ emp.email }}" class="text-decoration-none text-secondary">{{ emp.email }}</a></td>
                     <td><span class="badge bg-light text-dark border">{{ emp.department or 'N/A' }}</span></td>
                     <td>{{ emp.designation or 'N/A' }}</td>
 
