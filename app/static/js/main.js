@@ -180,16 +180,17 @@ empModal.show();
                             const oldNewInfo = (h.old_asset && h.new_asset) ? 
                                 `<small class="text-muted">Old: ${h.old_asset} &rarr; New: ${h.new_asset}</small>` : '';
 
-                            const row = `
-                                <tr>
-                                    <td><small class="text-muted">${h.timestamp}</small></td>
-                                    <td>${actionBadge}</td>
-                                    <td><strong>${h.employee_name}</strong></td>
-                                    <td>${h.notes} ${oldNewInfo}</td>
-                                    <td><small class="text-secondary">${h.performed_by}</small></td>
-                                </tr>
-                            ;
-                            histTableBody.innerHTML += row;
+                          const row = `
+    <tr>
+        <td><small class="text-muted">${h.timestamp}</small></td>
+        <td>${actionBadge}</td>
+        <td><strong>${h.employee_name}</strong></td>
+        <td>${h.notes} ${oldNewInfo}</td>
+        <td><small class="text-secondary">${h.performed_by}</small></td>
+    </tr>
+`;
+
+histTableBody.innerHTML += row;
                         });
                     }
 
