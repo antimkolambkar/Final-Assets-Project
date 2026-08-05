@@ -211,23 +211,99 @@ if (editForm) {
 }
 });
 // Handle Edit Employee Form
-const assetsTableBody = document.getElementById('modal-emp-assets-body');
-assetsTableBody.innerHTML = '';
+const assetsTableBody = document.getElementById("modal-emp-assets-body");
+assetsTableBody.innerHTML = "";
 
 if (data.assigned_assets.length === 0) {
-    assetsTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No assets currently assigned to this employee.</td></tr>';
+
+    assetsTableBody.innerHTML = `
+        <div class="alert alert-secondary text-center">
+            No company assets assigned.
+        </div>
+    `;
+
 } else {
+
     data.assigned_assets.forEach(ast => {
-        const row = `
-            <tr>
-                <td><strong class="text-primary">${ast.asset_id}</strong></td>
-                <td>${ast.brand} ${ast.model}</td>
-                <td><code>${ast.serial_number}</code></td>
-                <td><small>${ast.processor}<br>${ast.ram} / ${ast.ssd}</small></td>
-                <td>${ast.vendor_name}</td>
-                <td><span class="badge bg-primary">${ast.assignment_date}</span></td>
-            </tr>
-        `;
-        assetsTableBody.innerHTML += row;
+
+        let icon = "fa-laptop";
+        let type = "Laptop";
+
+        const name = (ast.brand + " " + ast.model).toLowerCase();
+
+        if (name.includes("monitor")) {
+            icon = "fa-desktop";
+            type = "Monitor";
+        }
+
+        if (name.includes("keyboard")) {
+            icon = "fa-keyboard";
+            type = "Keyboard";
+        }
+
+        if (name.includes("mouse")) {
+            icon = "fa-computer-mouse";
+            type = "Mouse";
+        }
+
+        if (name.includes("headset")) {
+            icon = "fa-headphones";
+            type = "Headset";
+        }
+
+        if (name.includes("dock")) {
+            icon = "fa-plug";
+            type = "Dock";
+        }
+
+        assetsTableBody.innerHTML += `
+<div class="card shadow-sm border mb-3">
+
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+
+        <strong>
+            <i class="fas ${icon} text-primary me-2"></i>
+            ${type}
+        </strong>
+
+        <span class="badge bg-success">
+            ${ast.status}
+        </span>
+
+    </div>
+
+    <div class="card-body">
+
+        <h5 class="fw-bold">
+            ${ast.brand} ${ast.model}
+        </h5>
+
+        <p class="mb-1">
+            <strong>Asset ID:</strong> ${ast.asset_id}
+        </p>
+
+        <p class="mb-1">
+            <strong>Serial No:</strong> ${ast.serial_number}
+        </p>
+
+        <p class="mb-1">
+            <strong>Configuration:</strong><br>
+            ${ast.processor}<br>
+            ${ast.ram} • ${ast.ssd}
+        </p>
+
+        <p class="mb-1">
+            <strong>Vendor:</strong> ${ast.vendor_name}
+        </p>
+
+        <p class="mb-0">
+            <strong>Assigned Date:</strong> ${ast.assignment_date}
+        </p>
+
+    </div>
+
+</div>
+`;
     });
+
 }
