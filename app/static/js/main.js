@@ -265,4 +265,3 @@ if (editForm) {
     });
 }
 });
-// Handle Edit Employee Form
