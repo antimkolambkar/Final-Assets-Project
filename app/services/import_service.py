@@ -168,6 +168,8 @@ class ExcelImportService:
         for row_num, row in enumerate(rows, start=2):
             name = row.get('name', '').strip()
             email = row.get('email', '').strip()
+            if email == '':
+                email = None
             emp_id_raw = row.get('employee_id', '').strip()
             department = row.get('department', '').strip()
             designation = row.get('designation', '').strip()
@@ -195,7 +197,6 @@ class ExcelImportService:
 
                         # Check if employee already exists by ID
             existing_by_id = Employee.query.filter_by(employee_id=emp_id_raw).first()
-
             existing_by_email = None
             if email:
                 existing_by_email = Employee.query.filter_by(email=email).first()
