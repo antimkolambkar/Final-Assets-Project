@@ -89,13 +89,13 @@
 
 <td>
     <span class="badge bg-primary">
-        {{ emp.assigned_assets|length }} Assets
+        {{ emp.assigned_assets.count() }}
     </span>
 </td>
 
 <td>
     {% if emp.assigned_assets %}
-        {% for asset in emp.assigned_assets %}
+        {% for asset in emp.assigned_assets.all() %}
             <div>
                 <small class="text-dark fw-semibold">
                     {{ asset.serial_number }}
