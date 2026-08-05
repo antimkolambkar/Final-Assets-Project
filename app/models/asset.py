@@ -18,7 +18,7 @@ class Asset(db.Model):
     ram = db.Column(db.String(50), nullable=False)
     ssd = db.Column(db.String(50), nullable=False)
     
-    vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'), nullable=False)
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'), nullable=True)
     status = db.Column(db.String(30), nullable=False, default=AssetStatus.AVAILABLE, index=True)
     
     assigned_employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)

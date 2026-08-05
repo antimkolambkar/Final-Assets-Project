@@ -112,92 +112,11 @@ class MicrosoftGraphService:
     @staticmethod
     def _sync_mock_employees():
         """
-        Mock Graph API sync generator providing realistic enterprise Entra ID employee directory updates.
-        Includes auto-onboarding detection for new employees.
+        Mock Graph API sync generator for non-live environment.
+        Returns empty directory by default to ensure zero sample data creation.
+        Configure live Microsoft Graph API credentials (AZURE_CLIENT_ID, etc.) for directory sync.
         """
-        mock_entra_directory = [
-            {
-                'employee_id': 'EMP-1001',
-                'name': 'Rahul Sharma',
-                'email': 'rahul.sharma@company.com',
-                'department': 'IT Infrastructure',
-                'designation': 'Senior System Administrator',
-                'manager': 'Vikram Malhotra',
-                'office_location': 'Bangalore HQ',
-                'account_status': AccountStatus.ACTIVE
-            },
-            {
-                'employee_id': 'EMP-1002',
-                'name': 'Priya Patel',
-                'email': 'priya.patel@company.com',
-                'department': 'Software Engineering',
-                'designation': 'Full Stack Developer',
-                'manager': 'Rahul Sharma',
-                'office_location': 'Bangalore HQ',
-                'account_status': AccountStatus.ACTIVE
-            },
-            {
-                'employee_id': 'EMP-1003',
-                'name': 'Amit Kumar',
-                'email': 'amit.kumar@company.com',
-                'department': 'Finance & Accounts',
-                'designation': 'Finance Manager',
-                'manager': 'Sanjay Mehta',
-                'office_location': 'Dubai Regional Office',
-                'account_status': AccountStatus.ACTIVE
-            },
-            {
-                'employee_id': 'EMP-1004',
-                'name': 'Sneha Rao',
-                'email': 'sneha.rao@company.com',
-                'department': 'Human Resources',
-                'designation': 'HR Operations Lead',
-                'manager': 'Ananya Roy',
-                'office_location': 'Bangalore HQ',
-                'account_status': AccountStatus.BLOCKED
-            },
-            {
-                'employee_id': 'EMP-1005',
-                'name': 'Vikram Malhotra',
-                'email': 'vikram.malhotra@company.com',
-                'department': 'IT Management',
-                'designation': 'IT Director',
-                'manager': 'CEO Office',
-                'office_location': 'Dubai Regional Office',
-                'account_status': AccountStatus.ACTIVE
-            },
-            {
-                'employee_id': 'EMP-1006',
-                'name': 'Deepak Verma',
-                'email': 'deepak.verma@company.com',
-                'department': 'Quality Assurance',
-                'designation': 'QA Automation Lead',
-                'manager': 'Rahul Sharma',
-                'office_location': 'Bangalore HQ',
-                'account_status': AccountStatus.DISABLED
-            },
-            {
-                'employee_id': 'EMP-1007',
-                'name': 'Kavita Sundaram',
-                'email': 'kavita.sundaram@company.com',
-                'department': 'Marketing',
-                'designation': 'Digital Marketing Specialist',
-                'manager': 'Sanjay Mehta',
-                'office_location': 'Dubai Regional Office',
-                'account_status': AccountStatus.OFFBOARDED
-            },
-            {
-                'employee_id': 'EMP-1008',
-                'name': 'Arjun Nair',
-                'email': 'arjun.nair@company.com',
-                'department': 'Sales & Business Dev',
-                'designation': 'Enterprise Account Exec',
-                'manager': 'Sanjay Mehta',
-                'office_location': 'Dubai Regional Office',
-                'account_status': AccountStatus.ACTIVE
-            }
-        ]
-
+        mock_entra_directory = []
         return MicrosoftGraphService._process_directory(mock_entra_directory)
 
     @staticmethod

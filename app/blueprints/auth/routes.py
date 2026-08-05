@@ -12,45 +12,26 @@ def login():
         return redirect(url_for('dashboard.index'))
 
     if request.method == 'POST':
-        auth_type = request.form.get('auth_type', 'local')
-        
-        if auth_type == 'role_simulation':
-            # Role Simulation / Demo Sign In
-            selected_role = request.form.get('role', Role.SUPER_ADMIN)
-            user = User.query.filter_by(role=selected_role).first()
-            if not user:
-                # Fallback to any user
-                user = User.query.first()
-            
-            if user:
-                login_user(user, remember=True)
-                AuditService.log(
-                    action='User Logged In (Role Simulation)',
-                    details=f'Logged in as {user.full_name} ({user.role})'
-                )
-                flash(f'Successfully signed in as {user.full_name} ({user.role})', 'success')
-                next_page = request.args.get('next')
-                return redirect(next_page or url_for('dashboard.index'))
-            else:
-                flash('No simulation user found. Please run seed script.', 'danger')
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
 
+        if not username or not password:
+            flash('Please enter both username/email and password.', 'warning')
+            return render_template('auth/login.html')
+
+        user = User.query.filter((User.username == username) | (User.email == username)).first()
+
+        if user and user.check_password(password):
+            login_user(user, remember=True)
+            AuditService.log(
+                action='User Logged In',
+                details=f'Logged in as {user.full_name} ({user.role})'
+            )
+            flash(f'Welcome back, {user.full_name}!', 'success')
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('dashboard.index'))
         else:
-            # Local Credentials Sign In
-            username = request.form.get('username')
-            password = request.form.get('password')
-            user = User.query.filter((User.username == username) | (User.email == username)).first()
-            
-            if user and user.check_password(password):
-                login_user(user, remember=True)
-                AuditService.log(
-                    action='User Logged In',
-                    details=f'Logged in as {user.full_name} ({user.role})'
-                )
-                flash(f'Welcome back, {user.full_name}!', 'success')
-                next_page = request.args.get('next')
-                return redirect(next_page or url_for('dashboard.index'))
-            else:
-                flash('Invalid username or password. Please try again.', 'danger')
+            flash('Invalid username/email or password. Please try again.', 'danger')
 
     return render_template('auth/login.html')
 
@@ -58,15 +39,17 @@ def login():
 @auth_bp.route('/entra-sso')
 def entra_sso():
     """Redirect to Azure AD Entra ID OAuth Authorization Endpoint"""
-    # In live mode with MSAL, redirects to Azure login endpoint
-    # In demo mode, logs in as Super Admin
     user = User.query.filter_by(role=Role.SUPER_ADMIN).first()
+    if not user:
+        user = User.query.first()
+
     if user:
         login_user(user, remember=True)
         AuditService.log(action='User Logged In via Entra ID SSO', details=f'Entra AD SSO authenticated for {user.email}')
         flash('Successfully authenticated via Microsoft Entra ID Single Sign-On!', 'success')
         return redirect(url_for('dashboard.index'))
-    flash('Entra ID SSO error. Default admin account not found.', 'danger')
+
+    flash('Entra ID SSO is not available because no user accounts exist yet. Please create an initial admin account using CLI command: flask create-admin', 'danger')
     return redirect(url_for('auth.login'))
 
 

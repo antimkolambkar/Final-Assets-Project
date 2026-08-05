@@ -12,7 +12,7 @@
                 </span>
             </div>
             <h4 class="fw-bold mb-1">Enterprise ITAM Platform</h4>
-            <p class="text-secondary small mb-0">ServiceNow Style Asset & Helpdesk Management</p>
+            <p class="text-secondary small mb-0">Asset & Helpdesk Management System</p>
         </div>
 
         <div class="card-body p-4">
@@ -31,57 +31,37 @@
 
             <div class="position-relative text-center my-4">
                 <hr class="text-muted">
-                <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small fw-semibold">OR ROLE SIMULATION</span>
+                <span class="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted small fw-semibold">OR CREDENTIAL SIGN IN</span>
             </div>
 
-            <!-- Role Simulation Login Form -->
-            <form action="{{ url_for('auth.login') }}" method="POST" class="mb-3">
+            <!-- Standard Local Credentials Login Form -->
+            <form action="{{ url_for('auth.login') }}" method="POST" class="pt-2">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="auth_type" value="role_simulation">
-                
+
                 <div class="mb-3">
-                    <label class="form-label small fw-bold text-secondary">Select Active Enterprise Role</label>
-                    <select name="role" class="form-select form-select-lg fs-6">
-                        <option value="Super Administrator">Super Administrator (Full Access & Settings)</option>
-                        <option value="IT Administrator" selected>IT Administrator (Assets, Vendors, Tickets & Reports)</option>
-                        <option value="IT Engineer">IT Engineer (Tickets & Vendor Repair Dispatch)</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="btn btn-primary w-100 py-2.5 fw-bold rounded-3 shadow-sm">
-                    <i class="fas fa-right-to-bracket me-2"></i>Sign In with Selected Role
-                </button>
-            </form>
-
-            <div class="accordion accordion-flush mt-3" id="localAuthAccordion">
-                <div class="accordion-item border-0">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button collapsed px-0 text-muted small fw-semibold bg-transparent" type="button" data-bs-toggle="collapse" data-bs-target="#localForm">
-                            <i class="fas fa-key me-2"></i>Use Local Username & Password
-                        </button>
-                    </h2>
-                    <div id="localForm" class="accordion-collapse collapse" data-bs-parent="#localAuthAccordion">
-                        <form action="{{ url_for('auth.login') }}" method="POST" class="pt-3">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="auth_type" value="local">
-
-                            <div class="mb-3">
-                                <label class="form-label small fw-semibold">Username / Email</label>
-                                <input type="text" name="username" class="form-control" placeholder="admin@company.com" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small fw-semibold">Password</label>
-                                <input type="password" name="password" class="form-control" placeholder="••••••••" required>
-                            </div>
-                            <button type="submit" class="btn btn-outline-secondary w-100">Local Sign In</button>
-                        </form>
+                    <label class="form-label small fw-bold text-secondary">Username or Email</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"><i class="fas fa-user"></i></span>
+                        <input type="text" name="username" class="form-control" placeholder="admin@company.com" required autofocus>
                     </div>
                 </div>
-            </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-secondary">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"><i class="fas fa-lock"></i></span>
+                        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2.5 fw-bold rounded-3 shadow-sm mt-2">
+                    <i class="fas fa-right-to-bracket me-2"></i>Sign In
+                </button>
+            </form>
         </div>
 
         <div class="card-footer bg-light border-0 text-center py-3 text-muted small">
-            Employees do not log in. Support via Outlook email integration.
+            IT Administrative Portal &bull; Enterprise Helpdesk
         </div>
     </div>
 </div>
