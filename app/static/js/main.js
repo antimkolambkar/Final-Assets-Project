@@ -65,11 +65,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     assetsTableBody.innerHTML = '';
                     
                     if (data.assigned_assets.length === 0) {
-                        assetsTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No assets currently assigned to this employee.</td></tr>';
-                    } else {
-                        data.assigned_assets.forEach(ast => {
 
-    const row = `
+    assetsTableBody.innerHTML =
+        '<div class="alert alert-secondary text-center">No company assets assigned.</div>';
+
+} else {
+
+    data.assigned_assets.forEach(ast => {
+
+        const row = `
+            ...
+        `;
+
+        assetsTableBody.innerHTML += row;
+
+    });
+
+}
     <div class="asset-card">
 
         <div class="asset-header">
