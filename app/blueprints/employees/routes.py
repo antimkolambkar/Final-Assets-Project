@@ -184,7 +184,6 @@ def get_employee_json(emp_id):
         'assigned_assets': assets_data
     })
 
-
 @employees_bp.route('/<int:emp_id>/edit', methods=['POST'])
 @login_required
 def edit_employee(emp_id):
@@ -196,14 +195,48 @@ def edit_employee(emp_id):
 
     emp = Employee.query.get_or_404(emp_id)
 
+    old_status = emp.account_status
+    new_status = request.form.get("account_status", emp.account_status)
+
     emp.name = request.form.get("name", emp.name)
     emp.department = request.form.get("department", emp.department)
     emp.designation = request.form.get("designation", emp.designation)
     emp.manager = request.form.get("manager", emp.manager)
     emp.office_location = request.form.get("office_location", emp.office_location)
-    emp.account_status = request.form.get("account_status", emp.account_status)
+    emp.account_status = new_status
+
+    # Auto return all assigned assets when employee is offboarded
+    if old_status != AccountStatus.OFFBOARDED and new_status == AccountStatus.OFFBOARDED:
+
+        assigned_assets = Asset.query.filter_by(
+            assigned_employee_id=emp.id,
+            status=AssetStatus.ASSIGNED
+        ).all()
+
+        for asset in assigned_assets:
+            asset.status = AssetStatus.AVAILABLE
+            asset.assigned_employee_id = None
+            asset.assignment_date = None
+
+            history = AssetAssignmentHistory(
+                asset_id=asset.id,
+                employee_id=emp.id,
+                employee_name=emp.name,
+                action="Returned (Offboarding)",
+                notes=f"Automatically returned because {emp.name} was offboarded.",
+                performed_by=current_user.full_name
+            )
+
+            db.session.add(history)
 
     db.session.commit()
+
+    AuditService.log(
+        action="Employee Updated",
+        entity_type="Employee",
+        entity_id=emp.employee_id,
+        details=f"Employee status changed from {old_status} to {new_status}"
+    )
 
     return jsonify({
         "success": True,
