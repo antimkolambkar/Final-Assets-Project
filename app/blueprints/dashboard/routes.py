@@ -21,7 +21,12 @@ def index():
     repair_assets = Asset.query.filter_by(status=AssetStatus.REPAIR).count()
 
     total_employees = Employee.query.count()
-    active_employees = Employee.query.filter_by(account_status=AccountStatus.ACTIVE).count()
+    active_employees = Employee.query.filter(
+        Employee.account_status.in_([
+            AccountStatus.ACTIVE,
+            AccountStatus.ONBOARDED
+         ])
+    ).count()
     blocked_employees = Employee.query.filter_by(account_status=AccountStatus.BLOCKED).count()
     disabled_employees = Employee.query.filter_by(account_status=AccountStatus.DISABLED).count()
     offboarded_employees = Employee.query.filter_by(account_status=AccountStatus.OFFBOARDED).count()
