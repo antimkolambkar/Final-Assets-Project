@@ -190,11 +190,12 @@ class ExcelImportService:
                 count = Employee.query.count() + 1001 + row_num
                 emp_id_raw = f"EMP-IMP-{count}"
 
-            # Check if employee already exists by ID
+                        # Check if employee already exists by ID
             existing_by_id = Employee.query.filter_by(employee_id=emp_id_raw).first()
+
             existing_by_email = None
-if email:
-    existing_by_email = Employee.query.filter_by(email=email).first()
+            if email:
+                existing_by_email = Employee.query.filter_by(email=email).first()
 
             if existing_by_id:
                 # Update existing record
