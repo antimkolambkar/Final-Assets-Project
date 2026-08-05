@@ -264,3 +264,70 @@ body {
 .toast-container {
   z-index: 1100;
 }
+/* ================================
+   Employee Asset Cards
+================================ */
+
+.asset-card{
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-left:5px solid #2563eb;
+    border-radius:12px;
+    padding:18px;
+    margin-bottom:18px;
+    box-shadow:0 2px 8px rgba(0,0,0,.05);
+    transition:.25s;
+}
+
+.asset-card:hover{
+    transform:translateY(-2px);
+    box-shadow:0 8px 18px rgba(0,0,0,.08);
+}
+
+.asset-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:15px;
+}
+
+.asset-type{
+    font-size:18px;
+    font-weight:700;
+    color:#2563eb;
+}
+
+.asset-grid{
+    display:grid;
+    grid-template-columns:150px 1fr;
+    row-gap:10px;
+    column-gap:20px;
+}
+
+.asset-label{
+    color:#64748b;
+    font-weight:600;
+}
+
+.asset-value{
+    font-weight:500;
+    color:#111827;
+}
+
+.asset-date{
+    display:inline-block;
+    padding:4px 10px;
+    background:#2563eb;
+    color:#fff;
+    border-radius:20px;
+    font-size:13px;
+}
+
+.asset-status{
+    background:#dcfce7;
+    color:#15803d;
+    padding:5px 12px;
+    border-radius:20px;
+    font-weight:600;
+    font-size:13px;
+}
