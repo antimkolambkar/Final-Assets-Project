@@ -150,6 +150,9 @@ class ExcelImportService:
         """
         result = ImportResult()
         rows, error = ExcelImportService._read_file(file_obj, filename)
+        print("ROWS READ:")
+        for r in rows[:3]:
+            print(r)
 
         if error:
             result.add_error(0, error)
