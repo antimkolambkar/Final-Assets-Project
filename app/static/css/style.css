@@ -331,3 +331,16 @@ body {
     font-weight:600;
     font-size:13px;
 }
+.modal-header{
+    display:flex;
+    align-items:center;
+}
+
+.modal-header .modal-title{
+    display:flex;
+    align-items:center;
+}
+
+.modal-header .btn-close{
+    margin:0;
+}
