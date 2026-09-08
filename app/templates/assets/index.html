@@ -478,18 +478,51 @@
                     </div>
 
                     <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Processor Specs</label>
-                            <input type="text" name="processor" class="form-control" placeholder="e.g. Intel Core i7-1185G7" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">RAM Capacity</label>
-                            <input type="text" name="ram" class="form-control" placeholder="e.g. 16 GB, 32 GB" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">SSD Storage Capacity</label>
-                            <input type="text" name="ssd" class="form-control" placeholder="e.g. 512 GB SSD, 1 TB SSD" required>
-                        </div>
+                       <div class="col-md-4">
+    <label class="form-label fw-semibold">Processor Specs</label>
+    <select name="processor" class="form-select" required>
+        <option value="">-- Select Processor --</option>
+        <option value="Intel Core i3">Intel Core i3</option>
+        <option value="Intel Core i5">Intel Core i5</option>
+        <option value="Intel Core i7">Intel Core i7</option>
+        <option value="Intel Core i9">Intel Core i9</option>
+        <option value="AMD Ryzen 3">AMD Ryzen 3</option>
+        <option value="AMD Ryzen 5">AMD Ryzen 5</option>
+        <option value="AMD Ryzen 7">AMD Ryzen 7</option>
+        <option value="AMD Ryzen 9">AMD Ryzen 9</option>
+        <option value="Apple M1">Apple M1</option>
+        <option value="Apple M2">Apple M2</option>
+        <option value="Apple M3">Apple M3</option>
+        <option value="Apple M4">Apple M4</option>
+    </select>
+</div>
+
+<div class="col-md-4">
+    <label class="form-label fw-semibold">RAM Capacity</label>
+    <select name="ram" class="form-select" required>
+        <option value="">-- Select RAM --</option>
+        <option value="4 GB">4 GB</option>
+        <option value="8 GB">8 GB</option>
+        <option value="16 GB">16 GB</option>
+        <option value="24 GB">24 GB</option>
+        <option value="32 GB">32 GB</option>
+        <option value="64 GB">64 GB</option>
+        <option value="128 GB">128 GB</option>
+    </select>
+</div>
+
+<div class="col-md-4">
+    <label class="form-label fw-semibold">SSD Storage Capacity</label>
+    <select name="ssd" class="form-select" required>
+        <option value="">-- Select SSD --</option>
+        <option value="128 GB">128 GB</option>
+        <option value="256 GB">256 GB</option>
+        <option value="512 GB">512 GB</option>
+        <option value="1 TB">1 TB</option>
+        <option value="2 TB">2 TB</option>
+        <option value="4 TB">4 TB</option>
+    </select>
+</div>
                     </div>
                 </div>
                 <div class="modal-footer">
