@@ -111,7 +111,14 @@
                                     </button>
                                 </li>
                                 {% if current_user.is_it_admin %}
-                                    {% if ast.status == 'Available' %}
+                                <li>
+                                   <button class="dropdown-item text-primary"
+                                           data-bs-toggle="modal"
+                                           data-bs-target="#editAssetModal{{ ast.id }}">
+                                        <i class="fas fa-edit me-2"></i>Edit Asset
+                                    </button>
+                                 </li>
+                                 {% if ast.status == 'Available' %}
                                     <li>
                                         <button class="dropdown-item text-primary" data-bs-toggle="modal" data-bs-target="#assignModal{{ ast.id }}">
                                             <i class="fas fa-user-plus me-2"></i>Assign to Employee
