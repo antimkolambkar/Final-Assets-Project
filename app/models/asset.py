@@ -5,6 +5,7 @@ class AssetStatus:
     AVAILABLE = 'Available'
     ASSIGNED = 'Assigned'
     REPAIR = 'Repair'
+    RETURNED_TO_VENDOR = 'Returned to Vendor'
 
 class Asset(db.Model):
     __tablename__ = 'assets'
@@ -20,7 +21,9 @@ class Asset(db.Model):
     
     vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'), nullable=True)
     status = db.Column(db.String(30), nullable=False, default=AssetStatus.AVAILABLE, index=True)
-    
+
+    vendor_return_date = db.Column(db.DateTime, nullable=True)
+    vendor_return_reason = db.Column(db.Text, nullable=True)
     assigned_employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
     assignment_date = db.Column(db.DateTime, nullable=True)
     
