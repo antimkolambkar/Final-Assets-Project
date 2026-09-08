@@ -3,63 +3,162 @@
 {% block title %}Asset Inventory | Enterprise ITAM{% endblock %}
 
 {% block content %}
+
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
-        <h3 class="fw-bold mb-1"><i class="fas fa-laptop-code text-primary me-2"></i>Enterprise Asset Inventory</h3>
-        <p class="text-muted small mb-0">Manage hardware assets, user assignments, multi-laptop replacements, vendor repairs, and complete audit history logs.</p>
+        <h3 class="fw-bold mb-1">
+            <i class="fas fa-laptop-code text-primary me-2"></i>
+            Enterprise Asset Inventory
+        </h3>
+
+        <p class="text-muted small mb-0">
+            Manage hardware assets, user assignments, multi-laptop replacements,
+            vendor repairs, and complete audit history logs.
+        </p>
     </div>
+
     {% if current_user.is_it_admin %}
     <div class="d-flex gap-2">
-        <button class="btn btn-warning btn-sm rounded-pill px-3 shadow-sm text-dark fw-semibold" data-bs-toggle="modal" data-bs-target="#replaceAssetModal">
-            <i class="fas fa-sync me-1"></i>Replace Laptop
+
+        <button class="btn btn-warning btn-sm rounded-pill px-3 shadow-sm text-dark fw-semibold"
+                data-bs-toggle="modal"
+                data-bs-target="#replaceAssetModal">
+            <i class="fas fa-sync me-1"></i>
+            Replace Laptop
         </button>
-        <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#addAssetModal">
-            <i class="fas fa-plus me-1"></i>Add New Asset
+
+        <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm fw-semibold"
+                data-bs-toggle="modal"
+                data-bs-target="#addAssetModal">
+            <i class="fas fa-plus me-1"></i>
+            Add New Asset
         </button>
+
     </div>
     {% endif %}
 </div>
 
-<!-- Search & Filter Bar -->
+
+<!-- =========================================================
+     SEARCH & FILTER
+========================================================= -->
+
 <div class="card border-0 shadow-sm mb-4">
+
     <div class="card-body p-3">
-        <form action="{{ url_for('assets.index') }}" method="GET" class="row g-2">
+
+        <form action="{{ url_for('assets.index') }}"
+              method="GET"
+              class="row g-2">
+
             <div class="col-12 col-md-5">
+
                 <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
-                    <input type="text" name="q" value="{{ search_q }}" class="form-control border-start-0 bg-light" placeholder="Search Asset ID, brand, model, serial number, user name...">
+
+                    <span class="input-group-text bg-light border-end-0">
+                        <i class="fas fa-search text-muted"></i>
+                    </span>
+
+                    <input type="text"
+                           name="q"
+                           value="{{ search_q }}"
+                           class="form-control border-start-0 bg-light"
+                           placeholder="Search Asset ID, brand, model, serial number, user name...">
+
                 </div>
+
             </div>
+
+
             <div class="col-6 col-md-3">
-                <select name="status" class="form-select bg-light">
+
+                <select name="status"
+                        class="form-select bg-light">
+
                     <option value="">All Asset Statuses</option>
-                    <option value="Available" {% if status_filter == 'Available' %}selected{% endif %}>Available</option>
-                    <option value="Assigned" {% if status_filter == 'Assigned' %}selected{% endif %}>Assigned</option>
-                    <option value="Repair" {% if status_filter == 'Repair' %}selected{% endif %}>Under Repair</option>
+
+                    <option value="Available"
+                            {% if status_filter == 'Available' %}selected{% endif %}>
+                        Available
+                    </option>
+
+                    <option value="Assigned"
+                            {% if status_filter == 'Assigned' %}selected{% endif %}>
+                        Assigned
+                    </option>
+
+                    <option value="Repair"
+                            {% if status_filter == 'Repair' %}selected{% endif %}>
+                        Under Repair
+                    </option>
+
                 </select>
+
             </div>
+
+
             <div class="col-6 col-md-2">
-                <select name="vendor_id" class="form-select bg-light">
+
+                <select name="vendor_id"
+                        class="form-select bg-light">
+
                     <option value="">All Vendors</option>
+
                     {% for v in vendors %}
-                    <option value="{{ v.id }}" {% if vendor_filter == v.id %}selected{% endif %}>{{ v.name }}</option>
+
+                    <option value="{{ v.id }}"
+                            {% if vendor_filter == v.id %}selected{% endif %}>
+                        {{ v.name }}
+                    </option>
+
                     {% endfor %}
+
                 </select>
+
             </div>
+
+
             <div class="col-12 col-md-2 d-flex gap-2">
-                <button type="submit" class="btn btn-dark flex-grow-1"><i class="fas fa-filter me-1"></i>Filter</button>
-                <a href="{{ url_for('assets.index') }}" class="btn btn-outline-secondary" title="Reset Filters"><i class="fas fa-undo"></i></a>
+
+                <button type="submit"
+                        class="btn btn-dark flex-grow-1">
+
+                    <i class="fas fa-filter me-1"></i>
+                    Filter
+
+                </button>
+
+                <a href="{{ url_for('assets.index') }}"
+                   class="btn btn-outline-secondary"
+                   title="Reset Filters">
+
+                    <i class="fas fa-undo"></i>
+
+                </a>
+
             </div>
+
         </form>
+
     </div>
+
 </div>
 
-<!-- Assets Table -->
+
+<!-- =========================================================
+     ASSETS TABLE
+========================================================= -->
+
 <div class="card border-0 shadow-sm">
+
     <div class="table-responsive">
+
         <table class="table table-custom mb-0">
+
             <thead>
+
                 <tr>
+
                     <th>Asset ID</th>
                     <th>Brand & Model</th>
                     <th>Serial Number</th>
@@ -68,219 +167,671 @@
                     <th>Status</th>
                     <th>Assigned User Name</th>
                     <th class="text-end">Actions</th>
+
                 </tr>
+
             </thead>
+
+
             <tbody>
+
                 {% for ast in assets %}
+
                 <tr>
-                    <td><strong class="text-primary">{{ ast.asset_id }}</strong></td>
+
+                    <!-- Asset ID -->
                     <td>
-                        <div class="fw-bold">{{ ast.brand }} {{ ast.model }}</div>
+                        <strong class="text-primary">
+                            {{ ast.asset_id }}
+                        </strong>
                     </td>
-                    <td><code>{{ ast.serial_number }}</code></td>
+
+
+                    <!-- Brand & Model -->
                     <td>
+
+                        <div class="fw-bold">
+                            {{ ast.brand }} {{ ast.model }}
+                        </div>
+
+                    </td>
+
+
+                    <!-- Serial -->
+                    <td>
+                        <code>{{ ast.serial_number }}</code>
+                    </td>
+
+
+                    <!-- Specifications -->
+                    <td>
+
                         <small class="text-muted">
-                            <i class="fas fa-microchip me-1"></i>{{ ast.processor }}<br>
-                            <i class="fas fa-memory me-1"></i>{{ ast.ram }} | <i class="fas fa-hard-drive me-1"></i>{{ ast.ssd }}
+
+                            <i class="fas fa-microchip me-1"></i>
+                            {{ ast.processor }}
+
+                            <br>
+
+                            <i class="fas fa-memory me-1"></i>
+                            {{ ast.ram }}
+
+                            |
+
+                            <i class="fas fa-hard-drive me-1"></i>
+                            {{ ast.ssd }}
+
                         </small>
+
                     </td>
-                    <td><span class="badge bg-light text-dark border">{{ ast.vendor.name if ast.vendor else 'N/A' }}</span></td>
+
+
+                    <!-- Vendor -->
                     <td>
-                        <span class="badge badge-status badge-{{ ast.status.lower() }}">
-                            <i class="fas {% if ast.status == 'Available' %}fa-box-open{% elif ast.status == 'Assigned' %}fa-user-check{% else %}fa-wrench{% endif %}"></i>
-                            {{ ast.status }}
+
+                        <span class="badge bg-light text-dark border">
+                            {{ ast.vendor.name if ast.vendor else 'N/A' }}
                         </span>
+
                     </td>
+
+
+                    <!-- Status -->
                     <td>
+
+                        <span class="badge badge-status badge-{{ ast.status.lower() }}">
+
+                            <i class="fas
+                                {% if ast.status == 'Available' %}
+                                    fa-box-open
+                                {% elif ast.status == 'Assigned' %}
+                                    fa-user-check
+                                {% else %}
+                                    fa-wrench
+                                {% endif %}
+                            "></i>
+
+                            {{ ast.status }}
+
+                        </span>
+
+                    </td>
+
+
+                    <!-- Assigned Employee -->
+                    <td>
+
                         {% if ast.assigned_employee %}
-                        <div class="fw-bold text-dark"><i class="fas fa-user me-1 text-primary"></i>{{ ast.assigned_employee.name }}</div>
-                        <small class="text-muted">{{ ast.assigned_employee.employee_id }} &bull; {{ ast.assigned_employee.department }}</small>
+
+                        <div class="fw-bold text-dark">
+
+                            <i class="fas fa-user me-1 text-primary"></i>
+
+                            {{ ast.assigned_employee.name }}
+
+                        </div>
+
+                        <small class="text-muted">
+
+                            {{ ast.assigned_employee.employee_id }}
+
+                            &bull;
+
+                            {{ ast.assigned_employee.department }}
+
+                        </small>
+
                         {% else %}
-                        <span class="text-muted fs-7"><em>Unassigned (In Stock)</em></span>
+
+                        <span class="text-muted fs-7">
+
+                            <em>Unassigned (In Stock)</em>
+
+                        </span>
+
                         {% endif %}
+
                     </td>
+
+
+                    <!-- Actions -->
                     <td class="text-end">
+
                         <div class="dropdown">
-                            <button class="btn btn-light btn-sm rounded-circle p-2" type="button" data-bs-toggle="dropdown">
+
+                            <button class="btn btn-light btn-sm rounded-circle p-2"
+                                    type="button"
+                                    data-bs-toggle="dropdown">
+
                                 <i class="fas fa-ellipsis-v text-secondary"></i>
+
                             </button>
+
+
                             <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+
+                                <!-- History -->
                                 <li>
-                                    <button class="dropdown-item btn-view-asset-history" data-asset-id="{{ ast.id }}">
-                                        <i class="fas fa-history text-info me-2"></i>View Replacement History
+
+                                    <button class="dropdown-item btn-view-asset-history"
+                                            data-asset-id="{{ ast.id }}">
+
+                                        <i class="fas fa-history text-info me-2"></i>
+
+                                        View Replacement History
+
                                     </button>
+
                                 </li>
+
+
                                 {% if current_user.is_it_admin %}
+
+                                <!-- Edit -->
                                 <li>
-                                   <button class="dropdown-item text-primary"
-                                           data-bs-toggle="modal"
-                                           data-bs-target="#editAssetModal{{ ast.id }}">
-                                        <i class="fas fa-edit me-2"></i>Edit Asset
+
+                                    <button class="dropdown-item text-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editAssetModal{{ ast.id }}">
+
+                                        <i class="fas fa-edit me-2"></i>
+
+                                        Edit Asset
+
                                     </button>
-                                 </li>
-                                 {% if ast.status == 'Available' %}
-                                    <li>
-                                        <button class="dropdown-item text-primary" data-bs-toggle="modal" data-bs-target="#assignModal{{ ast.id }}">
-                                            <i class="fas fa-user-plus me-2"></i>Assign to Employee
-                                        </button>
-                                    </li>
-                                    <li>
-                                        <button class="dropdown-item text-warning" data-bs-toggle="modal" data-bs-target="#repairModal{{ ast.id }}">
-                                            <i class="fas fa-wrench me-2"></i>Send to Repair
-                                        </button>
-                                    </li>
-                                    {% elif ast.status == 'Assigned' %}
-                                    <li>
-                                        <form action="{{ url_for('assets.return_asset', asset_id=ast.id) }}" method="POST">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <button type="submit" class="dropdown-item text-success" onclick="return confirm('Return this laptop from employee back to available stock?')">
-                                                <i class="fas fa-undo me-2"></i>Return to Available
-                                            </button>
-                                        </form>
-                                    </li>
-                                    {% endif %}
-                                {% endif %}
-                                {% if current_user.can_delete_assets() %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <form action="{{ url_for('assets.delete_asset', asset_id=ast.id) }}" method="POST">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Are you sure you want to delete asset {{ ast.asset_id }}?')">
-                                            <i class="fas fa-trash me-2"></i>Delete Asset
-                                        </button>
-                                    </form>
+
                                 </li>
+
+
+                                {% if ast.status == 'Available' %}
+
+                                <!-- Assign -->
+                                <li>
+
+                                    <button class="dropdown-item text-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#assignModal{{ ast.id }}">
+
+                                        <i class="fas fa-user-plus me-2"></i>
+
+                                        Assign to Employee
+
+                                    </button>
+
+                                </li>
+
+
+                                <!-- Repair -->
+                                <li>
+
+                                    <button class="dropdown-item text-warning"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#repairModal{{ ast.id }}">
+
+                                        <i class="fas fa-wrench me-2"></i>
+
+                                        Send to Repair
+
+                                    </button>
+
+                                </li>
+
+
+                                {% elif ast.status == 'Assigned' %}
+
+                                <!-- Return -->
+                                <li>
+
+                                    <form action="{{ url_for('assets.return_asset', asset_id=ast.id) }}"
+                                          method="POST">
+
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+
+                                        <button type="submit"
+                                                class="dropdown-item text-success"
+                                                onclick="return confirm('Return this laptop from employee back to available stock?')">
+
+                                            <i class="fas fa-undo me-2"></i>
+
+                                            Return to Available
+
+                                        </button>
+
+                                    </form>
+
+                                </li>
+
                                 {% endif %}
+
+                                {% endif %}
+
+
+                                <!-- Delete -->
+                                {% if current_user.can_delete_assets() %}
+
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+
+                                <li>
+
+                                    <form action="{{ url_for('assets.delete_asset', asset_id=ast.id) }}"
+                                          method="POST">
+
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+
+                                        <button type="submit"
+                                                class="dropdown-item text-danger"
+                                                onclick="return confirm('Are you sure you want to delete asset {{ ast.asset_id }}?')">
+
+                                            <i class="fas fa-trash me-2"></i>
+
+                                            Delete Asset
+
+                                        </button>
+
+                                    </form>
+
+                                </li>
+
+                                {% endif %}
+
                             </ul>
+
                         </div>
 
-                        <!-- Assign Modal per asset -->
+
+                        <!-- =====================================================
+                             ASSIGN MODAL
+                        ====================================================== -->
+
                         {% if ast.status == 'Available' and current_user.is_it_admin %}
-                        <div class="modal fade text-start" id="assignModal{{ ast.id }}" tabindex="-1">
+
+                        <div class="modal fade text-start"
+                             id="assignModal{{ ast.id }}"
+                             tabindex="-1">
+
                             <div class="modal-dialog modal-dialog-centered">
+
                                 <div class="modal-content border-0 shadow-lg">
+
                                     <div class="modal-header bg-primary text-white">
-                                        <h5 class="modal-title fw-bold"><i class="fas fa-user-check me-2"></i>Assign Asset {{ ast.asset_id }}</h5>
-                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+
+                                        <h5 class="modal-title fw-bold">
+
+                                            <i class="fas fa-user-check me-2"></i>
+
+                                            Assign Asset {{ ast.asset_id }}
+
+                                        </h5>
+
+                                        <button type="button"
+                                                class="btn-close btn-close-white"
+                                                data-bs-dismiss="modal">
+                                        </button>
+
                                     </div>
-                                    <form action="{{ url_for('assets.assign_asset') }}" method="POST">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <input type="hidden" name="asset_id" value="{{ ast.id }}">
+
+
+                                    <form action="{{ url_for('assets.assign_asset') }}"
+                                          method="POST">
+
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+
+                                        <input type="hidden"
+                                               name="asset_id"
+                                               value="{{ ast.id }}">
+
+
                                         <div class="modal-body p-4">
+
                                             <div class="mb-3">
-                                                <label class="form-label fw-semibold">Select Employee</label>
-                                                <select name="employee_id" class="form-select" required>
-                                                    <option value="">-- Choose Entra ID Employee --</option>
+
+                                                <label class="form-label fw-semibold">
+                                                    Select Employee
+                                                </label>
+
+                                                <select name="employee_id"
+                                                        class="form-select"
+                                                        required>
+
+                                                    <option value="">
+                                                        -- Choose Entra ID Employee --
+                                                    </option>
+
                                                     {% for emp in active_employees %}
-                                                    <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.employee_id }} - {{ emp.department }})</option>
+
+                                                    <option value="{{ emp.id }}">
+                                                        {{ emp.name }}
+                                                        ({{ emp.employee_id }} -
+                                                        {{ emp.department }})
+                                                    </option>
+
                                                     {% endfor %}
+
                                                 </select>
+
                                             </div>
+
+
                                             <div class="mb-3">
-                                                <label class="form-label fw-semibold">Allocation Notes</label>
-                                                <textarea name="notes" class="form-control" rows="2" placeholder="Reason for allocation..."></textarea>
+
+                                                <label class="form-label fw-semibold">
+                                                    Allocation Notes
+                                                </label>
+
+                                                <textarea name="notes"
+                                                          class="form-control"
+                                                          rows="2"
+                                                          placeholder="Reason for allocation..."></textarea>
+
                                             </div>
+
                                         </div>
+
+
                                         <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="submit" class="btn btn-primary">Confirm Assignment</button>
+
+                                            <button type="button"
+                                                    class="btn btn-secondary"
+                                                    data-bs-dismiss="modal">
+                                                Cancel
+                                            </button>
+
+                                            <button type="submit"
+                                                    class="btn btn-primary">
+                                                Confirm Assignment
+                                            </button>
+
                                         </div>
+
                                     </form>
+
                                 </div>
+
                             </div>
+
                         </div>
 
-                        <!-- Repair Modal per asset -->
-                        <div class="modal fade text-start" id="repairModal{{ ast.id }}" tabindex="-1">
+
+                        <!-- =====================================================
+                             REPAIR MODAL
+                        ====================================================== -->
+
+                        <div class="modal fade text-start"
+                             id="repairModal{{ ast.id }}"
+                             tabindex="-1">
+
                             <div class="modal-dialog modal-dialog-centered">
+
                                 <div class="modal-content border-0 shadow-lg">
+
                                     <div class="modal-header bg-warning text-dark">
-                                        <h5 class="modal-title fw-bold"><i class="fas fa-wrench me-2"></i>Dispatch to Repair</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+                                        <h5 class="modal-title fw-bold">
+
+                                            <i class="fas fa-wrench me-2"></i>
+
+                                            Dispatch to Repair
+
+                                        </h5>
+
+                                        <button type="button"
+                                                class="btn-close"
+                                                data-bs-dismiss="modal">
+                                        </button>
+
                                     </div>
-                                    <form action="{{ url_for('assets.send_to_repair') }}" method="POST">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <input type="hidden" name="asset_id" value="{{ ast.id }}">
+
+
+                                    <form action="{{ url_for('assets.send_to_repair') }}"
+                                          method="POST">
+
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+
+                                        <input type="hidden"
+                                               name="asset_id"
+                                               value="{{ ast.id }}">
+
+
                                         <div class="modal-body p-4">
+
                                             <div class="mb-3">
-                                                <label class="form-label fw-semibold">Select Repair Vendor</label>
-                                                <select name="vendor_id" class="form-select" required>
+
+                                                <label class="form-label fw-semibold">
+                                                    Select Repair Vendor
+                                                </label>
+
+                                                <select name="vendor_id"
+                                                        class="form-select"
+                                                        required>
+
                                                     {% for v in vendors %}
-                                                    <option value="{{ v.id }}" {% if ast.vendor_id == v.id %}selected{% endif %}>{{ v.name }}</option>
+
+                                                    <option value="{{ v.id }}"
+                                                            {% if ast.vendor_id == v.id %}selected{% endif %}>
+
+                                                        {{ v.name }}
+
+                                                    </option>
+
                                                     {% endfor %}
+
                                                 </select>
+
                                             </div>
+
+
                                             <div class="mb-3">
-                                                <label class="form-label fw-semibold">Hardware Fault Description</label>
-                                                <textarea name="notes" class="form-control" rows="3" placeholder="Describe hardware issue..." required></textarea>
+
+                                                <label class="form-label fw-semibold">
+                                                    Hardware Fault Description
+                                                </label>
+
+                                                <textarea name="notes"
+                                                          class="form-control"
+                                                          rows="3"
+                                                          placeholder="Describe hardware issue..."
+                                                          required></textarea>
+
                                             </div>
+
                                         </div>
+
+
                                         <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="submit" class="btn btn-warning text-dark fw-bold">Create Vendor Repair Ticket</button>
+
+                                            <button type="button"
+                                                    class="btn btn-secondary"
+                                                    data-bs-dismiss="modal">
+                                                Cancel
+                                            </button>
+
+                                            <button type="submit"
+                                                    class="btn btn-warning text-dark fw-bold">
+
+                                                Create Vendor Repair Ticket
+
+                                            </button>
+
                                         </div>
+
                                     </form>
+
                                 </div>
+
                             </div>
+
                         </div>
+
                         {% endif %}
+
                     </td>
+
                 </tr>
+
                 {% else %}
+
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-4">
+
+                    <td colspan="8"
+                        class="text-center text-muted py-4">
+
                         <i class="fas fa-laptop fa-2x mb-2 d-block text-secondary"></i>
+
                         No assets found in inventory matching filter criteria.
+
                     </td>
+
                 </tr>
+
                 {% endfor %}
+
             </tbody>
+
         </table>
+
     </div>
 
-    <!-- Pagination -->
+
+    <!-- =========================================================
+         PAGINATION
+    ========================================================== -->
+
     {% if pagination.pages > 1 %}
+
     <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
-        <small class="text-muted">Showing page {{ pagination.page }} of {{ pagination.pages }}</small>
+
+        <small class="text-muted">
+            Showing page {{ pagination.page }} of {{ pagination.pages }}
+        </small>
+
+
         <ul class="pagination pagination-sm mb-0">
+
             <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('assets.index', page=pagination.prev_num, q=search_q, status=status_filter, vendor_id=vendor_filter) }}">Previous</a>
+
+                <a class="page-link"
+                   href="{{ url_for(
+                       'assets.index',
+                       page=pagination.prev_num,
+                       q=search_q,
+                       status=status_filter,
+                       vendor_id=vendor_filter
+                   ) }}">
+
+                    Previous
+
+                </a>
+
             </li>
+
+
             {% for p in pagination.iter_pages() %}
+
                 {% if p %}
+
                 <li class="page-item {% if p == pagination.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('assets.index', page=p, q=search_q, status=status_filter, vendor_id=vendor_filter) }}">{{ p }}</a>
+
+                    <a class="page-link"
+                       href="{{ url_for(
+                           'assets.index',
+                           page=p,
+                           q=search_q,
+                           status=status_filter,
+                           vendor_id=vendor_filter
+                       ) }}">
+
+                        {{ p }}
+
+                    </a>
+
                 </li>
+
                 {% else %}
-                <li class="page-item disabled"><span class="page-link">...</span></li>
+
+                <li class="page-item disabled">
+
+                    <span class="page-link">...</span>
+
+                </li>
+
                 {% endif %}
+
             {% endfor %}
+
+
             <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('assets.index', page=pagination.next_num, q=search_q, status=status_filter, vendor_id=vendor_filter) }}">Next</a>
+
+                <a class="page-link"
+                   href="{{ url_for(
+                       'assets.index',
+                       page=pagination.next_num,
+                       q=search_q,
+                       status=status_filter,
+                       vendor_id=vendor_filter
+                   ) }}">
+
+                    Next
+
+                </a>
+
             </li>
+
         </ul>
+
     </div>
+
     {% endif %}
+
 </div>
-<!-- Edit Asset Modals -->
+
+
+
+<!-- =========================================================
+     EDIT ASSET MODALS
+========================================================= -->
+
 {% for ast in assets %}
+
 {% if current_user.is_it_admin %}
 
-<div class="modal fade" id="editAssetModal{{ ast.id }}" tabindex="-1">
+<div class="modal fade"
+     id="editAssetModal{{ ast.id }}"
+     tabindex="-1">
+
     <div class="modal-dialog modal-lg modal-dialog-centered">
+
         <div class="modal-content border-0 shadow-lg">
 
+
+            <!-- Header -->
+
             <div class="modal-header bg-primary text-white">
+
                 <h5 class="modal-title fw-bold">
+
                     <i class="fas fa-edit me-2"></i>
+
                     Edit Asset - {{ ast.asset_id }}
+
                 </h5>
 
                 <button type="button"
                         class="btn-close btn-close-white"
                         data-bs-dismiss="modal">
                 </button>
+
             </div>
+
 
             <form action="{{ url_for('assets.edit_asset', asset_id=ast.id) }}"
                   method="POST">
@@ -289,78 +840,108 @@
                        name="csrf_token"
                        value="{{ csrf_token() }}">
 
+
                 <div class="modal-body p-4">
+
+
+                    <!-- Asset ID + Brand -->
 
                     <div class="row g-3 mb-3">
 
                         <div class="col-md-6">
+
                             <label class="form-label fw-semibold">
                                 Asset ID
                             </label>
 
-                            <select name="model"
-        id="edit-model-{{ ast.id }}"
-        class="form-select edit-model"
-        data-current-model="{{ ast.model|e }}"
-        required>
+                            <input type="text"
+                                   name="asset_id"
+                                   class="form-control"
+                                   value="{{ ast.asset_id }}"
+                                   required>
 
-    <option value="">-- Select Model --</option>
-
-</select>
                         </div>
 
+
                         <div class="col-md-6">
+
                             <label class="form-label fw-semibold">
-                                Brand
+                                Brand / Manufacturer
                             </label>
 
-       <select name="brand"
-        class="form-select edit-brand"
-        data-model-target="edit-model-{{ ast.id }}"
-        required>
+                            <select name="brand"
+                                    class="form-select edit-brand"
+                                    data-model-target="edit-model-{{ ast.id }}"
+                                    required>
 
-    <option value="">-- Select Brand --</option>
+                                <option value="">
+                                    -- Select Brand --
+                                </option>
 
-    <option value="HP" {% if ast.brand == 'HP' %}selected{% endif %}>
-        HP
-    </option>
+                                <option value="HP"
+                                        {% if ast.brand == 'HP' %}selected{% endif %}>
+                                    HP
+                                </option>
 
-    <option value="Dell" {% if ast.brand == 'Dell' %}selected{% endif %}>
-        Dell
-    </option>
+                                <option value="Dell"
+                                        {% if ast.brand == 'Dell' %}selected{% endif %}>
+                                    Dell
+                                </option>
 
-    <option value="Lenovo" {% if ast.brand == 'Lenovo' %}selected{% endif %}>
-        Lenovo
-    </option>
+                                <option value="Lenovo"
+                                        {% if ast.brand == 'Lenovo' %}selected{% endif %}>
+                                    Lenovo
+                                </option>
 
-    <option value="ASUS" {% if ast.brand == 'ASUS' %}selected{% endif %}>
-        ASUS
-    </option>
+                                <option value="ASUS"
+                                        {% if ast.brand == 'ASUS' %}selected{% endif %}>
+                                    ASUS
+                                </option>
 
-    <option value="Mac" {% if ast.brand == 'Mac' %}selected{% endif %}>
-        Mac
-    </option>
+                                <!-- IMPORTANT:
+                                     Keep Apple because your existing DB
+                                     may already contain Apple records.
+                                -->
 
-</select>
+                                <option value="Apple"
+                                        {% if ast.brand == 'Apple' %}selected{% endif %}>
+                                    Apple / Mac
+                                </option>
+
+                            </select>
+
                         </div>
 
                     </div>
 
+
+                    <!-- Model + Serial -->
+
                     <div class="row g-3 mb-3">
 
                         <div class="col-md-6">
+
                             <label class="form-label fw-semibold">
                                 Model
                             </label>
 
-                            <input type="text"
-                                   name="model"
-                                   class="form-control"
-                                   value="{{ ast.model }}"
-                                   required>
+                            <select name="model"
+                                    id="edit-model-{{ ast.id }}"
+                                    class="form-select edit-model"
+                                    data-current-model="{{ ast.model|e }}"
+                                    required>
+
+                                <option value="">
+                                    -- Select Model --
+                                </option>
+
+                            </select>
+
                         </div>
 
+
                         <div class="col-md-6">
+
                             <label class="form-label fw-semibold">
                                 Serial Number
                             </label>
@@ -370,63 +951,210 @@
                                    class="form-control"
                                    value="{{ ast.serial_number }}"
                                    required>
+
                         </div>
 
                     </div>
 
-                   <select name="processor" class="form-select" required>
-    <option value="">-- Select Processor --</option>
 
-    <option value="Intel Core i3" {% if ast.processor == 'Intel Core i3' %}selected{% endif %}>Intel Core i3</option>
-    <option value="Intel Core i5" {% if ast.processor == 'Intel Core i5' %}selected{% endif %}>Intel Core i5</option>
-    <option value="Intel Core i7" {% if ast.processor == 'Intel Core i7' %}selected{% endif %}>Intel Core i7</option>
-    <option value="Intel Core i9" {% if ast.processor == 'Intel Core i9' %}selected{% endif %}>Intel Core i9</option>
+                    <!-- Processor -->
 
-    <option value="AMD Ryzen 5" {% if ast.processor == 'AMD Ryzen 5' %}selected{% endif %}>AMD Ryzen 5</option>
-    <option value="AMD Ryzen 7" {% if ast.processor == 'AMD Ryzen 7' %}selected{% endif %}>AMD Ryzen 7</option>
+                    <div class="mb-3">
 
-    <option value="Apple M1" {% if ast.processor == 'Apple M1' %}selected{% endif %}>Apple M1</option>
-    <option value="Apple M2" {% if ast.processor == 'Apple M2' %}selected{% endif %}>Apple M2</option>
-    <option value="Apple M3" {% if ast.processor == 'Apple M3' %}selected{% endif %}>Apple M3</option>
-    <option value="Apple M4" {% if ast.processor == 'Apple M4' %}selected{% endif %}>Apple M4</option>
-</select>
+                        <label class="form-label fw-semibold">
+                            Processor
+                        </label>
+
+                        <select name="processor"
+                                class="form-select"
+                                required>
+
+                            <option value="">
+                                -- Select Processor --
+                            </option>
+
+                            <option value="Intel Core i3"
+                                    {% if ast.processor == 'Intel Core i3' %}selected{% endif %}>
+                                Intel Core i3
+                            </option>
+
+                            <option value="Intel Core i5"
+                                    {% if ast.processor == 'Intel Core i5' %}selected{% endif %}>
+                                Intel Core i5
+                            </option>
+
+                            <option value="Intel Core i7"
+                                    {% if ast.processor == 'Intel Core i7' %}selected{% endif %}>
+                                Intel Core i7
+                            </option>
+
+                            <option value="Intel Core i9"
+                                    {% if ast.processor == 'Intel Core i9' %}selected{% endif %}>
+                                Intel Core i9
+                            </option>
+
+                            <option value="AMD Ryzen 3"
+                                    {% if ast.processor == 'AMD Ryzen 3' %}selected{% endif %}>
+                                AMD Ryzen 3
+                            </option>
+
+                            <option value="AMD Ryzen 5"
+                                    {% if ast.processor == 'AMD Ryzen 5' %}selected{% endif %}>
+                                AMD Ryzen 5
+                            </option>
+
+                            <option value="AMD Ryzen 7"
+                                    {% if ast.processor == 'AMD Ryzen 7' %}selected{% endif %}>
+                                AMD Ryzen 7
+                            </option>
+
+                            <option value="AMD Ryzen 9"
+                                    {% if ast.processor == 'AMD Ryzen 9' %}selected{% endif %}>
+                                AMD Ryzen 9
+                            </option>
+
+                            <option value="Apple M1"
+                                    {% if ast.processor == 'Apple M1' %}selected{% endif %}>
+                                Apple M1
+                            </option>
+
+                            <option value="Apple M2"
+                                    {% if ast.processor == 'Apple M2' %}selected{% endif %}>
+                                Apple M2
+                            </option>
+
+                            <option value="Apple M3"
+                                    {% if ast.processor == 'Apple M3' %}selected{% endif %}>
+                                Apple M3
+                            </option>
+
+                            <option value="Apple M4"
+                                    {% if ast.processor == 'Apple M4' %}selected{% endif %}>
+                                Apple M4
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- RAM + SSD -->
 
                     <div class="row g-3 mb-3">
 
+
+                        <!-- RAM -->
+
                         <div class="col-md-6">
+
                             <label class="form-label fw-semibold">
-                                RAM
+                                RAM Capacity
                             </label>
 
-                           <select name="ram" class="form-select" required>
-    <option value="N/A" {% if ast.ram == 'N/A' %}selected{% endif %}>N/A</option>
-    <option value="4 GB" {% if ast.ram == '4 GB' %}selected{% endif %}>4 GB</option>
-    <option value="8 GB" {% if ast.ram == '8 GB' %}selected{% endif %}>8 GB</option>
-    <option value="16 GB" {% if ast.ram == '16 GB' %}selected{% endif %}>16 GB</option>
-    <option value="24 GB" {% if ast.ram == '24 GB' %}selected{% endif %}>24 GB</option>
-    <option value="32 GB" {% if ast.ram == '32 GB' %}selected{% endif %}>32 GB</option>
-    <option value="64 GB" {% if ast.ram == '64 GB' %}selected{% endif %}>64 GB</option>
-    <option value="128 GB" {% if ast.ram == '128 GB' %}selected{% endif %}>128 GB</option>
-</select>
+                            <select name="ram"
+                                    class="form-select"
+                                    required>
+
+                                <option value="N/A"
+                                        {% if ast.ram == 'N/A' %}selected{% endif %}>
+                                    N/A
+                                </option>
+
+                                <option value="4 GB"
+                                        {% if ast.ram == '4 GB' %}selected{% endif %}>
+                                    4 GB
+                                </option>
+
+                                <option value="8 GB"
+                                        {% if ast.ram == '8 GB' %}selected{% endif %}>
+                                    8 GB
+                                </option>
+
+                                <option value="16 GB"
+                                        {% if ast.ram == '16 GB' %}selected{% endif %}>
+                                    16 GB
+                                </option>
+
+                                <option value="24 GB"
+                                        {% if ast.ram == '24 GB' %}selected{% endif %}>
+                                    24 GB
+                                </option>
+
+                                <option value="32 GB"
+                                        {% if ast.ram == '32 GB' %}selected{% endif %}>
+                                    32 GB
+                                </option>
+
+                                <option value="64 GB"
+                                        {% if ast.ram == '64 GB' %}selected{% endif %}>
+                                    64 GB
+                                </option>
+
+                                <option value="128 GB"
+                                        {% if ast.ram == '128 GB' %}selected{% endif %}>
+                                    128 GB
+                                </option>
+
+                            </select>
+
                         </div>
 
+
+                        <!-- SSD -->
+
                         <div class="col-md-6">
+
                             <label class="form-label fw-semibold">
-                                SSD
+                                SSD Storage Capacity
                             </label>
 
-                            <select name="ssd" class="form-select" required>
-    <option value="N/A" {% if ast.ssd == 'N/A' %}selected{% endif %}>N/A</option>
-    <option value="128 GB" {% if ast.ssd == '128 GB' %}selected{% endif %}>128 GB</option>
-    <option value="256 GB" {% if ast.ssd == '256 GB' %}selected{% endif %}>256 GB</option>
-    <option value="512 GB" {% if ast.ssd == '512 GB' %}selected{% endif %}>512 GB</option>
-    <option value="1 TB" {% if ast.ssd == '1 TB' %}selected{% endif %}>1 TB</option>
-    <option value="2 TB" {% if ast.ssd == '2 TB' %}selected{% endif %}>2 TB</option>
-    <option value="4 TB" {% if ast.ssd == '4 TB' %}selected{% endif %}>4 TB</option>
-</select>
+                            <select name="ssd"
+                                    class="form-select"
+                                    required>
+
+                                <option value="N/A"
+                                        {% if ast.ssd == 'N/A' %}selected{% endif %}>
+                                    N/A
+                                </option>
+
+                                <option value="128 GB"
+                                        {% if ast.ssd == '128 GB' %}selected{% endif %}>
+                                    128 GB
+                                </option>
+
+                                <option value="256 GB"
+                                        {% if ast.ssd == '256 GB' %}selected{% endif %}>
+                                    256 GB
+                                </option>
+
+                                <option value="512 GB"
+                                        {% if ast.ssd == '512 GB' %}selected{% endif %}>
+                                    512 GB
+                                </option>
+
+                                <option value="1 TB"
+                                        {% if ast.ssd == '1 TB' %}selected{% endif %}>
+                                    1 TB
+                                </option>
+
+                                <option value="2 TB"
+                                        {% if ast.ssd == '2 TB' %}selected{% endif %}>
+                                    2 TB
+                                </option>
+
+                                <option value="4 TB"
+                                        {% if ast.ssd == '4 TB' %}selected{% endif %}>
+                                    4 TB
+                                </option>
+
+                            </select>
+
                         </div>
 
                     </div>
+
+
+                    <!-- Vendor -->
 
                     <div class="mb-3">
 
@@ -441,8 +1169,10 @@
                             {% for v in vendors %}
 
                             <option value="{{ v.id }}"
-                                {% if ast.vendor_id == v.id %}selected{% endif %}>
+                                    {% if ast.vendor_id == v.id %}selected{% endif %}>
+
                                 {{ v.name }}
+
                             </option>
 
                             {% endfor %}
@@ -453,18 +1183,26 @@
 
                 </div>
 
+
+                <!-- Footer -->
+
                 <div class="modal-footer">
 
                     <button type="button"
                             class="btn btn-secondary"
                             data-bs-dismiss="modal">
+
                         Cancel
+
                     </button>
 
                     <button type="submit"
                             class="btn btn-primary">
+
                         <i class="fas fa-save me-1"></i>
+
                         Save Changes
+
                     </button>
 
                 </div>
@@ -472,696 +1210,1383 @@
             </form>
 
         </div>
+
     </div>
+
 </div>
 
 {% endif %}
+
 {% endfor %}
-<!-- Modal: Add New Asset -->
-<div class="modal fade" id="addAssetModal" tabindex="-1">
+
+
+
+<!-- =========================================================
+     ADD NEW ASSET MODAL
+========================================================= -->
+
+<div class="modal fade"
+     id="addAssetModal"
+     tabindex="-1">
+
     <div class="modal-dialog modal-lg modal-dialog-centered">
+
         <div class="modal-content border-0 shadow-lg">
+
+
             <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title fw-bold"><i class="fas fa-plus me-2 text-primary"></i>Add New Enterprise Asset</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+
+                <h5 class="modal-title fw-bold">
+
+                    <i class="fas fa-plus me-2 text-primary"></i>
+
+                    Add New Enterprise Asset
+
+                </h5>
+
+                <button type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal">
+                </button>
+
             </div>
-            <form action="{{ url_for('assets.add_asset') }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+
+            <form action="{{ url_for('assets.add_asset') }}"
+                  method="POST">
+
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+
+
                 <div class="modal-body p-4">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Brand / Manufacturer</label>
-                           <select name="brand"
-        id="newAssetBrand"
-        class="form-select"
-        required>
 
-    <option value="">-- Select Brand --</option>
-    <option value="HP">HP</option>
-    <option value="Dell">Dell</option>
-    <option value="Lenovo">Lenovo</option>
-    <option value="ASUS">ASUS</option>
-    <option value="Mac">Mac</option>
 
-</select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Model Name / Number</label>
-                            <input type="text" name="model" class="form-control" placeholder="e.g. ThinkPad X1, Latitude 7420" required>
-                        </div>
-                    </div>
+                    <!-- Brand + Model -->
 
                     <div class="row g-3 mb-3">
+
+
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Hardware Serial Number</label>
-                            <input type="text" name="serial_number" class="form-control" placeholder="Unique Manufacturer Serial No" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Vendor Supplier</label>
-                            <select name="vendor_id" class="form-select" required>
-                                <option value="">-- Select Vendor --</option>
-                                {% for v in vendors %}
-                                <option value="{{ v.id }}">{{ v.name }}</option>
-                                {% endfor %}
+
+                            <label class="form-label fw-semibold">
+                                Brand / Manufacturer
+                            </label>
+
+                            <select name="brand"
+                                    id="newAssetBrand"
+                                    class="form-select"
+                                    required>
+
+                                <option value="">
+                                    -- Select Brand --
+                                </option>
+
+                                <option value="HP">
+                                    HP
+                                </option>
+
+                                <option value="Dell">
+                                    Dell
+                                </option>
+
+                                <option value="Lenovo">
+                                    Lenovo
+                                </option>
+
+                                <option value="ASUS">
+                                    ASUS
+                                </option>
+
+                                <option value="Apple">
+                                    Apple / Mac
+                                </option>
+
                             </select>
+
                         </div>
+
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Model Name / Number
+                            </label>
+
+                            <select name="model"
+                                    id="newAssetModel"
+                                    class="form-select"
+                                    required>
+
+                                <option value="">
+                                    -- Select Brand First --
+                                </option>
+
+                            </select>
+
+                        </div>
+
                     </div>
+
+
+                    <!-- Serial + Vendor -->
+
+                    <div class="row g-3 mb-3">
+
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Hardware Serial Number
+                            </label>
+
+                            <input type="text"
+                                   name="serial_number"
+                                   class="form-control"
+                                   placeholder="Unique Manufacturer Serial No"
+                                   required>
+
+                        </div>
+
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Vendor Supplier
+                            </label>
+
+                            <select name="vendor_id"
+                                    class="form-select"
+                                    required>
+
+                                <option value="">
+                                    -- Select Vendor --
+                                </option>
+
+                                {% for v in vendors %}
+
+                                <option value="{{ v.id }}">
+                                    {{ v.name }}
+                                </option>
+
+                                {% endfor %}
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Processor -->
 
                     <div class="row g-3">
-                       <div class="col-md-4">
-    <label class="form-label fw-semibold">Processor Specs</label>
-    <select name="processor" class="form-select" required>
-        <option value="">-- Select Processor --</option>
-        <option value="Intel Core i3">Intel Core i3</option>
-        <option value="Intel Core i5">Intel Core i5</option>
-        <option value="Intel Core i7">Intel Core i7</option>
-        <option value="Intel Core i9">Intel Core i9</option>
-        <option value="AMD Ryzen 3">AMD Ryzen 3</option>
-        <option value="AMD Ryzen 5">AMD Ryzen 5</option>
-        <option value="AMD Ryzen 7">AMD Ryzen 7</option>
-        <option value="AMD Ryzen 9">AMD Ryzen 9</option>
-        <option value="Apple M1">Apple M1</option>
-        <option value="Apple M2">Apple M2</option>
-        <option value="Apple M3">Apple M3</option>
-        <option value="Apple M4">Apple M4</option>
-    </select>
-</div>
 
-<div class="col-md-4">
-    <label class="form-label fw-semibold">RAM Capacity</label>
-    <select name="ram" class="form-select" required>
-        <option value="">-- Select RAM --</option>
-        <option value="4 GB">4 GB</option>
-        <option value="8 GB">8 GB</option>
-        <option value="16 GB">16 GB</option>
-        <option value="24 GB">24 GB</option>
-        <option value="32 GB">32 GB</option>
-        <option value="64 GB">64 GB</option>
-        <option value="128 GB">128 GB</option>
-    </select>
-</div>
 
-<div class="col-md-4">
-    <label class="form-label fw-semibold">SSD Storage Capacity</label>
-    <select name="ssd" class="form-select" required>
-        <option value="">-- Select SSD --</option>
-        <option value="128 GB">128 GB</option>
-        <option value="256 GB">256 GB</option>
-        <option value="512 GB">512 GB</option>
-        <option value="1 TB">1 TB</option>
-        <option value="2 TB">2 TB</option>
-        <option value="4 TB">4 TB</option>
-    </select>
-</div>
+                        <div class="col-md-4">
+
+                            <label class="form-label fw-semibold">
+                                Processor Specs
+                            </label>
+
+                            <select name="processor"
+                                    class="form-select"
+                                    required>
+
+                                <option value="">
+                                    -- Select Processor --
+                                </option>
+
+                                <option value="Intel Core i3">
+                                    Intel Core i3
+                                </option>
+
+                                <option value="Intel Core i5">
+                                    Intel Core i5
+                                </option>
+
+                                <option value="Intel Core i7">
+                                    Intel Core i7
+                                </option>
+
+                                <option value="Intel Core i9">
+                                    Intel Core i9
+                                </option>
+
+                                <option value="AMD Ryzen 3">
+                                    AMD Ryzen 3
+                                </option>
+
+                                <option value="AMD Ryzen 5">
+                                    AMD Ryzen 5
+                                </option>
+
+                                <option value="AMD Ryzen 7">
+                                    AMD Ryzen 7
+                                </option>
+
+                                <option value="AMD Ryzen 9">
+                                    AMD Ryzen 9
+                                </option>
+
+                                <option value="Apple M1">
+                                    Apple M1
+                                </option>
+
+                                <option value="Apple M2">
+                                    Apple M2
+                                </option>
+
+                                <option value="Apple M3">
+                                    Apple M3
+                                </option>
+
+                                <option value="Apple M4">
+                                    Apple M4
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <!-- RAM -->
+
+                        <div class="col-md-4">
+
+                            <label class="form-label fw-semibold">
+                                RAM Capacity
+                            </label>
+
+                            <select name="ram"
+                                    class="form-select"
+                                    required>
+
+                                <option value="">
+                                    -- Select RAM --
+                                </option>
+
+                                <option value="4 GB">4 GB</option>
+                                <option value="8 GB">8 GB</option>
+                                <option value="16 GB">16 GB</option>
+                                <option value="24 GB">24 GB</option>
+                                <option value="32 GB">32 GB</option>
+                                <option value="64 GB">64 GB</option>
+                                <option value="128 GB">128 GB</option>
+
+                            </select>
+
+                        </div>
+
+
+                        <!-- SSD -->
+
+                        <div class="col-md-4">
+
+                            <label class="form-label fw-semibold">
+                                SSD Storage Capacity
+                            </label>
+
+                            <select name="ssd"
+                                    class="form-select"
+                                    required>
+
+                                <option value="">
+                                    -- Select SSD --
+                                </option>
+
+                                <option value="128 GB">128 GB</option>
+                                <option value="256 GB">256 GB</option>
+                                <option value="512 GB">512 GB</option>
+                                <option value="1 TB">1 TB</option>
+                                <option value="2 TB">2 TB</option>
+                                <option value="4 TB">4 TB</option>
+
+                            </select>
+
+                        </div>
+
                     </div>
+
                 </div>
+
+
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary px-4 fw-bold">Save Asset Record</button>
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+
+                        Cancel
+
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary px-4 fw-bold">
+
+                        Save Asset Record
+
+                    </button>
+
                 </div>
+
             </form>
+
         </div>
+
     </div>
+
 </div>
 
-<!-- Modal: Replace Laptop (Multi-Replacement Tracking Workflow) -->
-<div class="modal fade" id="replaceAssetModal" tabindex="-1">
+
+
+<!-- =========================================================
+     REPLACE LAPTOP MODAL
+========================================================= -->
+
+<div class="modal fade"
+     id="replaceAssetModal"
+     tabindex="-1">
+
     <div class="modal-dialog modal-lg modal-dialog-centered">
+
         <div class="modal-content border-0 shadow-lg">
+
+
             <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title fw-bold"><i class="fas fa-sync me-2"></i>Laptop Multi-Replacement Workflow</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+
+                <h5 class="modal-title fw-bold">
+
+                    <i class="fas fa-sync me-2"></i>
+
+                    Laptop Multi-Replacement Workflow
+
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal">
+                </button>
+
             </div>
-            <form action="{{ url_for('assets.replace_asset') }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+
+            <form action="{{ url_for('assets.replace_asset') }}"
+                  method="POST">
+
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+
+
                 <div class="modal-body p-4">
+
+
                     <div class="alert alert-info py-2 small">
-                        <i class="fas fa-info-circle me-1"></i> Swapping an assigned laptop logs an explicit replacement history record linking old & new asset IDs.
+
+                        <i class="fas fa-info-circle me-1"></i>
+
+                        Swapping an assigned laptop logs an explicit replacement
+                        history record linking old & new asset IDs.
+
                     </div>
 
+
+                    <!-- OLD ASSET -->
+
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Select Currently Assigned Laptop to Replace (Old Asset)</label>
-                        <select name="old_asset_id" class="form-select" required>
-                            <option value="">-- Choose Assigned Laptop --</option>
+
+                        <label class="form-label fw-semibold">
+
+                            Select Currently Assigned Laptop to Replace
+                            (Old Asset)
+
+                        </label>
+
+                        <select name="old_asset_id"
+                                class="form-select"
+                                required>
+
+                            <option value="">
+                                -- Choose Assigned Laptop --
+                            </option>
+
                             {% for a in assets %}
+
                                 {% if a.status == 'Assigned' and a.assigned_employee %}
-                                <option value="{{ a.id }}">{{ a.asset_id }} - {{ a.brand }} {{ a.model }} (Assigned to: {{ a.assigned_employee.name }})</option>
+
+                                <option value="{{ a.id }}">
+
+                                    {{ a.asset_id }} -
+                                    {{ a.brand }} {{ a.model }}
+
+                                    (Assigned to:
+                                    {{ a.assigned_employee.name }})
+
+                                </option>
+
                                 {% endif %}
+
                             {% endfor %}
+
                         </select>
+
                     </div>
 
+
+                    <!-- NEW ASSET -->
+
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Select Replacement Laptop to Allocate (New Available Asset)</label>
-                        <select name="new_asset_id" class="form-select" required>
-                            <option value="">-- Choose Available Replacement Laptop --</option>
+
+                        <label class="form-label fw-semibold">
+
+                            Select Replacement Laptop to Allocate
+                            (New Available Asset)
+
+                        </label>
+
+                        <select name="new_asset_id"
+                                class="form-select"
+                                required>
+
+                            <option value="">
+                                -- Choose Available Replacement Laptop --
+                            </option>
+
                             {% for a in available_assets %}
-                            <option value="{{ a.id }}">{{ a.asset_id }} - {{ a.brand }} {{ a.model }} (SN: {{ a.serial_number }} &bull; {{ a.ram }}/{{ a.ssd }})</option>
+
+                            <option value="{{ a.id }}">
+
+                                {{ a.asset_id }} -
+                                {{ a.brand }} {{ a.model }}
+
+                                (SN: {{ a.serial_number }}
+                                &bull;
+                                {{ a.ram }}/{{ a.ssd }})
+
+                            </option>
+
                             {% endfor %}
+
                         </select>
+
                     </div>
 
+
+                    <!-- REASON -->
+
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Replacement Reason / Notes</label>
-                        <textarea name="reason" class="form-control" rows="2" placeholder="e.g. Hardware upgrade requested, motherboard defect, user role change..." required></textarea>
+
+                        <label class="form-label fw-semibold">
+                            Replacement Reason / Notes
+                        </label>
+
+                        <textarea name="reason"
+                                  class="form-control"
+                                  rows="2"
+                                  placeholder="e.g. Hardware upgrade requested, motherboard defect, user role change..."
+                                  required></textarea>
+
                     </div>
+
+
+                    <!-- REPAIR CHECKBOX -->
 
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="return_to_repair" id="return_to_repair" checked>
-                        <label class="form-check-label text-dark fw-semibold" for="return_to_repair">
+
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="return_to_repair"
+                               id="return_to_repair"
+                               checked>
+
+                        <label class="form-check-label text-dark fw-semibold"
+                               for="return_to_repair">
+
                             Send old replaced laptop directly to Repair status
+
                         </label>
+
                     </div>
+
                 </div>
+
+
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-warning text-dark fw-bold">Execute Laptop Replacement</button>
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+
+                        Cancel
+
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-warning text-dark fw-bold">
+
+                        Execute Laptop Replacement
+
+                    </button>
+
                 </div>
+
             </form>
+
         </div>
+
     </div>
+
 </div>
 
-<!-- Modal: Asset History Log -->
-<div class="modal fade" id="assetHistoryModal" tabindex="-1">
+
+
+<!-- =========================================================
+     ASSET HISTORY MODAL
+========================================================= -->
+
+<div class="modal fade"
+     id="assetHistoryModal"
+     tabindex="-1">
+
     <div class="modal-dialog modal-lg modal-dialog-centered">
+
         <div class="modal-content border-0 shadow-lg">
+
+
             <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title fw-bold"><i class="fas fa-history me-2 text-info"></i>Asset History & Replacement Log</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+
+                <h5 class="modal-title fw-bold">
+
+                    <i class="fas fa-history me-2 text-info"></i>
+
+                    Asset History & Replacement Log
+
+                </h5>
+
+                <button type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal">
+                </button>
+
             </div>
+
+
             <div class="modal-body p-4">
+
+
                 <div class="mb-3 p-3 bg-light rounded-3 border">
-                    <strong class="text-dark">Asset ID:</strong> <span id="modal-hist-asset-id" class="text-primary fw-bold">-</span> | 
-                    <strong class="text-dark">Model:</strong> <span id="modal-hist-brand-model">-</span> | 
-                    <strong class="text-dark">Serial:</strong> <span id="modal-hist-serial">-</span> | 
-                    <strong class="text-dark">Current User:</strong> <span id="modal-hist-user">-</span>
+
+                    <strong class="text-dark">
+                        Asset ID:
+                    </strong>
+
+                    <span id="modal-hist-asset-id"
+                          class="text-primary fw-bold">
+                        -
+                    </span>
+
+                    |
+
+                    <strong class="text-dark">
+                        Model:
+                    </strong>
+
+                    <span id="modal-hist-brand-model">
+                        -
+                    </span>
+
+                    |
+
+                    <strong class="text-dark">
+                        Serial:
+                    </strong>
+
+                    <span id="modal-hist-serial">
+                        -
+                    </span>
+
+                    |
+
+                    <strong class="text-dark">
+                        Current User:
+                    </strong>
+
+                    <span id="modal-hist-user">
+                        -
+                    </span>
+
                 </div>
+
+
                 <div class="table-responsive">
+
                     <table class="table table-bordered table-striped align-middle small mb-0">
+
                         <thead class="table-light">
+
                             <tr>
+
                                 <th>Timestamp</th>
                                 <th>Action</th>
                                 <th>Employee Name</th>
                                 <th>Replacement / Notes</th>
                                 <th>Logged By</th>
+
                             </tr>
+
                         </thead>
+
                         <tbody id="modal-asset-hist-body">
+
                             <!-- Populated dynamically via JS -->
+
                         </tbody>
+
                     </table>
+
                 </div>
+
             </div>
+
+
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+
+                <button type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+
+                    Close
+
+                </button>
+
             </div>
+
         </div>
+
     </div>
+
 </div>
+
+
+
+<!-- =========================================================
+     MODEL DATABASE + DEPENDENT DROPDOWN
+========================================================= -->
+
 <script>
 
 const assetModels = {
 
+    /* =====================================================
+       HP
+    ===================================================== */
+
     "HP": [
+
         "ProBook 430 G5",
         "ProBook 430 G6",
         "ProBook 430 G7",
         "ProBook 430 G8",
         "ProBook 430 G9",
+        "ProBook 430 G10",
+
         "ProBook 440 G5",
         "ProBook 440 G6",
         "ProBook 440 G7",
         "ProBook 440 G8",
         "ProBook 440 G9",
+        "ProBook 440 G10",
+
         "ProBook 450 G5",
         "ProBook 450 G6",
         "ProBook 450 G7",
         "ProBook 450 G8",
         "ProBook 450 G9",
+        "ProBook 450 G10",
+
         "EliteBook 830 G5",
         "EliteBook 830 G6",
         "EliteBook 830 G7",
         "EliteBook 830 G8",
         "EliteBook 830 G9",
+        "EliteBook 830 G10",
+
         "EliteBook 840 G5",
         "EliteBook 840 G6",
         "EliteBook 840 G7",
         "EliteBook 840 G8",
         "EliteBook 840 G9",
         "EliteBook 840 G10",
+
         "EliteBook 850 G5",
         "EliteBook 850 G6",
         "EliteBook 850 G7",
         "EliteBook 850 G8",
         "EliteBook 850 G9",
         "EliteBook 850 G10",
+
         "EliteBook 1040 G5",
         "EliteBook 1040 G6",
         "EliteBook 1040 G7",
         "EliteBook 1040 G8",
         "EliteBook 1040 G9",
+
         "ZBook 15 G5",
         "ZBook 15 G6",
         "ZBook 15 G7",
         "ZBook 15 G8",
+
         "ZBook Firefly 14 G7",
         "ZBook Firefly 14 G8",
         "ZBook Firefly 14 G9",
         "ZBook Firefly 14 G10",
+
+        "ZBook Firefly 15 G7",
+        "ZBook Firefly 15 G8",
+        "ZBook Firefly 15 G9",
+        "ZBook Firefly 15 G10",
+
         "ZBook Power 15 G7",
         "ZBook Power 15 G8",
         "ZBook Power 15 G9",
+        "ZBook Power 15 G10",
+
         "ZBook Fury 15 G7",
         "ZBook Fury 15 G8",
+        "ZBook Fury 15 G9",
+
         "Pavilion 14",
         "Pavilion 15",
         "Pavilion x360 14",
         "Pavilion x360 15",
+
         "Envy 13",
         "Envy 14",
         "Envy 15",
         "Envy x360 13",
         "Envy x360 14",
         "Envy x360 15",
+
         "Spectre x360 13",
         "Spectre x360 14",
         "Spectre x360 15",
+
         "ProDesk 400 G5",
         "ProDesk 400 G6",
         "ProDesk 400 G7",
         "ProDesk 600 G5",
         "ProDesk 600 G6",
+        "ProDesk 600 G7",
+
         "EliteDesk 800 G5",
         "EliteDesk 800 G6",
         "EliteDesk 800 G7",
+
         "HP 240 G8",
         "HP 240 G9",
+        "HP 240 G10",
+
         "HP 250 G8",
         "HP 250 G9",
         "HP 250 G10"
+
     ],
 
+
+    /* =====================================================
+       DELL
+    ===================================================== */
+
     "Dell": [
+
         "Latitude 3300",
         "Latitude 3310",
         "Latitude 3320",
+        "Latitude 3330",
+
         "Latitude 3420",
         "Latitude 3430",
         "Latitude 3440",
+
         "Latitude 3520",
         "Latitude 3530",
         "Latitude 3540",
+
         "Latitude 5400",
         "Latitude 5410",
         "Latitude 5420",
         "Latitude 5430",
         "Latitude 5440",
+
         "Latitude 5500",
         "Latitude 5510",
         "Latitude 5520",
         "Latitude 5530",
         "Latitude 5540",
+
         "Latitude 7200",
         "Latitude 7210",
+
         "Latitude 7300",
         "Latitude 7310",
         "Latitude 7320",
         "Latitude 7330",
         "Latitude 7340",
+
         "Latitude 7400",
         "Latitude 7410",
         "Latitude 7420",
         "Latitude 7430",
         "Latitude 7440",
+
         "Latitude 7500",
         "Latitude 7510",
         "Latitude 7520",
         "Latitude 7530",
         "Latitude 7540",
+
         "Latitude 9420",
         "Latitude 9430",
         "Latitude 9440",
+
         "Vostro 3400",
         "Vostro 3410",
         "Vostro 3420",
         "Vostro 3430",
+
         "Vostro 3500",
         "Vostro 3510",
         "Vostro 3520",
         "Vostro 3530",
+
         "Inspiron 13",
         "Inspiron 14",
         "Inspiron 15",
         "Inspiron 16",
+
         "Inspiron 3511",
         "Inspiron 3520",
         "Inspiron 3530",
+
         "Inspiron 5410",
         "Inspiron 5420",
         "Inspiron 5430",
+
         "Inspiron 5518",
         "Inspiron 5520",
         "Inspiron 5530",
+
         "Precision 3540",
         "Precision 3550",
         "Precision 3560",
         "Precision 3570",
         "Precision 3580",
         "Precision 3581",
+
         "Precision 5540",
         "Precision 5550",
         "Precision 5560",
         "Precision 5570",
         "Precision 5680",
+
         "Precision 7540",
         "Precision 7550",
         "Precision 7560",
         "Precision 7670",
+
         "Precision 7740",
         "Precision 7750",
         "Precision 7760",
+
         "XPS 13",
         "XPS 13 9300",
         "XPS 13 9310",
         "XPS 13 9320",
         "XPS 13 Plus",
+
         "XPS 15",
         "XPS 15 9500",
         "XPS 15 9510",
         "XPS 15 9520",
         "XPS 15 9530",
+
         "XPS 17",
         "XPS 17 9700",
         "XPS 17 9710",
         "XPS 17 9720",
+
         "OptiPlex 3080",
         "OptiPlex 3090",
         "OptiPlex 5080",
         "OptiPlex 5090",
         "OptiPlex 7080",
         "OptiPlex 7090",
+
         "Dell G15",
         "Dell G16"
+
     ],
 
+
+    /* =====================================================
+       LENOVO
+    ===================================================== */
+
     "Lenovo": [
+
         "ThinkPad T14",
         "ThinkPad T14 Gen 2",
         "ThinkPad T14 Gen 3",
         "ThinkPad T14 Gen 4",
         "ThinkPad T14 Gen 5",
+
         "ThinkPad T15",
         "ThinkPad T15 Gen 2",
+
         "ThinkPad T16",
         "ThinkPad T16 Gen 2",
+        "ThinkPad T16 Gen 3",
+
         "ThinkPad E14",
         "ThinkPad E14 Gen 2",
         "ThinkPad E14 Gen 3",
         "ThinkPad E14 Gen 4",
         "ThinkPad E14 Gen 5",
+
         "ThinkPad E15",
         "ThinkPad E15 Gen 2",
         "ThinkPad E15 Gen 3",
         "ThinkPad E15 Gen 4",
+
         "ThinkPad L14",
         "ThinkPad L14 Gen 2",
         "ThinkPad L14 Gen 3",
         "ThinkPad L14 Gen 4",
+        "ThinkPad L14 Gen 5",
+
         "ThinkPad L15",
         "ThinkPad L15 Gen 2",
         "ThinkPad L15 Gen 3",
         "ThinkPad L15 Gen 4",
+
         "ThinkPad X1 Carbon Gen 7",
         "ThinkPad X1 Carbon Gen 8",
         "ThinkPad X1 Carbon Gen 9",
         "ThinkPad X1 Carbon Gen 10",
         "ThinkPad X1 Carbon Gen 11",
         "ThinkPad X1 Carbon Gen 12",
+
         "ThinkPad X1 Yoga Gen 5",
         "ThinkPad X1 Yoga Gen 6",
         "ThinkPad X1 Yoga Gen 7",
+
         "ThinkPad X13",
         "ThinkPad X13 Gen 2",
         "ThinkPad X13 Gen 3",
         "ThinkPad X13 Gen 4",
+
         "ThinkPad P14s",
         "ThinkPad P14s Gen 2",
         "ThinkPad P14s Gen 3",
         "ThinkPad P14s Gen 4",
+
         "ThinkPad P15",
         "ThinkPad P15 Gen 2",
+
         "ThinkPad P16",
         "ThinkPad P16 Gen 2",
+
         "ThinkBook 13s",
+
         "ThinkBook 14",
         "ThinkBook 14 Gen 2",
         "ThinkBook 14 Gen 3",
         "ThinkBook 14 Gen 4",
         "ThinkBook 14 Gen 5",
+
         "ThinkBook 15",
         "ThinkBook 15 Gen 2",
         "ThinkBook 15 Gen 3",
+
         "ThinkBook 16",
+        "ThinkBook 16 Gen 2",
+
         "IdeaPad 1",
         "IdeaPad 3",
         "IdeaPad 5",
+
         "IdeaPad Slim 3",
         "IdeaPad Slim 5",
+
         "IdeaPad Flex 5",
         "IdeaPad Gaming 3",
+
         "Yoga Slim 6",
         "Yoga Slim 7",
+
         "Yoga 6",
         "Yoga 7",
         "Yoga 9i",
+
         "V14",
         "V15",
         "V15 Gen 2",
         "V15 Gen 3",
+
         "Legion 5",
         "Legion 5 Pro",
         "Legion 7",
+
         "Legion Slim 5",
         "Legion Slim 7"
+
     ],
 
+
+    /* =====================================================
+       ASUS
+    ===================================================== */
+
     "ASUS": [
+
         "VivoBook 14",
         "VivoBook 15",
         "VivoBook 16",
+
         "VivoBook S14",
         "VivoBook S15",
         "VivoBook S16",
+
         "VivoBook Pro 14",
         "VivoBook Pro 15",
         "VivoBook Pro 16",
+
         "ExpertBook B1",
         "ExpertBook B1400",
         "ExpertBook B1500",
         "ExpertBook B5",
         "ExpertBook B9",
+
         "ZenBook 13",
         "ZenBook 14",
         "ZenBook 15",
+
         "ZenBook 14 OLED",
         "ZenBook S 13",
         "ZenBook S 14",
+
         "ZenBook Pro 14",
         "ZenBook Pro 15",
         "ZenBook Pro 16",
+
         "TUF Gaming F15",
         "TUF Gaming F17",
+
         "TUF Gaming A15",
         "TUF Gaming A17",
         "TUF Gaming A16",
+
         "ROG Zephyrus G14",
         "ROG Zephyrus G15",
         "ROG Zephyrus G16",
+
         "ROG Zephyrus M16",
+
         "ROG Strix G15",
         "ROG Strix G16",
         "ROG Strix G17",
+
         "ASUS Laptop 14",
         "ASUS Laptop 15",
         "ASUS Laptop 16",
+
         "Chromebook C202",
         "Chromebook C214",
         "Chromebook C425"
+
     ],
 
-    "Mac": [
+
+    /* =====================================================
+       APPLE / MAC
+    ===================================================== */
+
+    "Apple": [
+
         "MacBook Air 2018",
         "MacBook Air 2019",
         "MacBook Air 2020",
+
         "MacBook Air M1",
         "MacBook Air M2",
         "MacBook Air M3",
         "MacBook Air M4",
+
         "MacBook Pro 13 2019",
         "MacBook Pro 13 2020",
+
         "MacBook Pro 13 M1",
         "MacBook Pro 13 M2",
+
         "MacBook Pro 14 M1 Pro",
+        "MacBook Pro 14 M1 Max",
+
         "MacBook Pro 14 M2 Pro",
+        "MacBook Pro 14 M2 Max",
+
         "MacBook Pro 14 M3",
         "MacBook Pro 14 M3 Pro",
+        "MacBook Pro 14 M3 Max",
+
         "MacBook Pro 14 M4",
         "MacBook Pro 14 M4 Pro",
+        "MacBook Pro 14 M4 Max",
+
         "MacBook Pro 16 M1 Pro",
         "MacBook Pro 16 M1 Max",
+
         "MacBook Pro 16 M2 Pro",
         "MacBook Pro 16 M2 Max",
+
         "MacBook Pro 16 M3 Pro",
         "MacBook Pro 16 M3 Max",
+
         "MacBook Pro 16 M4 Pro",
         "MacBook Pro 16 M4 Max",
+
         "Mac Mini",
         "Mac Studio",
+
         "iMac 21.5",
         "iMac 24",
         "iMac 27",
+
         "Mac Pro"
+
     ]
+
 };
 
 
-/* ==========================================
+/* =========================================================
    POPULATE MODEL DROPDOWN
-   ========================================== */
+========================================================= */
 
 function populateModels(brandSelect, modelSelect, currentModel = "") {
 
+    if (!brandSelect || !modelSelect) {
+        return;
+    }
+
+
     const brand = brandSelect.value;
-
-    modelSelect.innerHTML = "";
-
-    const defaultOption = document.createElement("option");
-    defaultOption.value = "";
-    defaultOption.textContent = "-- Select Model --";
-    modelSelect.appendChild(defaultOption);
 
     const models = assetModels[brand] || [];
 
-    /*
-     * If an existing database model is not
-     * in our list, keep it.
-     */
-    if (currentModel && !models.includes(currentModel)) {
 
-        const existingOption = document.createElement("option");
+    /* Clear existing options */
+
+    modelSelect.innerHTML = "";
+
+
+    /* Default option */
+
+    const defaultOption =
+        document.createElement("option");
+
+    defaultOption.value = "";
+    defaultOption.textContent = "-- Select Model --";
+
+    modelSelect.appendChild(defaultOption);
+
+
+    /*
+     * Existing model protection.
+     *
+     * If an old model exists in the database but
+     * is not present in our JavaScript model list,
+     * don't remove it.
+     */
+
+    if (
+        currentModel &&
+        !models.includes(currentModel)
+    ) {
+
+        const existingOption =
+            document.createElement("option");
 
         existingOption.value = currentModel;
-        existingOption.textContent = currentModel;
+        existingOption.textContent =
+            currentModel + " (Existing)";
+
         existingOption.selected = true;
 
         modelSelect.appendChild(existingOption);
+
     }
+
+
+    /* Add models */
 
     models.forEach(function(model) {
 
-        const option = document.createElement("option");
+        const option =
+            document.createElement("option");
 
         option.value = model;
         option.textContent = model;
+
 
         if (model === currentModel) {
             option.selected = true;
         }
 
+
         modelSelect.appendChild(option);
 
     });
+
 }
 
 
-/* ==========================================
+/* =========================================================
    PAGE LOAD
-   ========================================== */
+========================================================= */
 
-document.addEventListener("DOMContentLoaded", function() {
-
-
-    /* --------------------------------------
-       ADD NEW ASSET
-       -------------------------------------- */
-
-    const newBrand =
-        document.getElementById("newAssetBrand");
-
-    const newModel =
-        document.getElementById("newAssetModel");
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
 
 
-    if (newBrand && newModel) {
+        /* =================================================
+           ADD ASSET
+        ================================================= */
 
-        newBrand.addEventListener("change", function() {
-
-            populateModels(
-                newBrand,
-                newModel
+        const newBrand =
+            document.getElementById(
+                "newAssetBrand"
             );
 
-        });
+        const newModel =
+            document.getElementById(
+                "newAssetModel"
+            );
 
-    }
 
-
-    /* --------------------------------------
-       EDIT ASSET
-       -------------------------------------- */
-
-    document.querySelectorAll(".edit-brand").forEach(
-        function(brandSelect) {
-
-            const modelId =
-                brandSelect.dataset.modelTarget;
-
-            const modelSelect =
-                document.getElementById(modelId);
-
-            if (!modelSelect) {
-                return;
-            }
+        if (newBrand && newModel) {
 
 
             /*
-             * Existing model from database
+             * Initially show instruction
              */
-            const currentModel =
-                modelSelect.dataset.currentModel || "";
 
+            newModel.innerHTML = "";
 
-            /*
-             * Populate when page loads
-             */
-            populateModels(
-                brandSelect,
-                modelSelect,
-                currentModel
+            const defaultAddOption =
+                document.createElement("option");
+
+            defaultAddOption.value = "";
+
+            defaultAddOption.textContent =
+                "-- Select Brand First --";
+
+            newModel.appendChild(
+                defaultAddOption
             );
 
 
             /*
-             * Repopulate when brand changes
+             * Brand changed
              */
-            brandSelect.addEventListener(
+
+            newBrand.addEventListener(
                 "change",
                 function() {
 
                     populateModels(
-                        brandSelect,
-                        modelSelect
+                        newBrand,
+                        newModel
                     );
 
                 }
             );
 
         }
-    );
 
-});
+
+        /* =================================================
+           EDIT ASSETS
+        ================================================= */
+
+        document
+            .querySelectorAll(".edit-brand")
+            .forEach(
+                function(brandSelect) {
+
+
+                    const modelId =
+                        brandSelect.dataset.modelTarget;
+
+
+                    const modelSelect =
+                        document.getElementById(
+                            modelId
+                        );
+
+
+                    if (!modelSelect) {
+                        return;
+                    }
+
+
+                    /*
+                     * Get existing database model
+                     */
+
+                    const currentModel =
+                        modelSelect.dataset.currentModel ||
+                        "";
+
+
+                    /*
+                     * Populate model list
+                     * when page loads.
+                     */
+
+                    populateModels(
+                        brandSelect,
+                        modelSelect,
+                        currentModel
+                    );
+
+
+                    /*
+                     * When brand changes,
+                     * clear old model and load
+                     * new brand models.
+                     */
+
+                    brandSelect.addEventListener(
+                        "change",
+                        function() {
+
+                            populateModels(
+                                brandSelect,
+                                modelSelect
+                            );
+
+                        }
+                    );
+
+                }
+            );
+
+    }
+);
 
 </script>
+
 {% endblock %}
