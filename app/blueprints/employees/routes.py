@@ -22,28 +22,51 @@ def index():
     page = request.args.get('page', 1, type=int)
 
     query = Employee.query
-if search_q:
-    query = query.filter(
-        (Employee.name.ilike(f'%{search_q}%')) |
-        (Employee.employee_id.ilike(f'%{search_q}%')) |
-        (Employee.email.ilike(f'%{search_q}%')) |
-        (Employee.designation.ilike(f'%{search_q}%'))
+
+    if search_q:
+        query = query.filter(
+            (Employee.name.ilike(f'%{search_q}%')) |
+            (Employee.employee_id.ilike(f'%{search_q}%')) |
+            (Employee.email.ilike(f'%{search_q}%')) |
+            (Employee.designation.ilike(f'%{search_q}%'))
+        )
+
+    # Support one or multiple employee statuses
+    if status_filter:
+        status_values = [
+            s.strip()
+            for s in status_filter.split(',')
+            if s.strip()
+        ]
+        query = query.filter(
+            Employee.account_status.in_(status_values)
+        )
+
+    if dept_filter:
+        query = query.filter_by(department=dept_filter)
+
+    pagination = query.order_by(
+        Employee.created_at.desc(),
+        Employee.name.asc()
+    ).paginate(
+        page=page,
+        per_page=10,
+        error_out=False
     )
 
-if status_filter:
-    status_values = [s.strip() for s in status_filter.split(',') if s.strip()]
-    query = query.filter(Employee.account_status.in_(status_values))
-
-if dept_filter:
-    query = query.filter_by(department=dept_filter)
-
-    pagination = query.order_by(Employee.created_at.desc(), Employee.name.asc()).paginate(page=page, per_page=10, error_out=False)
     employees = pagination.items
 
-    # Distinct departments for filter dropdown
-    departments = [d[0] for d in db.session.query(Employee.department).distinct().all() if d[0]]
-    # Available assets for onboarding laptop allocation
-    available_assets = Asset.query.filter_by(status=AssetStatus.AVAILABLE).order_by(Asset.brand.asc()).all()
+    departments = [
+        d[0]
+        for d in db.session.query(Employee.department).distinct().all()
+        if d[0]
+    ]
+
+    available_assets = Asset.query.filter_by(
+        status=AssetStatus.AVAILABLE
+    ).order_by(
+        Asset.brand.asc()
+    ).all()
 
     return render_template(
         'employees/index.html',
@@ -54,10 +77,14 @@ if dept_filter:
         dept_filter=dept_filter,
         departments=departments,
         available_assets=available_assets,
-        account_statuses=[AccountStatus.ONBOARDED, AccountStatus.ACTIVE, AccountStatus.BLOCKED, AccountStatus.DISABLED, AccountStatus.OFFBOARDED]
+        account_statuses=[
+            AccountStatus.ONBOARDED,
+            AccountStatus.ACTIVE,
+            AccountStatus.BLOCKED,
+            AccountStatus.DISABLED,
+            AccountStatus.OFFBOARDED
+        ]
     )
-
-
 @employees_bp.route('/onboard', methods=['POST'])
 @login_required
 def onboard_employee():
