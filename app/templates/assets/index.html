@@ -298,10 +298,15 @@
                                 Asset ID
                             </label>
 
-                            <input type="text"
-                                   class="form-control"
-                                   value="{{ ast.asset_id }}"
-                                   disabled>
+                            <select name="model"
+        id="edit-model-{{ ast.id }}"
+        class="form-select edit-model"
+        data-current-model="{{ ast.model|e }}"
+        required>
+
+    <option value="">-- Select Model --</option>
+
+</select>
                         </div>
 
                         <div class="col-md-6">
@@ -309,15 +314,33 @@
                                 Brand
                             </label>
 
-                           <select name="brand" class="form-select" required>
-    <option value="Dell" {% if ast.brand == 'Dell' %}selected{% endif %}>Dell</option>
-    <option value="HP" {% if ast.brand == 'HP' %}selected{% endif %}>HP</option>
-    <option value="Lenovo" {% if ast.brand == 'Lenovo' %}selected{% endif %}>Lenovo</option>
-    <option value="Apple" {% if ast.brand == 'Apple' %}selected{% endif %}>Apple</option>
-    <option value="Acer" {% if ast.brand == 'Acer' %}selected{% endif %}>Acer</option>
-    <option value="ASUS" {% if ast.brand == 'ASUS' %}selected{% endif %}>ASUS</option>
-    <option value="Microsoft" {% if ast.brand == 'Microsoft' %}selected{% endif %}>Microsoft</option>
-    <option value="Other" {% if ast.brand == 'Other' %}selected{% endif %}>Other</option>
+       <select name="brand"
+        class="form-select edit-brand"
+        data-model-target="edit-model-{{ ast.id }}"
+        required>
+
+    <option value="">-- Select Brand --</option>
+
+    <option value="HP" {% if ast.brand == 'HP' %}selected{% endif %}>
+        HP
+    </option>
+
+    <option value="Dell" {% if ast.brand == 'Dell' %}selected{% endif %}>
+        Dell
+    </option>
+
+    <option value="Lenovo" {% if ast.brand == 'Lenovo' %}selected{% endif %}>
+        Lenovo
+    </option>
+
+    <option value="ASUS" {% if ast.brand == 'ASUS' %}selected{% endif %}>
+        ASUS
+    </option>
+
+    <option value="Mac" {% if ast.brand == 'Mac' %}selected{% endif %}>
+        Mac
+    </option>
+
 </select>
                         </div>
 
@@ -468,16 +491,18 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Brand / Manufacturer</label>
-                            <select name="brand" class="form-select" required>
+                           <select name="brand"
+        id="newAssetBrand"
+        class="form-select"
+        required>
+
     <option value="">-- Select Brand --</option>
-    <option value="Dell">Dell</option>
     <option value="HP">HP</option>
+    <option value="Dell">Dell</option>
     <option value="Lenovo">Lenovo</option>
-    <option value="Apple">Apple</option>
-    <option value="Acer">Acer</option>
     <option value="ASUS">ASUS</option>
-    <option value="Microsoft">Microsoft</option>
-    <option value="Other">Other</option>
+    <option value="Mac">Mac</option>
+
 </select>
                         </div>
                         <div class="col-md-6">
@@ -655,4 +680,488 @@
         </div>
     </div>
 </div>
+<script>
+
+const assetModels = {
+
+    "HP": [
+        "ProBook 430 G5",
+        "ProBook 430 G6",
+        "ProBook 430 G7",
+        "ProBook 430 G8",
+        "ProBook 430 G9",
+        "ProBook 440 G5",
+        "ProBook 440 G6",
+        "ProBook 440 G7",
+        "ProBook 440 G8",
+        "ProBook 440 G9",
+        "ProBook 450 G5",
+        "ProBook 450 G6",
+        "ProBook 450 G7",
+        "ProBook 450 G8",
+        "ProBook 450 G9",
+        "EliteBook 830 G5",
+        "EliteBook 830 G6",
+        "EliteBook 830 G7",
+        "EliteBook 830 G8",
+        "EliteBook 830 G9",
+        "EliteBook 840 G5",
+        "EliteBook 840 G6",
+        "EliteBook 840 G7",
+        "EliteBook 840 G8",
+        "EliteBook 840 G9",
+        "EliteBook 840 G10",
+        "EliteBook 850 G5",
+        "EliteBook 850 G6",
+        "EliteBook 850 G7",
+        "EliteBook 850 G8",
+        "EliteBook 850 G9",
+        "EliteBook 850 G10",
+        "EliteBook 1040 G5",
+        "EliteBook 1040 G6",
+        "EliteBook 1040 G7",
+        "EliteBook 1040 G8",
+        "EliteBook 1040 G9",
+        "ZBook 15 G5",
+        "ZBook 15 G6",
+        "ZBook 15 G7",
+        "ZBook 15 G8",
+        "ZBook Firefly 14 G7",
+        "ZBook Firefly 14 G8",
+        "ZBook Firefly 14 G9",
+        "ZBook Firefly 14 G10",
+        "ZBook Power 15 G7",
+        "ZBook Power 15 G8",
+        "ZBook Power 15 G9",
+        "ZBook Fury 15 G7",
+        "ZBook Fury 15 G8",
+        "Pavilion 14",
+        "Pavilion 15",
+        "Pavilion x360 14",
+        "Pavilion x360 15",
+        "Envy 13",
+        "Envy 14",
+        "Envy 15",
+        "Envy x360 13",
+        "Envy x360 14",
+        "Envy x360 15",
+        "Spectre x360 13",
+        "Spectre x360 14",
+        "Spectre x360 15",
+        "ProDesk 400 G5",
+        "ProDesk 400 G6",
+        "ProDesk 400 G7",
+        "ProDesk 600 G5",
+        "ProDesk 600 G6",
+        "EliteDesk 800 G5",
+        "EliteDesk 800 G6",
+        "EliteDesk 800 G7",
+        "HP 240 G8",
+        "HP 240 G9",
+        "HP 250 G8",
+        "HP 250 G9",
+        "HP 250 G10"
+    ],
+
+    "Dell": [
+        "Latitude 3300",
+        "Latitude 3310",
+        "Latitude 3320",
+        "Latitude 3420",
+        "Latitude 3430",
+        "Latitude 3440",
+        "Latitude 3520",
+        "Latitude 3530",
+        "Latitude 3540",
+        "Latitude 5400",
+        "Latitude 5410",
+        "Latitude 5420",
+        "Latitude 5430",
+        "Latitude 5440",
+        "Latitude 5500",
+        "Latitude 5510",
+        "Latitude 5520",
+        "Latitude 5530",
+        "Latitude 5540",
+        "Latitude 7200",
+        "Latitude 7210",
+        "Latitude 7300",
+        "Latitude 7310",
+        "Latitude 7320",
+        "Latitude 7330",
+        "Latitude 7340",
+        "Latitude 7400",
+        "Latitude 7410",
+        "Latitude 7420",
+        "Latitude 7430",
+        "Latitude 7440",
+        "Latitude 7500",
+        "Latitude 7510",
+        "Latitude 7520",
+        "Latitude 7530",
+        "Latitude 7540",
+        "Latitude 9420",
+        "Latitude 9430",
+        "Latitude 9440",
+        "Vostro 3400",
+        "Vostro 3410",
+        "Vostro 3420",
+        "Vostro 3430",
+        "Vostro 3500",
+        "Vostro 3510",
+        "Vostro 3520",
+        "Vostro 3530",
+        "Inspiron 13",
+        "Inspiron 14",
+        "Inspiron 15",
+        "Inspiron 16",
+        "Inspiron 3511",
+        "Inspiron 3520",
+        "Inspiron 3530",
+        "Inspiron 5410",
+        "Inspiron 5420",
+        "Inspiron 5430",
+        "Inspiron 5518",
+        "Inspiron 5520",
+        "Inspiron 5530",
+        "Precision 3540",
+        "Precision 3550",
+        "Precision 3560",
+        "Precision 3570",
+        "Precision 3580",
+        "Precision 3581",
+        "Precision 5540",
+        "Precision 5550",
+        "Precision 5560",
+        "Precision 5570",
+        "Precision 5680",
+        "Precision 7540",
+        "Precision 7550",
+        "Precision 7560",
+        "Precision 7670",
+        "Precision 7740",
+        "Precision 7750",
+        "Precision 7760",
+        "XPS 13",
+        "XPS 13 9300",
+        "XPS 13 9310",
+        "XPS 13 9320",
+        "XPS 13 Plus",
+        "XPS 15",
+        "XPS 15 9500",
+        "XPS 15 9510",
+        "XPS 15 9520",
+        "XPS 15 9530",
+        "XPS 17",
+        "XPS 17 9700",
+        "XPS 17 9710",
+        "XPS 17 9720",
+        "OptiPlex 3080",
+        "OptiPlex 3090",
+        "OptiPlex 5080",
+        "OptiPlex 5090",
+        "OptiPlex 7080",
+        "OptiPlex 7090",
+        "Dell G15",
+        "Dell G16"
+    ],
+
+    "Lenovo": [
+        "ThinkPad T14",
+        "ThinkPad T14 Gen 2",
+        "ThinkPad T14 Gen 3",
+        "ThinkPad T14 Gen 4",
+        "ThinkPad T14 Gen 5",
+        "ThinkPad T15",
+        "ThinkPad T15 Gen 2",
+        "ThinkPad T16",
+        "ThinkPad T16 Gen 2",
+        "ThinkPad E14",
+        "ThinkPad E14 Gen 2",
+        "ThinkPad E14 Gen 3",
+        "ThinkPad E14 Gen 4",
+        "ThinkPad E14 Gen 5",
+        "ThinkPad E15",
+        "ThinkPad E15 Gen 2",
+        "ThinkPad E15 Gen 3",
+        "ThinkPad E15 Gen 4",
+        "ThinkPad L14",
+        "ThinkPad L14 Gen 2",
+        "ThinkPad L14 Gen 3",
+        "ThinkPad L14 Gen 4",
+        "ThinkPad L15",
+        "ThinkPad L15 Gen 2",
+        "ThinkPad L15 Gen 3",
+        "ThinkPad L15 Gen 4",
+        "ThinkPad X1 Carbon Gen 7",
+        "ThinkPad X1 Carbon Gen 8",
+        "ThinkPad X1 Carbon Gen 9",
+        "ThinkPad X1 Carbon Gen 10",
+        "ThinkPad X1 Carbon Gen 11",
+        "ThinkPad X1 Carbon Gen 12",
+        "ThinkPad X1 Yoga Gen 5",
+        "ThinkPad X1 Yoga Gen 6",
+        "ThinkPad X1 Yoga Gen 7",
+        "ThinkPad X13",
+        "ThinkPad X13 Gen 2",
+        "ThinkPad X13 Gen 3",
+        "ThinkPad X13 Gen 4",
+        "ThinkPad P14s",
+        "ThinkPad P14s Gen 2",
+        "ThinkPad P14s Gen 3",
+        "ThinkPad P14s Gen 4",
+        "ThinkPad P15",
+        "ThinkPad P15 Gen 2",
+        "ThinkPad P16",
+        "ThinkPad P16 Gen 2",
+        "ThinkBook 13s",
+        "ThinkBook 14",
+        "ThinkBook 14 Gen 2",
+        "ThinkBook 14 Gen 3",
+        "ThinkBook 14 Gen 4",
+        "ThinkBook 14 Gen 5",
+        "ThinkBook 15",
+        "ThinkBook 15 Gen 2",
+        "ThinkBook 15 Gen 3",
+        "ThinkBook 16",
+        "IdeaPad 1",
+        "IdeaPad 3",
+        "IdeaPad 5",
+        "IdeaPad Slim 3",
+        "IdeaPad Slim 5",
+        "IdeaPad Flex 5",
+        "IdeaPad Gaming 3",
+        "Yoga Slim 6",
+        "Yoga Slim 7",
+        "Yoga 6",
+        "Yoga 7",
+        "Yoga 9i",
+        "V14",
+        "V15",
+        "V15 Gen 2",
+        "V15 Gen 3",
+        "Legion 5",
+        "Legion 5 Pro",
+        "Legion 7",
+        "Legion Slim 5",
+        "Legion Slim 7"
+    ],
+
+    "ASUS": [
+        "VivoBook 14",
+        "VivoBook 15",
+        "VivoBook 16",
+        "VivoBook S14",
+        "VivoBook S15",
+        "VivoBook S16",
+        "VivoBook Pro 14",
+        "VivoBook Pro 15",
+        "VivoBook Pro 16",
+        "ExpertBook B1",
+        "ExpertBook B1400",
+        "ExpertBook B1500",
+        "ExpertBook B5",
+        "ExpertBook B9",
+        "ZenBook 13",
+        "ZenBook 14",
+        "ZenBook 15",
+        "ZenBook 14 OLED",
+        "ZenBook S 13",
+        "ZenBook S 14",
+        "ZenBook Pro 14",
+        "ZenBook Pro 15",
+        "ZenBook Pro 16",
+        "TUF Gaming F15",
+        "TUF Gaming F17",
+        "TUF Gaming A15",
+        "TUF Gaming A17",
+        "TUF Gaming A16",
+        "ROG Zephyrus G14",
+        "ROG Zephyrus G15",
+        "ROG Zephyrus G16",
+        "ROG Zephyrus M16",
+        "ROG Strix G15",
+        "ROG Strix G16",
+        "ROG Strix G17",
+        "ASUS Laptop 14",
+        "ASUS Laptop 15",
+        "ASUS Laptop 16",
+        "Chromebook C202",
+        "Chromebook C214",
+        "Chromebook C425"
+    ],
+
+    "Mac": [
+        "MacBook Air 2018",
+        "MacBook Air 2019",
+        "MacBook Air 2020",
+        "MacBook Air M1",
+        "MacBook Air M2",
+        "MacBook Air M3",
+        "MacBook Air M4",
+        "MacBook Pro 13 2019",
+        "MacBook Pro 13 2020",
+        "MacBook Pro 13 M1",
+        "MacBook Pro 13 M2",
+        "MacBook Pro 14 M1 Pro",
+        "MacBook Pro 14 M2 Pro",
+        "MacBook Pro 14 M3",
+        "MacBook Pro 14 M3 Pro",
+        "MacBook Pro 14 M4",
+        "MacBook Pro 14 M4 Pro",
+        "MacBook Pro 16 M1 Pro",
+        "MacBook Pro 16 M1 Max",
+        "MacBook Pro 16 M2 Pro",
+        "MacBook Pro 16 M2 Max",
+        "MacBook Pro 16 M3 Pro",
+        "MacBook Pro 16 M3 Max",
+        "MacBook Pro 16 M4 Pro",
+        "MacBook Pro 16 M4 Max",
+        "Mac Mini",
+        "Mac Studio",
+        "iMac 21.5",
+        "iMac 24",
+        "iMac 27",
+        "Mac Pro"
+    ]
+};
+
+
+/* ==========================================
+   POPULATE MODEL DROPDOWN
+   ========================================== */
+
+function populateModels(brandSelect, modelSelect, currentModel = "") {
+
+    const brand = brandSelect.value;
+
+    modelSelect.innerHTML = "";
+
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "-- Select Model --";
+    modelSelect.appendChild(defaultOption);
+
+    const models = assetModels[brand] || [];
+
+    /*
+     * If an existing database model is not
+     * in our list, keep it.
+     */
+    if (currentModel && !models.includes(currentModel)) {
+
+        const existingOption = document.createElement("option");
+
+        existingOption.value = currentModel;
+        existingOption.textContent = currentModel;
+        existingOption.selected = true;
+
+        modelSelect.appendChild(existingOption);
+    }
+
+    models.forEach(function(model) {
+
+        const option = document.createElement("option");
+
+        option.value = model;
+        option.textContent = model;
+
+        if (model === currentModel) {
+            option.selected = true;
+        }
+
+        modelSelect.appendChild(option);
+
+    });
+}
+
+
+/* ==========================================
+   PAGE LOAD
+   ========================================== */
+
+document.addEventListener("DOMContentLoaded", function() {
+
+
+    /* --------------------------------------
+       ADD NEW ASSET
+       -------------------------------------- */
+
+    const newBrand =
+        document.getElementById("newAssetBrand");
+
+    const newModel =
+        document.getElementById("newAssetModel");
+
+
+    if (newBrand && newModel) {
+
+        newBrand.addEventListener("change", function() {
+
+            populateModels(
+                newBrand,
+                newModel
+            );
+
+        });
+
+    }
+
+
+    /* --------------------------------------
+       EDIT ASSET
+       -------------------------------------- */
+
+    document.querySelectorAll(".edit-brand").forEach(
+        function(brandSelect) {
+
+            const modelId =
+                brandSelect.dataset.modelTarget;
+
+            const modelSelect =
+                document.getElementById(modelId);
+
+            if (!modelSelect) {
+                return;
+            }
+
+
+            /*
+             * Existing model from database
+             */
+            const currentModel =
+                modelSelect.dataset.currentModel || "";
+
+
+            /*
+             * Populate when page loads
+             */
+            populateModels(
+                brandSelect,
+                modelSelect,
+                currentModel
+            );
+
+
+            /*
+             * Repopulate when brand changes
+             */
+            brandSelect.addEventListener(
+                "change",
+                function() {
+
+                    populateModels(
+                        brandSelect,
+                        modelSelect
+                    );
+
+                }
+            );
+
+        }
+    );
+
+});
+
+</script>
 {% endblock %}
