@@ -104,7 +104,12 @@ def get_metrics_json():
             'available_assets': asset_dist['Available'],
             'repair_assets': asset_dist['Under Repair'],
             'total_employees': Employee.query.count(),
-            'active_employees': Employee.query.filter_by(account_status=AccountStatus.ACTIVE).count(),
+            'active_employees': Employee.query.filter(
+    Employee.account_status.in_([
+        AccountStatus.ACTIVE,
+        AccountStatus.ONBOARDED
+    ])
+).count(),
             'blocked_employees': Employee.query.filter_by(account_status=AccountStatus.BLOCKED).count(),
             'disabled_employees': Employee.query.filter_by(account_status=AccountStatus.DISABLED).count(),
             'offboarded_employees': Employee.query.filter_by(account_status=AccountStatus.OFFBOARDED).count(),
