@@ -131,65 +131,56 @@
 
 <div class="row g-3 mb-4">
 
-    <!-- Active Employees -->
-    <div class="col-6 col-md-3">
-        <a href="{{ url_for('employees.index') }}"
-           class="text-decoration-none text-dark">
-            <div class="card-stat border-start border-4 border-success dashboard-clickable h-100">
-                <div class="stat-label">Active Employees</div>
-
-                <div class="stat-value text-success" id="card-active-emp">
-                    {{ active_employees }}
-                </div>
-
-                <div class="small text-muted">
-                    <i class="fas fa-users me-1"></i>
-                    Entra Directory
-                </div>
+   <!-- Active Employees -->
+<div class="col-6 col-md-3">
+    <a href="{{ url_for('employees.index', status='ACTIVE') }}"
+       class="text-decoration-none text-dark">
+        <div class="card-stat border-start border-4 border-success dashboard-clickable h-100">
+            <div class="stat-label">Active Employees</div>
+            <div class="stat-value text-success">
+                {{ active_employees }}
             </div>
-        </a>
-    </div>
-
-
-    <!-- Blocked / Disabled Employees -->
-    <div class="col-6 col-md-3">
-        <a href="{{ url_for('employees.index') }}"
-           class="text-decoration-none text-dark">
-            <div class="card-stat border-start border-4 border-warning dashboard-clickable h-100">
-                <div class="stat-label">Blocked / Disabled</div>
-
-                <div class="stat-value text-warning" id="card-blocked-emp">
-                    {{ blocked_employees + disabled_employees }}
-                </div>
-
-                <div class="small text-muted">
-                    <i class="fas fa-user-lock me-1"></i>
-                    Account Flagged
-                </div>
+            <div class="small text-muted">
+                <i class="fas fa-users me-1"></i>
+                Active Employees
             </div>
-        </a>
-    </div>
+        </div>
+    </a>
+</div>
 
-
-    <!-- Offboarded Employees -->
-    <div class="col-6 col-md-3">
-        <a href="{{ url_for('employees.index') }}"
-           class="text-decoration-none text-dark">
-            <div class="card-stat border-start border-4 border-danger dashboard-clickable h-100">
-                <div class="stat-label">Offboarded Staff</div>
-
-                <div class="stat-value text-danger" id="card-offboarded-emp">
-                    {{ offboarded_employees }}
-                </div>
-
-                <div class="small text-muted">
-                    <i class="fas fa-user-minus me-1"></i>
-                    Auto Laptop Return
-                </div>
+<!-- Blocked / Disabled -->
+<div class="col-6 col-md-3">
+    <a href="{{ url_for('employees.index', status='BLOCKED') }}"
+       class="text-decoration-none text-dark">
+        <div class="card-stat border-start border-4 border-warning dashboard-clickable h-100">
+            <div class="stat-label">Blocked / Disabled</div>
+            <div class="stat-value text-warning">
+                {{ blocked_employees + disabled_employees }}
             </div>
-        </a>
-    </div>
+            <div class="small text-muted">
+                <i class="fas fa-user-lock me-1"></i>
+                Blocked Employees
+            </div>
+        </div>
+    </a>
+</div>
 
+<!-- Offboarded Employees -->
+<div class="col-6 col-md-3">
+    <a href="{{ url_for('employees.index', status='OFFBOARDED') }}"
+       class="text-decoration-none text-dark">
+        <div class="card-stat border-start border-4 border-danger dashboard-clickable h-100">
+            <div class="stat-label">Offboarded Staff</div>
+            <div class="stat-value text-danger">
+                {{ offboarded_employees }}
+            </div>
+            <div class="small text-muted">
+                <i class="fas fa-user-minus me-1"></i>
+                Offboarded Employees
+            </div>
+        </div>
+    </a>
+</div>
 
     <!-- Open Tickets -->
     <div class="col-6 col-md-3">
