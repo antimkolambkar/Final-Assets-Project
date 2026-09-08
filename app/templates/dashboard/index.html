@@ -19,55 +19,112 @@
 </div>
 
 <!-- 1. Metric Cards Row 1: Assets -->
+
 <div class="row g-3 mb-4">
+
+    <!-- Total Assets -->
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card-stat">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="stat-label">Total Assets</span>
-                <div class="icon-box bg-primary bg-opacity-10 text-primary">
-                    <i class="fas fa-laptop"></i>
+        <a href="{{ url_for('assets.index') }}"
+           class="text-decoration-none text-dark">
+            <div class="card-stat h-100 dashboard-clickable">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="stat-label">Total Assets</span>
+
+                    <div class="icon-box bg-primary bg-opacity-10 text-primary">
+                        <i class="fas fa-laptop"></i>
+                    </div>
+                </div>
+
+                <div class="stat-value" id="card-total-assets">
+                    {{ total_assets }}
+                </div>
+
+                <div class="small text-muted mt-1">
+                    <i class="fas fa-cubes me-1"></i>
+                    Hardware Inventory
                 </div>
             </div>
-            <div class="stat-value" id="card-total-assets">{{ total_assets }}</div>
-            <div class="small text-muted mt-1"><i class="fas fa-cubes me-1"></i>Hardware Inventory</div>
-        </div>
+        </a>
     </div>
+
+
+    <!-- Assigned Assets -->
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card-stat">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="stat-label">Assigned Assets</span>
-                <div class="icon-box bg-info bg-opacity-10 text-info">
-                    <i class="fas fa-user-check"></i>
+        <a href="{{ url_for('assets.index', status='Assigned') }}"
+           class="text-decoration-none text-dark">
+            <div class="card-stat h-100 dashboard-clickable">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="stat-label">Assigned Assets</span>
+
+                    <div class="icon-box bg-info bg-opacity-10 text-info">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                </div>
+
+                <div class="stat-value text-info" id="card-assigned-assets">
+                    {{ assigned_assets }}
+                </div>
+
+                <div class="small text-muted mt-1">
+                    <i class="fas fa-link me-1"></i>
+                    Deployed to Staff
                 </div>
             </div>
-            <div class="stat-value text-info" id="card-assigned-assets">{{ assigned_assets }}</div>
-            <div class="small text-muted mt-1"><i class="fas fa-link me-1"></i>Deployed to Staff</div>
-        </div>
+        </a>
     </div>
+
+
+    <!-- Available Assets -->
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card-stat">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="stat-label">Available Assets</span>
-                <div class="icon-box bg-success bg-opacity-10 text-success">
-                    <i class="fas fa-box-open"></i>
+        <a href="{{ url_for('assets.index', status='Available') }}"
+           class="text-decoration-none text-dark">
+            <div class="card-stat h-100 dashboard-clickable">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="stat-label">Available Assets</span>
+
+                    <div class="icon-box bg-success bg-opacity-10 text-success">
+                        <i class="fas fa-box-open"></i>
+                    </div>
+                </div>
+
+                <div class="stat-value text-success" id="card-available-assets">
+                    {{ available_assets }}
+                </div>
+
+                <div class="small text-muted mt-1">
+                    <i class="fas fa-check-circle me-1"></i>
+                    Ready for Assignment
                 </div>
             </div>
-            <div class="stat-value text-success" id="card-available-assets">{{ available_assets }}</div>
-            <div class="small text-muted mt-1"><i class="fas fa-check-circle me-1"></i>Ready for Assignment</div>
-        </div>
+        </a>
     </div>
+
+
+    <!-- Repair Assets -->
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card-stat">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="stat-label">Under Repair</span>
-                <div class="icon-box bg-warning bg-opacity-10 text-warning">
-                    <i class="fas fa-wrench"></i>
+        <a href="{{ url_for('assets.index', status='Repair') }}"
+           class="text-decoration-none text-dark">
+            <div class="card-stat h-100 dashboard-clickable">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="stat-label">Under Repair</span>
+
+                    <div class="icon-box bg-warning bg-opacity-10 text-warning">
+                        <i class="fas fa-wrench"></i>
+                    </div>
+                </div>
+
+                <div class="stat-value text-warning" id="card-repair-assets">
+                    {{ repair_assets }}
+                </div>
+
+                <div class="small text-muted mt-1">
+                    <i class="fas fa-truck-repair me-1"></i>
+                    Vendor Service
                 </div>
             </div>
-            <div class="stat-value text-warning" id="card-repair-assets">{{ repair_assets }}</div>
-            <div class="small text-muted mt-1"><i class="fas fa-truck-repair me-1"></i>Vendor Service</div>
-        </div>
+        </a>
     </div>
+
 </div>
 
 <!-- 2. Metric Cards Row 2: Entra ID Employees & Tickets -->
