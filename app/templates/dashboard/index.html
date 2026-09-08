@@ -128,37 +128,89 @@
 </div>
 
 <!-- 2. Metric Cards Row 2: Entra ID Employees & Tickets -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
-        <div class="card-stat border-start border-4 border-success">
-            <div class="stat-label">Active Employees</div>
-            <div class="stat-value text-success" id="card-active-emp">{{ active_employees }}</div>
-            <div class="small text-muted">Entra Directory</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card-stat border-start border-4 border-warning">
-            <div class="stat-label">Blocked / Disabled</div>
-            <div class="stat-value text-warning" id="card-blocked-emp">{{ blocked_employees + disabled_employees }}</div>
-            <div class="small text-muted">Account Flagged</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card-stat border-start border-4 border-danger">
-            <div class="stat-label">Offboarded Staff</div>
-            <div class="stat-value text-danger" id="card-offboarded-emp">{{ offboarded_employees }}</div>
-            <div class="small text-muted">Auto Laptop Return</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card-stat border-start border-4 border-primary">
-            <div class="stat-label">Open Helpdesk Tickets</div>
-            <div class="stat-value text-primary" id="card-open-tickets">{{ open_tickets }}</div>
-            <div class="small text-muted">Pending Support</div>
-        </div>
-    </div>
-</div>
 
+<div class="row g-3 mb-4">
+
+    <!-- Active Employees -->
+    <div class="col-6 col-md-3">
+        <a href="{{ url_for('employees.index') }}"
+           class="text-decoration-none text-dark">
+            <div class="card-stat border-start border-4 border-success dashboard-clickable h-100">
+                <div class="stat-label">Active Employees</div>
+
+                <div class="stat-value text-success" id="card-active-emp">
+                    {{ active_employees }}
+                </div>
+
+                <div class="small text-muted">
+                    <i class="fas fa-users me-1"></i>
+                    Entra Directory
+                </div>
+            </div>
+        </a>
+    </div>
+
+
+    <!-- Blocked / Disabled Employees -->
+    <div class="col-6 col-md-3">
+        <a href="{{ url_for('employees.index') }}"
+           class="text-decoration-none text-dark">
+            <div class="card-stat border-start border-4 border-warning dashboard-clickable h-100">
+                <div class="stat-label">Blocked / Disabled</div>
+
+                <div class="stat-value text-warning" id="card-blocked-emp">
+                    {{ blocked_employees + disabled_employees }}
+                </div>
+
+                <div class="small text-muted">
+                    <i class="fas fa-user-lock me-1"></i>
+                    Account Flagged
+                </div>
+            </div>
+        </a>
+    </div>
+
+
+    <!-- Offboarded Employees -->
+    <div class="col-6 col-md-3">
+        <a href="{{ url_for('employees.index') }}"
+           class="text-decoration-none text-dark">
+            <div class="card-stat border-start border-4 border-danger dashboard-clickable h-100">
+                <div class="stat-label">Offboarded Staff</div>
+
+                <div class="stat-value text-danger" id="card-offboarded-emp">
+                    {{ offboarded_employees }}
+                </div>
+
+                <div class="small text-muted">
+                    <i class="fas fa-user-minus me-1"></i>
+                    Auto Laptop Return
+                </div>
+            </div>
+        </a>
+    </div>
+
+
+    <!-- Open Tickets -->
+    <div class="col-6 col-md-3">
+        <a href="{{ url_for('tickets.index') }}"
+           class="text-decoration-none text-dark">
+            <div class="card-stat border-start border-4 border-primary dashboard-clickable h-100">
+                <div class="stat-label">Open Helpdesk Tickets</div>
+
+                <div class="stat-value text-primary" id="card-open-tickets">
+                    {{ open_tickets }}
+                </div>
+
+                <div class="small text-muted">
+                    <i class="fas fa-ticket-alt me-1"></i>
+                    Pending Support
+                </div>
+            </div>
+        </a>
+    </div>
+
+</div>
 <!-- 3. Charts Row -->
 <div class="row g-4 mb-4">
     <div class="col-12 col-lg-6">
