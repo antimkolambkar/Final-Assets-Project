@@ -410,8 +410,17 @@
 
                                 </li>
 
+                                <!-- Send Back to Vendor -->
+    <li>
+        <button class="dropdown-item text-danger"
+                data-bs-toggle="modal"
+                data-bs-target="#vendorReturnModal{{ ast.id }}">
+            <i class="fas fa-truck-loading me-2"></i>
+            Send Back to Vendor
+        </button>
+    </li>
 
-                                {% elif ast.status == 'Assigned' %}
+{% elif ast.status == 'Assigned' %}
 
                                 <!-- Return -->
                                 <li>
