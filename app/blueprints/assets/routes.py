@@ -409,3 +409,77 @@ def get_asset_history(asset_id):
         'assigned_user': asset.assigned_user_name,
         'history': h_data
     })
+    return jsonify({
+        'asset_id': asset.asset_id,
+        'brand_model': f"{asset.brand} {asset.model}",
+        'serial_number': asset.serial_number,
+        'assigned_user': asset.assigned_user_name,
+        'history': h_data
+    })
+
+
+@assets_bp.route('/return-to-vendor', methods=['POST'])
+@login_required
+def return_to_vendor():
+    if not current_user.is_it_admin:
+        flash('Permission denied. Only IT Admins can return assets to vendors.', 'danger')
+        return redirect(url_for('assets.index'))
+
+    asset_id = request.form.get('asset_id', type=int)
+    vendor_id = request.form.get('vendor_id', type=int)
+    reason = request.form.get('reason', '').strip()
+
+    asset = Asset.query.get_or_404(asset_id)
+    vendor = Vendor.query.get_or_404(vendor_id)
+
+    if vendor.name not in ['Techvity', 'Spurge']:
+        flash('This vendor is not allowed for vendor return.', 'danger')
+        return redirect(url_for('assets.index'))
+
+    if asset.status == AssetStatus.ASSIGNED:
+        flash(
+            f'Cannot return assigned asset {asset.asset_id} to vendor. '
+            'Return it from the employee first.',
+            'warning'
+        )
+        return redirect(url_for('assets.index'))
+
+    if asset.status == AssetStatus.RETURNED_TO_VENDOR:
+        flash(f'Asset {asset.asset_id} has already been returned to vendor.', 'warning')
+        return redirect(url_for('assets.index'))
+
+    if not reason:
+        flash('Please provide a reason for returning the asset to vendor.', 'danger')
+        return redirect(url_for('assets.index'))
+
+    asset.vendor_id = vendor.id
+    asset.status = AssetStatus.RETURNED_TO_VENDOR
+    asset.vendor_return_date = datetime.utcnow()
+    asset.vendor_return_reason = reason
+    asset.assigned_employee_id = None
+    asset.assignment_date = None
+
+    hist = AssetAssignmentHistory(
+        asset_id=asset.id,
+        action='Send Back to Vendor',
+        notes=f'Asset returned to Vendor {vendor.name}. Reason: {reason}',
+        performed_by=current_user.full_name
+    )
+
+    db.session.add(hist)
+
+    AuditService.log(
+        action='Asset Returned to Vendor',
+        entity_type='Asset',
+        entity_id=asset.asset_id,
+        details=f'Asset {asset.asset_id} returned to vendor {vendor.name}. Reason: {reason}'
+    )
+
+    db.session.commit()
+
+    flash(
+        f'Asset {asset.asset_id} successfully returned to {vendor.name}.',
+        'success'
+    )
+
+    return redirect(url_for('assets.index'))
