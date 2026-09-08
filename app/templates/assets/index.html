@@ -1874,17 +1874,20 @@
 <!-- =========================================================
      MODEL DATABASE + DEPENDENT DROPDOWN
 ========================================================= -->
+<!-- Searchable Dropdown -->
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css">
 
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
 <script>
+
+/* =========================================================
+   MODEL DATABASE
+========================================================= */
 
 const assetModels = {
 
-    /* =====================================================
-       HP
-    ===================================================== */
-
     "HP": [
-
         "ProBook 430 G5",
         "ProBook 430 G6",
         "ProBook 430 G7",
@@ -1991,16 +1994,9 @@ const assetModels = {
         "HP 250 G8",
         "HP 250 G9",
         "HP 250 G10"
-
     ],
 
-
-    /* =====================================================
-       DELL
-    ===================================================== */
-
     "Dell": [
-
         "Latitude 3300",
         "Latitude 3310",
         "Latitude 3320",
@@ -2126,16 +2122,9 @@ const assetModels = {
 
         "Dell G15",
         "Dell G16"
-
     ],
 
-
-    /* =====================================================
-       LENOVO
-    ===================================================== */
-
     "Lenovo": [
-
         "ThinkPad T14",
         "ThinkPad T14 Gen 2",
         "ThinkPad T14 Gen 3",
@@ -2199,7 +2188,6 @@ const assetModels = {
         "ThinkPad P16 Gen 2",
 
         "ThinkBook 13s",
-
         "ThinkBook 14",
         "ThinkBook 14 Gen 2",
         "ThinkBook 14 Gen 3",
@@ -2216,16 +2204,13 @@ const assetModels = {
         "IdeaPad 1",
         "IdeaPad 3",
         "IdeaPad 5",
-
         "IdeaPad Slim 3",
         "IdeaPad Slim 5",
-
         "IdeaPad Flex 5",
         "IdeaPad Gaming 3",
 
         "Yoga Slim 6",
         "Yoga Slim 7",
-
         "Yoga 6",
         "Yoga 7",
         "Yoga 9i",
@@ -2238,23 +2223,14 @@ const assetModels = {
         "Legion 5",
         "Legion 5 Pro",
         "Legion 7",
-
         "Legion Slim 5",
         "Legion Slim 7"
-
     ],
 
-
-    /* =====================================================
-       ASUS
-    ===================================================== */
-
     "ASUS": [
-
         "VivoBook 14",
         "VivoBook 15",
         "VivoBook 16",
-
         "VivoBook S14",
         "VivoBook S15",
         "VivoBook S16",
@@ -2272,7 +2248,6 @@ const assetModels = {
         "ZenBook 13",
         "ZenBook 14",
         "ZenBook 15",
-
         "ZenBook 14 OLED",
         "ZenBook S 13",
         "ZenBook S 14",
@@ -2283,7 +2258,6 @@ const assetModels = {
 
         "TUF Gaming F15",
         "TUF Gaming F17",
-
         "TUF Gaming A15",
         "TUF Gaming A17",
         "TUF Gaming A16",
@@ -2291,7 +2265,6 @@ const assetModels = {
         "ROG Zephyrus G14",
         "ROG Zephyrus G15",
         "ROG Zephyrus G16",
-
         "ROG Zephyrus M16",
 
         "ROG Strix G15",
@@ -2305,20 +2278,12 @@ const assetModels = {
         "Chromebook C202",
         "Chromebook C214",
         "Chromebook C425"
-
     ],
 
-
-    /* =====================================================
-       APPLE / MAC
-    ===================================================== */
-
     "Apple": [
-
         "MacBook Air 2018",
         "MacBook Air 2019",
         "MacBook Air 2020",
-
         "MacBook Air M1",
         "MacBook Air M2",
         "MacBook Air M3",
@@ -2326,88 +2291,157 @@ const assetModels = {
 
         "MacBook Pro 13 2019",
         "MacBook Pro 13 2020",
-
         "MacBook Pro 13 M1",
         "MacBook Pro 13 M2",
 
         "MacBook Pro 14 M1 Pro",
         "MacBook Pro 14 M1 Max",
-
         "MacBook Pro 14 M2 Pro",
         "MacBook Pro 14 M2 Max",
-
         "MacBook Pro 14 M3",
         "MacBook Pro 14 M3 Pro",
         "MacBook Pro 14 M3 Max",
-
         "MacBook Pro 14 M4",
         "MacBook Pro 14 M4 Pro",
         "MacBook Pro 14 M4 Max",
 
         "MacBook Pro 16 M1 Pro",
         "MacBook Pro 16 M1 Max",
-
         "MacBook Pro 16 M2 Pro",
         "MacBook Pro 16 M2 Max",
-
         "MacBook Pro 16 M3 Pro",
         "MacBook Pro 16 M3 Max",
-
         "MacBook Pro 16 M4 Pro",
         "MacBook Pro 16 M4 Max",
 
         "Mac Mini",
         "Mac Studio",
-
         "iMac 21.5",
         "iMac 24",
         "iMac 27",
-
         "Mac Pro"
-
     ]
-
 };
+
+
+/* =========================================================
+   MAKE MODEL DROPDOWN SEARCHABLE
+========================================================= */
+
+function makeModelSearchable(modelSelect) {
+
+    if (!modelSelect) {
+        return;
+    }
+
+    /* Remove old TomSelect instance */
+    if (modelSelect.tomselect) {
+        modelSelect.tomselect.destroy();
+    }
+
+    new TomSelect(modelSelect, {
+
+        create: false,
+
+        maxOptions: 1000,
+
+        allowEmptyOption: true,
+
+        searchField: [
+            "text",
+            "value"
+        ],
+
+        placeholder: "Type model number or name...",
+
+        closeAfterSelect: true,
+
+        hideSelected: false,
+
+        plugins: [
+            "clear_button"
+        ],
+
+        render: {
+
+            option: function(data, escape) {
+
+                return `
+                    <div>
+                        ${escape(data.text)}
+                    </div>
+                `;
+            },
+
+            item: function(data, escape) {
+
+                return `
+                    <div>
+                        ${escape(data.text)}
+                    </div>
+                `;
+            }
+        }
+    });
+}
 
 
 /* =========================================================
    POPULATE MODEL DROPDOWN
 ========================================================= */
 
-function populateModels(brandSelect, modelSelect, currentModel = "") {
+function populateModels(
+    brandSelect,
+    modelSelect,
+    currentModel = ""
+) {
 
     if (!brandSelect || !modelSelect) {
         return;
     }
-
 
     const brand = brandSelect.value;
 
     const models = assetModels[brand] || [];
 
 
-    /* Clear existing options */
+    /*
+     * Destroy searchable dropdown
+     * before rebuilding options.
+     */
+
+    if (modelSelect.tomselect) {
+        modelSelect.tomselect.destroy();
+    }
+
+
+    /*
+     * Clear options
+     */
 
     modelSelect.innerHTML = "";
 
 
-    /* Default option */
+    /*
+     * Default option
+     */
 
     const defaultOption =
         document.createElement("option");
 
     defaultOption.value = "";
-    defaultOption.textContent = "-- Select Model --";
 
-    modelSelect.appendChild(defaultOption);
+    defaultOption.textContent =
+        "-- Select Model --";
+
+    modelSelect.appendChild(
+        defaultOption
+    );
 
 
     /*
-     * Existing model protection.
-     *
-     * If an old model exists in the database but
-     * is not present in our JavaScript model list,
-     * don't remove it.
+     * Preserve existing model
+     * from database.
      */
 
     if (
@@ -2418,18 +2452,23 @@ function populateModels(brandSelect, modelSelect, currentModel = "") {
         const existingOption =
             document.createElement("option");
 
-        existingOption.value = currentModel;
+        existingOption.value =
+            currentModel;
+
         existingOption.textContent =
             currentModel + " (Existing)";
 
         existingOption.selected = true;
 
-        modelSelect.appendChild(existingOption);
-
+        modelSelect.appendChild(
+            existingOption
+        );
     }
 
 
-    /* Add models */
+    /*
+     * Add models for selected brand.
+     */
 
     models.forEach(function(model) {
 
@@ -2437,17 +2476,27 @@ function populateModels(brandSelect, modelSelect, currentModel = "") {
             document.createElement("option");
 
         option.value = model;
+
         option.textContent = model;
 
 
         if (model === currentModel) {
+
             option.selected = true;
+
         }
 
 
         modelSelect.appendChild(option);
 
     });
+
+
+    /*
+     * Activate searchable dropdown.
+     */
+
+    makeModelSearchable(modelSelect);
 
 }
 
@@ -2462,7 +2511,7 @@ document.addEventListener(
 
 
         /* =================================================
-           ADD ASSET
+           ADD NEW ASSET
         ================================================= */
 
         const newBrand =
@@ -2480,26 +2529,31 @@ document.addEventListener(
 
 
             /*
-             * Initially show instruction
+             * Initial state
              */
 
             newModel.innerHTML = "";
 
-            const defaultAddOption =
+            const option =
                 document.createElement("option");
 
-            defaultAddOption.value = "";
+            option.value = "";
 
-            defaultAddOption.textContent =
+            option.textContent =
                 "-- Select Brand First --";
 
-            newModel.appendChild(
-                defaultAddOption
-            );
+            newModel.appendChild(option);
 
 
             /*
-             * Brand changed
+             * Make initial dropdown searchable.
+             */
+
+            makeModelSearchable(newModel);
+
+
+            /*
+             * When Brand changes.
              */
 
             newBrand.addEventListener(
@@ -2543,7 +2597,7 @@ document.addEventListener(
 
 
                     /*
-                     * Get existing database model
+                     * Existing database model.
                      */
 
                     const currentModel =
@@ -2552,8 +2606,7 @@ document.addEventListener(
 
 
                     /*
-                     * Populate model list
-                     * when page loads.
+                     * Populate model list.
                      */
 
                     populateModels(
@@ -2564,9 +2617,7 @@ document.addEventListener(
 
 
                     /*
-                     * When brand changes,
-                     * clear old model and load
-                     * new brand models.
+                     * Brand changed.
                      */
 
                     brandSelect.addEventListener(
@@ -2588,5 +2639,4 @@ document.addEventListener(
 );
 
 </script>
-
 {% endblock %}
