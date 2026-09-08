@@ -127,12 +127,16 @@ def edit_asset(asset_id):
     asset = Asset.query.get_or_404(asset_id)
     
     asset.brand = request.form.get('brand', asset.brand).strip()
-    asset.model = request.form.get('model', asset.model).strip()
-    asset.processor = request.form.get('processor', asset.processor).strip()
-    asset.ram = request.form.get('ram', asset.ram).strip()
-    asset.ssd = request.form.get('ssd', asset.ssd).strip()
-    asset.vendor_id = request.form.get('vendor_id', asset.vendor_id, type=int)
-
+asset.model = request.form.get('model', asset.model).strip()
+asset.serial_number = request.form.get('serial_number', asset.serial_number).strip()
+asset.processor = request.form.get('processor', asset.processor).strip()
+asset.ram = request.form.get('ram', asset.ram).strip()
+asset.ssd = request.form.get('ssd', asset.ssd).strip()
+asset.vendor_id = request.form.get(
+    'vendor_id',
+    asset.vendor_id,
+    type=int
+)
     db.session.commit()
 
     AuditService.log(
