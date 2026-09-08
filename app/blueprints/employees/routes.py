@@ -22,21 +22,20 @@ def index():
     page = request.args.get('page', 1, type=int)
 
     query = Employee.query
+if search_q:
+    query = query.filter(
+        (Employee.name.ilike(f'%{search_q}%')) |
+        (Employee.employee_id.ilike(f'%{search_q}%')) |
+        (Employee.email.ilike(f'%{search_q}%')) |
+        (Employee.designation.ilike(f'%{search_q}%'))
+    )
 
-    if search_q:
-        query = query.filter(
-            (Employee.name.ilike(f'%{search_q}%')) |
-            (Employee.employee_id.ilike(f'%{search_q}%')) |
-            (Employee.email.ilike(f'%{search_q}%')) |
-            (Employee.designation.ilike(f'%{search_q}%'))
-        )
-
-  if status_filter:
+if status_filter:
     status_values = [s.strip() for s in status_filter.split(',') if s.strip()]
     query = query.filter(Employee.account_status.in_(status_values))
 
-    if dept_filter:
-        query = query.filter_by(department=dept_filter)
+if dept_filter:
+    query = query.filter_by(department=dept_filter)
 
     pagination = query.order_by(Employee.created_at.desc(), Employee.name.asc()).paginate(page=page, per_page=10, error_out=False)
     employees = pagination.items
