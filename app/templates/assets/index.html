@@ -143,7 +143,41 @@
     </div>
 
 </div>
+<!-- =========================================================
+     ASSET VIEW TABS
+========================================================= -->
 
+<div class="d-flex gap-2 mb-4">
+
+    <!-- All Assets -->
+    <a href="{{ url_for('assets.index') }}"
+       class="btn {% if not status_filter %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        <i class="fas fa-laptop me-1"></i>
+        All Assets
+    </a>
+
+    <!-- Stock Laptops -->
+    <a href="{{ url_for('assets.index', status='Available') }}"
+       class="btn {% if status_filter == 'Available' %}btn-success{% else %}btn-outline-success{% endif %}">
+        <i class="fas fa-box-open me-1"></i>
+        Stock Laptops
+    </a>
+
+    <!-- Assigned -->
+    <a href="{{ url_for('assets.index', status='Assigned') }}"
+       class="btn {% if status_filter == 'Assigned' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        <i class="fas fa-user-check me-1"></i>
+        Assigned
+    </a>
+
+    <!-- Repair -->
+    <a href="{{ url_for('assets.index', status='Repair') }}"
+       class="btn {% if status_filter == 'Repair' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %}">
+        <i class="fas fa-wrench me-1"></i>
+        Under Repair
+    </a>
+
+</div>
 
 <!-- =========================================================
      ASSETS TABLE
