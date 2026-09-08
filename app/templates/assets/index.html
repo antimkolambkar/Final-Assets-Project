@@ -453,7 +453,17 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Brand / Manufacturer</label>
-                            <input type="text" name="brand" class="form-control" placeholder="e.g. Dell, Lenovo, Apple, HP" required>
+                            <select name="brand" class="form-select" required>
+    <option value="">-- Select Brand --</option>
+    <option value="Dell">Dell</option>
+    <option value="HP">HP</option>
+    <option value="Lenovo">Lenovo</option>
+    <option value="Apple">Apple</option>
+    <option value="Acer">Acer</option>
+    <option value="ASUS">ASUS</option>
+    <option value="Microsoft">Microsoft</option>
+    <option value="Other">Other</option>
+</select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Model Name / Number</label>
