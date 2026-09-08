@@ -31,8 +31,9 @@ def index():
             (Employee.designation.ilike(f'%{search_q}%'))
         )
 
-    if status_filter:
-        query = query.filter_by(account_status=status_filter)
+  if status_filter:
+    status_values = [s.strip() for s in status_filter.split(',') if s.strip()]
+    query = query.filter(Employee.account_status.in_(status_values))
 
     if dept_filter:
         query = query.filter_by(department=dept_filter)
