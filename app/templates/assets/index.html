@@ -262,7 +262,183 @@
     </div>
     {% endif %}
 </div>
+<!-- Edit Asset Modals -->
+{% for ast in assets %}
+{% if current_user.is_it_admin %}
 
+<div class="modal fade" id="editAssetModal{{ ast.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-edit me-2"></i>
+                    Edit Asset - {{ ast.asset_id }}
+                </h5>
+
+                <button type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal">
+                </button>
+            </div>
+
+            <form action="{{ url_for('assets.edit_asset', asset_id=ast.id) }}"
+                  method="POST">
+
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+
+                <div class="modal-body p-4">
+
+                    <div class="row g-3 mb-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Asset ID
+                            </label>
+
+                            <input type="text"
+                                   class="form-control"
+                                   value="{{ ast.asset_id }}"
+                                   disabled>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Brand
+                            </label>
+
+                            <input type="text"
+                                   name="brand"
+                                   class="form-control"
+                                   value="{{ ast.brand }}"
+                                   required>
+                        </div>
+
+                    </div>
+
+                    <div class="row g-3 mb-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Model
+                            </label>
+
+                            <input type="text"
+                                   name="model"
+                                   class="form-control"
+                                   value="{{ ast.model }}"
+                                   required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Serial Number
+                            </label>
+
+                            <input type="text"
+                                   name="serial_number"
+                                   class="form-control"
+                                   value="{{ ast.serial_number }}"
+                                   required>
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Processor
+                        </label>
+
+                        <input type="text"
+                               name="processor"
+                               class="form-control"
+                               value="{{ ast.processor }}"
+                               required>
+
+                    </div>
+
+                    <div class="row g-3 mb-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                RAM
+                            </label>
+
+                            <input type="text"
+                                   name="ram"
+                                   class="form-control"
+                                   value="{{ ast.ram }}"
+                                   placeholder="e.g. 16 GB"
+                                   required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                SSD
+                            </label>
+
+                            <input type="text"
+                                   name="ssd"
+                                   class="form-control"
+                                   value="{{ ast.ssd }}"
+                                   placeholder="e.g. 512 GB"
+                                   required>
+                        </div>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Vendor
+                        </label>
+
+                        <select name="vendor_id"
+                                class="form-select"
+                                required>
+
+                            {% for v in vendors %}
+
+                            <option value="{{ v.id }}"
+                                {% if ast.vendor_id == v.id %}selected{% endif %}>
+                                {{ v.name }}
+                            </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        Save Changes
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+{% endif %}
+{% endfor %}
 <!-- Modal: Add New Asset -->
 <div class="modal fade" id="addAssetModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
