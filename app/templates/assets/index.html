@@ -309,11 +309,16 @@
                                 Brand
                             </label>
 
-                            <input type="text"
-                                   name="brand"
-                                   class="form-control"
-                                   value="{{ ast.brand }}"
-                                   required>
+                           <select name="brand" class="form-select" required>
+    <option value="Dell" {% if ast.brand == 'Dell' %}selected{% endif %}>Dell</option>
+    <option value="HP" {% if ast.brand == 'HP' %}selected{% endif %}>HP</option>
+    <option value="Lenovo" {% if ast.brand == 'Lenovo' %}selected{% endif %}>Lenovo</option>
+    <option value="Apple" {% if ast.brand == 'Apple' %}selected{% endif %}>Apple</option>
+    <option value="Acer" {% if ast.brand == 'Acer' %}selected{% endif %}>Acer</option>
+    <option value="ASUS" {% if ast.brand == 'ASUS' %}selected{% endif %}>ASUS</option>
+    <option value="Microsoft" {% if ast.brand == 'Microsoft' %}selected{% endif %}>Microsoft</option>
+    <option value="Other" {% if ast.brand == 'Other' %}selected{% endif %}>Other</option>
+</select>
                         </div>
 
                     </div>
@@ -346,19 +351,22 @@
 
                     </div>
 
-                    <div class="mb-3">
+                   <select name="processor" class="form-select" required>
+    <option value="">-- Select Processor --</option>
 
-                        <label class="form-label fw-semibold">
-                            Processor
-                        </label>
+    <option value="Intel Core i3" {% if ast.processor == 'Intel Core i3' %}selected{% endif %}>Intel Core i3</option>
+    <option value="Intel Core i5" {% if ast.processor == 'Intel Core i5' %}selected{% endif %}>Intel Core i5</option>
+    <option value="Intel Core i7" {% if ast.processor == 'Intel Core i7' %}selected{% endif %}>Intel Core i7</option>
+    <option value="Intel Core i9" {% if ast.processor == 'Intel Core i9' %}selected{% endif %}>Intel Core i9</option>
 
-                        <input type="text"
-                               name="processor"
-                               class="form-control"
-                               value="{{ ast.processor }}"
-                               required>
+    <option value="AMD Ryzen 5" {% if ast.processor == 'AMD Ryzen 5' %}selected{% endif %}>AMD Ryzen 5</option>
+    <option value="AMD Ryzen 7" {% if ast.processor == 'AMD Ryzen 7' %}selected{% endif %}>AMD Ryzen 7</option>
 
-                    </div>
+    <option value="Apple M1" {% if ast.processor == 'Apple M1' %}selected{% endif %}>Apple M1</option>
+    <option value="Apple M2" {% if ast.processor == 'Apple M2' %}selected{% endif %}>Apple M2</option>
+    <option value="Apple M3" {% if ast.processor == 'Apple M3' %}selected{% endif %}>Apple M3</option>
+    <option value="Apple M4" {% if ast.processor == 'Apple M4' %}selected{% endif %}>Apple M4</option>
+</select>
 
                     <div class="row g-3 mb-3">
 
@@ -367,12 +375,16 @@
                                 RAM
                             </label>
 
-                            <input type="text"
-                                   name="ram"
-                                   class="form-control"
-                                   value="{{ ast.ram }}"
-                                   placeholder="e.g. 16 GB"
-                                   required>
+                           <select name="ram" class="form-select" required>
+    <option value="N/A" {% if ast.ram == 'N/A' %}selected{% endif %}>N/A</option>
+    <option value="4 GB" {% if ast.ram == '4 GB' %}selected{% endif %}>4 GB</option>
+    <option value="8 GB" {% if ast.ram == '8 GB' %}selected{% endif %}>8 GB</option>
+    <option value="16 GB" {% if ast.ram == '16 GB' %}selected{% endif %}>16 GB</option>
+    <option value="24 GB" {% if ast.ram == '24 GB' %}selected{% endif %}>24 GB</option>
+    <option value="32 GB" {% if ast.ram == '32 GB' %}selected{% endif %}>32 GB</option>
+    <option value="64 GB" {% if ast.ram == '64 GB' %}selected{% endif %}>64 GB</option>
+    <option value="128 GB" {% if ast.ram == '128 GB' %}selected{% endif %}>128 GB</option>
+</select>
                         </div>
 
                         <div class="col-md-6">
@@ -380,12 +392,15 @@
                                 SSD
                             </label>
 
-                            <input type="text"
-                                   name="ssd"
-                                   class="form-control"
-                                   value="{{ ast.ssd }}"
-                                   placeholder="e.g. 512 GB"
-                                   required>
+                            <select name="ssd" class="form-select" required>
+    <option value="N/A" {% if ast.ssd == 'N/A' %}selected{% endif %}>N/A</option>
+    <option value="128 GB" {% if ast.ssd == '128 GB' %}selected{% endif %}>128 GB</option>
+    <option value="256 GB" {% if ast.ssd == '256 GB' %}selected{% endif %}>256 GB</option>
+    <option value="512 GB" {% if ast.ssd == '512 GB' %}selected{% endif %}>512 GB</option>
+    <option value="1 TB" {% if ast.ssd == '1 TB' %}selected{% endif %}>1 TB</option>
+    <option value="2 TB" {% if ast.ssd == '2 TB' %}selected{% endif %}>2 TB</option>
+    <option value="4 TB" {% if ast.ssd == '4 TB' %}selected{% endif %}>4 TB</option>
+</select>
                         </div>
 
                     </div>
