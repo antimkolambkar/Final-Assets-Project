@@ -743,7 +743,22 @@ document.addEventListener("DOMContentLoaded", function () {
                                 </li>
 
 
-                                {% if ast.status == 'Available' %}
+                                {% if status_value in ['Repair', 'Under Repair'] %}
+
+                                <!-- Complete Repair -->
+                                <li>
+                                    <button type="button"
+                                            class="dropdown-item text-success btn-complete-repair"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#completeRepairModal"
+                                            data-asset-id="{{ ast.id }}"
+                                            data-asset-name="{{ ast.asset_id }} - {{ ast.brand }} {{ ast.model }}">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        Complete Repair
+                                    </button>
+                                </li>
+
+                                {% elif ast.status == 'Available' %}
 
                                 <!-- Assign -->
                                 <li>
@@ -1156,6 +1171,133 @@ document.addEventListener("DOMContentLoaded", function () {
 
                                                 Create Vendor Repair Ticket
 
+                                            </button>
+
+                                        </div>
+
+                                    </form>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        {% endif %}
+
+
+                        <!-- =====================================================
+                             COMPLETE REPAIR MODAL
+                        ====================================================== -->
+
+                        {% if status_value in ['Repair', 'Under Repair'] %}
+
+                        <div class="modal fade text-start"
+                             id="completeRepairModal"
+                             tabindex="-1"
+                             aria-labelledby="completeRepairModalLabel"
+                             aria-hidden="true">
+
+                            <div class="modal-dialog modal-dialog-centered">
+
+                                <div class="modal-content border-0 shadow-lg">
+
+                                    <div class="modal-header bg-success text-white">
+
+                                        <h5 class="modal-title fw-bold"
+                                            id="completeRepairModalLabel">
+                                            <i class="fas fa-check-circle me-2"></i>
+                                            Complete Repair
+                                        </h5>
+
+                                        <button type="button"
+                                                class="btn-close btn-close-white"
+                                                data-bs-dismiss="modal">
+                                        </button>
+
+                                    </div>
+
+                                    <form id="completeRepairForm"
+                                          action="{{ url_for('assets.complete_repair', asset_id=ast.id) }}"
+                                          method="POST">
+
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+
+                                        <div class="modal-body p-4">
+
+                                            <div class="alert alert-success py-2 small">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Completing the repair will move this laptop
+                                                back to <strong>Available</strong> status.
+                                            </div>
+
+                                            <div class="mb-3">
+
+                                                <label class="form-label fw-semibold">
+                                                    Asset
+                                                </label>
+
+                                                <input type="text"
+                                                       id="completeRepairAssetName"
+                                                       class="form-control bg-light"
+                                                       value="{{ ast.asset_id }} - {{ ast.brand }} {{ ast.model }}"
+                                                       readonly>
+
+                                            </div>
+
+                                            <div class="mb-3">
+
+                                                <label class="form-label fw-semibold">
+                                                    Repair Completed Date
+                                                    <span class="text-danger">*</span>
+                                                </label>
+
+                                                <div class="input-group">
+
+                                                    <span class="input-group-text bg-light">
+                                                        <i class="fas fa-calendar-check text-success"></i>
+                                                    </span>
+
+                                                    <input type="date"
+                                                           name="repair_completed_date"
+                                                           id="repairCompletedDate"
+                                                           class="form-control"
+                                                           required>
+
+                                                </div>
+
+                                            </div>
+
+                                            <div class="mb-3">
+
+                                                <label class="form-label fw-semibold">
+                                                    Repair Notes
+                                                </label>
+
+                                                <textarea name="notes"
+                                                          id="completeRepairNotes"
+                                                          class="form-control"
+                                                          rows="3"
+                                                          placeholder="Enter repair completion details..."></textarea>
+
+                                            </div>
+
+                                        </div>
+
+                                        <div class="modal-footer">
+
+                                            <button type="button"
+                                                    class="btn btn-secondary"
+                                                    data-bs-dismiss="modal">
+                                                Cancel
+                                            </button>
+
+                                            <button type="submit"
+                                                    class="btn btn-success fw-bold">
+                                                <i class="fas fa-check me-1"></i>
+                                                Mark as Available
                                             </button>
 
                                         </div>
@@ -3903,6 +4045,59 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 });
+    /* =========================================================
+       COMPLETE REPAIR MODAL
+    ========================================================= */
+
+    const completeRepairForm =
+        document.getElementById("completeRepairForm");
+
+    const completeRepairAssetName =
+        document.getElementById("completeRepairAssetName");
+
+    const repairCompletedDate =
+        document.getElementById("repairCompletedDate");
+
+    const completeRepairNotes =
+        document.getElementById("completeRepairNotes");
+
+    document.querySelectorAll(".btn-complete-repair").forEach(function (button) {
+
+        button.addEventListener("click", function () {
+
+            const assetId =
+                this.getAttribute("data-asset-id") || "";
+
+            const assetName =
+                this.getAttribute("data-asset-name") || "";
+
+            if (completeRepairForm && assetId) {
+                completeRepairForm.action =
+                    "/assets/repair/complete/" +
+                    encodeURIComponent(assetId);
+            }
+
+            if (completeRepairAssetName) {
+                completeRepairAssetName.value = assetName;
+            }
+
+            if (repairCompletedDate) {
+                const now = new Date();
+
+                repairCompletedDate.value =
+                    now.getFullYear() + "-" +
+                    String(now.getMonth() + 1).padStart(2, "0") + "-" +
+                    String(now.getDate()).padStart(2, "0");
+            }
+
+            if (completeRepairNotes) {
+                completeRepairNotes.value = "";
+            }
+
+        });
+
+    });
+
 </script>
 
 {% endblock %}
