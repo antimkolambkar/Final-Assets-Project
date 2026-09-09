@@ -336,10 +336,7 @@ def replace_asset():
     return redirect(url_for('assets.index'))
 
 
-@assets_bp.route('/repair', methods=['POST'])
-@login_required
-def send_to_repair():
-    @assets_bp.route('/repair/complete/<int:asset_id>', methods=['POST'])
+@assets_bp.route('/repair/complete/<int:asset_id>', methods=['POST'])
 @login_required
 def complete_repair(asset_id):
     if not current_user.is_it_admin:
@@ -360,8 +357,12 @@ def complete_repair(asset_id):
 
     notes = request.form.get('notes', '').strip()
 
-    # Change status from Repair to Available
+    # Change Repair -> Available
     asset.status = AssetStatus.AVAILABLE
+
+    # Make sure the repaired laptop is unassigned
+    asset.assigned_employee_id = None
+    asset.assignment_date = None
 
     # Add repair completion history
     hist = AssetAssignmentHistory(
@@ -370,7 +371,6 @@ def complete_repair(asset_id):
         notes=notes or 'Repair completed and laptop moved to Available.',
         performed_by=current_user.full_name
     )
-
     db.session.add(hist)
 
     # Audit log
@@ -392,15 +392,46 @@ def complete_repair(asset_id):
     )
 
     return redirect(url_for('assets.index'))
+
+
+@assets_bp.route('/repair', methods=['POST'])
+@login_required
+def send_to_repair():
+    if not current_user.is_it_admin:
+        flash(
+            'Permission denied. Only IT Admins can send assets to repair.',
+            'danger'
+        )
+        return redirect(url_for('assets.index'))
+
     asset_id = request.form.get('asset_id', type=int)
     vendor_id = request.form.get('vendor_id', type=int)
     notes = request.form.get('notes', '').strip()
+
+    if not asset_id:
+        flash('Asset ID is missing.', 'danger')
+        return redirect(url_for('assets.index'))
+
+    if not vendor_id:
+        flash('Please select a vendor.', 'danger')
+        return redirect(url_for('assets.index'))
 
     asset = Asset.query.get_or_404(asset_id)
     vendor = Vendor.query.get_or_404(vendor_id)
 
     if asset.status == AssetStatus.ASSIGNED:
-        flash(f'Cannot send assigned asset {asset.asset_id} directly to repair. Return it or replace it first.', 'warning')
+        flash(
+            f'Cannot send assigned asset {asset.asset_id} directly to repair. '
+            'Return it or replace it first.',
+            'warning'
+        )
+        return redirect(url_for('assets.index'))
+
+    if asset.status == AssetStatus.RETURNED_TO_VENDOR:
+        flash(
+            f'Asset {asset.asset_id} has already been returned to vendor.',
+            'warning'
+        )
         return redirect(url_for('assets.index'))
 
     asset.status = AssetStatus.REPAIR
@@ -418,20 +449,32 @@ def complete_repair(asset_id):
     hist = AssetAssignmentHistory(
         asset_id=asset.id,
         action='Sent to Repair',
-        notes=f'Sent to Vendor {vendor.name} under repair ticket #{repair_ticket.vendor_ticket_number}. Notes: {notes}',
+        notes=(
+            f'Sent to Vendor {vendor.name} under repair ticket '
+            f'#{repair_ticket.vendor_ticket_number}. Notes: {notes}'
+        ),
         performed_by=current_user.full_name
     )
     db.session.add(hist)
+
     db.session.commit()
 
     AuditService.log(
         action='Asset Sent to Repair',
         entity_type='Asset',
         entity_id=asset.asset_id,
-        details=f'Dispatched asset {asset.asset_id} to vendor {vendor.name} (Repair Ticket: {repair_ticket.vendor_ticket_number})'
+        details=(
+            f'Dispatched asset {asset.asset_id} to vendor {vendor.name} '
+            f'(Repair Ticket: {repair_ticket.vendor_ticket_number})'
+        )
     )
 
-    flash(f'Asset {asset.asset_id} sent to Vendor {vendor.name} for repair. (Ticket: {repair_ticket.vendor_ticket_number})', 'success')
+    flash(
+        f'Asset {asset.asset_id} sent to Vendor {vendor.name} for repair. '
+        f'(Ticket: {repair_ticket.vendor_ticket_number})',
+        'success'
+    )
+
     return redirect(url_for('assets.index'))
 
 
@@ -462,17 +505,8 @@ def get_asset_history(asset_id):
         'assigned_user': asset.assigned_user_name,
         'history': h_data
     })
-    return jsonify({
-        'asset_id': asset.asset_id,
-        'brand_model': f"{asset.brand} {asset.model}",
-        'serial_number': asset.serial_number,
-        'assigned_user': asset.assigned_user_name,
-        'history': h_data
-    })
 
 
-@assets_bp.route('/return-to-vendor', methods=['POST'])
-@login_required
 @assets_bp.route('/return-to-vendor', methods=['POST'])
 @login_required
 def return_to_vendor():
