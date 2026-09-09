@@ -68,27 +68,61 @@ class AssetAssignmentHistory(db.Model):
     asset_id = db.Column(db.Integer, db.ForeignKey('assets.id'), nullable=False)
     employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
     employee_name = db.Column(db.String(120), nullable=True)
-    action = db.Column(db.String(50), nullable=False) # Assigned, Returned, Replaced, Sent to Repair, Repaired
-    
-    # For multi-replacement tracking:
-    old_asset_id = db.Column(db.Integer, db.ForeignKey('assets.id'), nullable=True)
-    new_asset_id = db.Column(db.Integer, db.ForeignKey('assets.id'), nullable=True)
+
+    action = db.Column(
+        db.String(50),
+        nullable=False
+    )  # Assigned, Returned, Replaced, Sent to Repair, Repaired, Available
+
+    # For multi-replacement tracking
+    old_asset_id = db.Column(
+        db.Integer,
+        db.ForeignKey('assets.id'),
+        nullable=True
+    )
+    new_asset_id = db.Column(
+        db.Integer,
+        db.ForeignKey('assets.id'),
+        nullable=True
+    )
     replacement_reason = db.Column(db.Text, nullable=True)
-    
+
     notes = db.Column(db.Text, nullable=True)
-performed_by = db.Column(db.String(100), nullable=True)
+    performed_by = db.Column(db.String(100), nullable=True)
 
-# Date on which the asset lifecycle event actually happened
-# Example: Assigned, Returned, Sent to Repair, Repaired, Available
-event_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    # Actual date selected by IT/Admin for the asset event
+    event_date = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow
+    )
 
-# Date/time when the record was created in the system
-timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    # Date/time when the history record was created
+    timestamp = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        index=True
+    )
 
     # Relationships for replacement tracking
-    old_asset = db.relationship('Asset', foreign_keys=[old_asset_id])
-    new_asset = db.relationship('Asset', foreign_keys=[new_asset_id])
-    employee = db.relationship('Employee', foreign_keys=[employee_id])
+    old_asset = db.relationship(
+        'Asset',
+        foreign_keys=[old_asset_id]
+    )
+
+    new_asset = db.relationship(
+        'Asset',
+        foreign_keys=[new_asset_id]
+    )
+
+    employee = db.relationship(
+        'Employee',
+        foreign_keys=[employee_id]
+    )
 
     def __repr__(self):
-        return f'<AssetAssignmentHistory {self.action} for Asset #{self.asset_id} by {self.performed_by}>'
+        return (
+            f'<AssetAssignmentHistory '
+            f'{self.action} for Asset #{self.asset_id} '
+            f'by {self.performed_by}>'
+        )
