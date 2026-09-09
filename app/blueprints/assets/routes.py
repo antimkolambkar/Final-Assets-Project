@@ -339,6 +339,59 @@ def replace_asset():
 @assets_bp.route('/repair', methods=['POST'])
 @login_required
 def send_to_repair():
+    @assets_bp.route('/repair/complete/<int:asset_id>', methods=['POST'])
+@login_required
+def complete_repair(asset_id):
+    if not current_user.is_it_admin:
+        flash(
+            'Permission denied. Only IT Admins can complete repairs.',
+            'danger'
+        )
+        return redirect(url_for('assets.index'))
+
+    asset = Asset.query.get_or_404(asset_id)
+
+    if asset.status != AssetStatus.REPAIR:
+        flash(
+            f'Asset {asset.asset_id} is not currently under repair.',
+            'warning'
+        )
+        return redirect(url_for('assets.index'))
+
+    notes = request.form.get('notes', '').strip()
+
+    # Change status from Repair to Available
+    asset.status = AssetStatus.AVAILABLE
+
+    # Add repair completion history
+    hist = AssetAssignmentHistory(
+        asset_id=asset.id,
+        action='Repair Completed',
+        notes=notes or 'Repair completed and laptop moved to Available.',
+        performed_by=current_user.full_name
+    )
+
+    db.session.add(hist)
+
+    # Audit log
+    AuditService.log(
+        action='Asset Repair Completed',
+        entity_type='Asset',
+        entity_id=asset.asset_id,
+        details=(
+            f'Asset {asset.asset_id} repair completed '
+            'and moved to Available status.'
+        )
+    )
+
+    db.session.commit()
+
+    flash(
+        f'Asset {asset.asset_id} is now Available.',
+        'success'
+    )
+
+    return redirect(url_for('assets.index'))
     asset_id = request.form.get('asset_id', type=int)
     vendor_id = request.form.get('vendor_id', type=int)
     notes = request.form.get('notes', '').strip()
