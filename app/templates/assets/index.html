@@ -92,6 +92,11 @@
                         Under Repair
                     </option>
 
+                    <option value="Returned to Vendor"
+                            {% if status_filter == 'Returned to Vendor' %}selected{% endif %}>
+                        Returned to Vendor
+                    </option>
+
                 </select>
 
             </div>
@@ -143,6 +148,8 @@
     </div>
 
 </div>
+
+
 <!-- =========================================================
      ASSET VIEW TABS
 ========================================================= -->
@@ -156,12 +163,14 @@
         All Assets
     </a>
 
+
     <!-- Stock Laptops -->
     <a href="{{ url_for('assets.index', status='Available') }}"
        class="btn {% if status_filter == 'Available' %}btn-success{% else %}btn-outline-success{% endif %}">
         <i class="fas fa-box-open me-1"></i>
         Stock Laptops
     </a>
+
 
     <!-- Assigned -->
     <a href="{{ url_for('assets.index', status='Assigned') }}"
@@ -170,6 +179,7 @@
         Assigned
     </a>
 
+
     <!-- Repair -->
     <a href="{{ url_for('assets.index', status='Repair') }}"
        class="btn {% if status_filter == 'Repair' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %}">
@@ -177,7 +187,16 @@
         Under Repair
     </a>
 
+
+    <!-- Returned To Vendor -->
+    <a href="{{ url_for('assets.index', status='Returned to Vendor') }}"
+       class="btn {% if status_filter == 'Returned to Vendor' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+        <i class="fas fa-truck me-1"></i>
+        Returned to Vendor
+    </a>
+
 </div>
+
 
 <!-- =========================================================
      ASSETS TABLE
@@ -273,13 +292,15 @@
                     <!-- Status -->
                     <td>
 
-                        <span class="badge badge-status badge-{{ ast.status.lower() }}">
+                        <span class="badge badge-status badge-{{ ast.status.lower().replace(' ', '-') }}">
 
                             <i class="fas
                                 {% if ast.status == 'Available' %}
                                     fa-box-open
                                 {% elif ast.status == 'Assigned' %}
                                     fa-user-check
+                                {% elif ast.status == 'Returned to Vendor' %}
+                                    fa-truck
                                 {% else %}
                                     fa-wrench
                                 {% endif %}
@@ -410,31 +431,46 @@
 
                                 </li>
 
-                                <!-- Send Back to Vendor -->
-    <li>
-    <button type="button"
-            class="dropdown-item text-warning"
-            data-bs-toggle="modal"
-            data-bs-target="#returnVendorModal"
-            data-asset-id="{{ ast.id }}"
-            data-asset-name="{{ ast.asset_id }} - {{ ast.brand }} {{ ast.model }}">
-        <i class="fas fa-truck me-2"></i>
-        Send Back to Vendor
-    </button>
-</li>
 
-{% elif ast.status == 'Assigned' %}
-<!-- Replace Laptop -->
-<li>
-    <button type="button"
-            class="dropdown-item text-warning"
-            data-bs-toggle="modal"
-            data-bs-target="#replaceAssetModal"
-            data-old-asset-id="{{ ast.id }}">
-        <i class="fas fa-sync me-2"></i>
-        Replace Laptop
-    </button>
-</li>
+                                <!-- Send Back to Vendor -->
+                                <li>
+
+                                    <button type="button"
+                                            class="dropdown-item text-warning"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#returnVendorModal"
+                                            data-asset-id="{{ ast.id }}"
+                                            data-asset-name="{{ ast.asset_id }} - {{ ast.brand }} {{ ast.model }}">
+
+                                        <i class="fas fa-truck me-2"></i>
+
+                                        Send Back to Vendor
+
+                                    </button>
+
+                                </li>
+
+
+                                {% elif ast.status == 'Assigned' %}
+
+                                <!-- Replace Laptop -->
+                                <li>
+
+                                    <button type="button"
+                                            class="dropdown-item text-warning"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#replaceAssetModal"
+                                            data-old-asset-id="{{ ast.id }}">
+
+                                        <i class="fas fa-sync me-2"></i>
+
+                                        Replace Laptop
+
+                                    </button>
+
+                                </li>
+
+
                                 <!-- Return -->
                                 <li>
 
@@ -500,114 +536,7 @@
 
                         </div>
 
-                        <!-- =====================================================
-     VENDOR RETURN MODAL
-====================================================== -->
-<div class="modal fade" id="vendorReturnModal{{ ast.id }}" tabindex="-1"
-     aria-labelledby="vendorReturnLabel{{ ast.id }}" aria-hidden="true">
 
-    <div class="modal-dialog">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h5 class="modal-title" id="vendorReturnLabel{{ ast.id }}">
-                    <i class="fas fa-truck-loading me-2"></i>
-                    Send Back to Vendor
-                </h5>
-
-                <button type="button"
-                        class="btn-close"
-                        data-bs-dismiss="modal"
-                        aria-label="Close"></button>
-            </div>
-
-            <form method="POST"
-                  action="{{ url_for('assets.return_to_vendor') }}">
-
-                <div class="modal-body">
-
-                    <input type="hidden"
-                           name="csrf_token"
-                           value="{{ csrf_token() }}">
-
-                    <input type="hidden"
-                           name="asset_id"
-                           value="{{ ast.id }}">
-
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Asset ID
-                        </label>
-
-                        <input type="text"
-                               class="form-control"
-                               value="{{ ast.asset_id }}"
-                               readonly>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Vendor <span class="text-danger">*</span>
-                        </label>
-
-                        <select name="vendor_id"
-                                class="form-select"
-                                required>
-
-                            <option value="">Select Vendor</option>
-
-                            {% for vendor in vendors %}
-                                {% if vendor.name in ['Techvity', 'Spurge'] %}
-                                    <option value="{{ vendor.id }}">
-                                        {{ vendor.name }}
-                                    </option>
-                                {% endif %}
-                            {% endfor %}
-
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Reason <span class="text-danger">*</span>
-                        </label>
-
-                        <textarea name="reason"
-                                  class="form-control"
-                                  rows="4"
-                                  placeholder="Enter reason for returning this asset to vendor..."
-                                  required></textarea>
-                    </div>
-
-                    <div class="alert alert-warning mb-0">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        This asset will be marked as
-                        <strong>Returned to Vendor</strong>.
-                    </div>
-
-                </div>
-
-                <div class="modal-footer">
-
-                    <button type="button"
-                            class="btn btn-secondary"
-                            data-bs-dismiss="modal">
-                        Cancel
-                    </button>
-
-                    <button type="submit"
-                            class="btn btn-danger">
-                        <i class="fas fa-truck-loading me-2"></i>
-                        Send Back to Vendor
-                    </button>
-
-                </div>
-
-            </form>
-
-        </div>
-    </div>
-</div>
                         <!-- =====================================================
                              ASSIGN MODAL
                         ====================================================== -->
@@ -704,12 +633,16 @@
                                             <button type="button"
                                                     class="btn btn-secondary"
                                                     data-bs-dismiss="modal">
+
                                                 Cancel
+
                                             </button>
 
                                             <button type="submit"
                                                     class="btn btn-primary">
+
                                                 Confirm Assignment
+
                                             </button>
 
                                         </div>
@@ -815,7 +748,9 @@
                                             <button type="button"
                                                     class="btn btn-secondary"
                                                     data-bs-dismiss="modal">
+
                                                 Cancel
+
                                             </button>
 
                                             <button type="submit"
@@ -840,6 +775,7 @@
                     </td>
 
                 </tr>
+
 
                 {% else %}
 
@@ -958,7 +894,6 @@
 </div>
 
 
-
 <!-- =========================================================
      EDIT ASSET MODALS
 ========================================================= -->
@@ -1060,11 +995,6 @@
                                         {% if ast.brand == 'ASUS' %}selected{% endif %}>
                                     ASUS
                                 </option>
-
-                                <!-- IMPORTANT:
-                                     Keep Apple because your existing DB
-                                     may already contain Apple records.
-                                -->
 
                                 <option value="Apple"
                                         {% if ast.brand == 'Apple' %}selected{% endif %}>
@@ -1768,9 +1698,9 @@
                         </label>
 
                         <select name="old_asset_id"
-        id="old_asset_id"
-        class="form-select"
-        required>
+                                id="old_asset_id"
+                                class="form-select"
+                                required>
 
                             <option value="">
                                 -- Choose Assigned Laptop --
@@ -2036,13 +1966,233 @@
 
 
 <!-- =========================================================
+     RETURN TO VENDOR MODAL
+========================================================= -->
+
+<div class="modal fade"
+     id="returnVendorModal"
+     tabindex="-1"
+     aria-labelledby="returnVendorModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+
+            <!-- HEADER -->
+
+            <div class="modal-header bg-warning text-dark">
+
+                <h5 class="modal-title fw-bold"
+                    id="returnVendorModalLabel">
+
+                    <i class="fas fa-truck me-2"></i>
+
+                    Send Back to Vendor
+
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close">
+                </button>
+
+            </div>
+
+
+            <!-- FORM -->
+
+            <form action="{{ url_for('assets.return_to_vendor') }}"
+                  method="POST">
+
+                <!-- CSRF TOKEN -->
+
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+
+
+                <div class="modal-body p-4">
+
+
+                    <!-- ASSET -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+
+                            Asset
+
+                        </label>
+
+                        <input type="text"
+                               id="returnVendorAssetName"
+                               class="form-control bg-light"
+                               readonly>
+
+                        <input type="hidden"
+                               name="asset_id"
+                               id="returnVendorAssetId">
+
+                    </div>
+
+
+                    <!-- VENDOR -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+
+                            Select Vendor
+                            <span class="text-danger">*</span>
+
+                        </label>
+
+                        <select name="vendor_id"
+                                id="returnVendorVendorId"
+                                class="form-select"
+                                required>
+
+                            <option value="">
+                                -- Select Vendor --
+                            </option>
+
+                            {% for vendor in vendors %}
+
+                                {% if vendor.name in ['Techvity', 'Spurge'] %}
+
+                                    <option value="{{ vendor.id }}">
+                                        {{ vendor.name }}
+                                    </option>
+
+                                {% endif %}
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- RETURN DATE -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+
+                            Vendor Return Date
+                            <span class="text-danger">*</span>
+
+                        </label>
+
+                        <div class="input-group">
+
+                            <span class="input-group-text bg-light">
+                                <i class="fas fa-calendar-alt text-primary"></i>
+                            </span>
+
+                            <input type="date"
+                                   name="vendor_return_date"
+                                   id="vendorReturnDate"
+                                   class="form-control"
+                                   required>
+
+                        </div>
+
+                        <small class="text-muted">
+
+                            Select the date when the laptop was returned
+                            to the vendor.
+
+                        </small>
+
+                    </div>
+
+
+                    <!-- REASON -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+
+                            Reason
+                            <span class="text-danger">*</span>
+
+                        </label>
+
+                        <textarea name="reason"
+                                  id="vendorReturnReason"
+                                  class="form-control"
+                                  rows="4"
+                                  placeholder="Enter reason for returning the laptop to vendor..."
+                                  required></textarea>
+
+                    </div>
+
+
+                    <!-- WARNING -->
+
+                    <div class="alert alert-warning mb-0">
+
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+
+                        This asset will be marked as
+
+                        <strong>
+                            Returned to Vendor
+                        </strong>.
+
+                    </div>
+
+                </div>
+
+
+                <!-- FOOTER -->
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+
+                        Cancel
+
+                    </button>
+
+
+                    <button type="submit"
+                            class="btn btn-warning text-dark fw-bold">
+
+                        <i class="fas fa-truck me-1"></i>
+
+                        Send Back to Vendor
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
      MODEL DATABASE + DEPENDENT DROPDOWN
 ========================================================= -->
-<!-- Searchable Dropdown -->
+
 <link rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css">
 
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+
+
 <script>
 
 /* =========================================================
@@ -2052,6 +2202,7 @@
 const assetModels = {
 
     "HP": [
+
         "ProBook 430 G5",
         "ProBook 430 G6",
         "ProBook 430 G7",
@@ -2160,7 +2311,9 @@ const assetModels = {
         "HP 250 G10"
     ],
 
+
     "Dell": [
+
         "Latitude 3300",
         "Latitude 3310",
         "Latitude 3320",
@@ -2288,7 +2441,9 @@ const assetModels = {
         "Dell G16"
     ],
 
+
     "Lenovo": [
+
         "ThinkPad T14",
         "ThinkPad T14 Gen 2",
         "ThinkPad T14 Gen 3",
@@ -2391,7 +2546,9 @@ const assetModels = {
         "Legion Slim 7"
     ],
 
+
     "ASUS": [
+
         "VivoBook 14",
         "VivoBook 15",
         "VivoBook 16",
@@ -2444,7 +2601,9 @@ const assetModels = {
         "Chromebook C425"
     ],
 
+
     "Apple": [
+
         "MacBook Air 2018",
         "MacBook Air 2019",
         "MacBook Air 2020",
@@ -2485,6 +2644,7 @@ const assetModels = {
         "iMac 27",
         "Mac Pro"
     ]
+
 };
 
 
@@ -2498,10 +2658,15 @@ function makeModelSearchable(modelSelect) {
         return;
     }
 
+
     /* Remove old TomSelect instance */
+
     if (modelSelect.tomselect) {
+
         modelSelect.tomselect.destroy();
+
     }
+
 
     new TomSelect(modelSelect, {
 
@@ -2535,6 +2700,7 @@ function makeModelSearchable(modelSelect) {
                         ${escape(data.text)}
                     </div>
                 `;
+
             },
 
             item: function(data, escape) {
@@ -2544,9 +2710,13 @@ function makeModelSearchable(modelSelect) {
                         ${escape(data.text)}
                     </div>
                 `;
+
             }
+
         }
+
     });
+
 }
 
 
@@ -2561,34 +2731,32 @@ function populateModels(
 ) {
 
     if (!brandSelect || !modelSelect) {
+
         return;
+
     }
+
 
     const brand = brandSelect.value;
 
     const models = assetModels[brand] || [];
 
 
-    /*
-     * Destroy searchable dropdown
-     * before rebuilding options.
-     */
+    /* Destroy searchable dropdown */
 
     if (modelSelect.tomselect) {
+
         modelSelect.tomselect.destroy();
+
     }
 
 
-    /*
-     * Clear options
-     */
+    /* Clear options */
 
     modelSelect.innerHTML = "";
 
 
-    /*
-     * Default option
-     */
+    /* Default option */
 
     const defaultOption =
         document.createElement("option");
@@ -2603,10 +2771,7 @@ function populateModels(
     );
 
 
-    /*
-     * Preserve existing model
-     * from database.
-     */
+    /* Preserve existing model */
 
     if (
         currentModel &&
@@ -2627,12 +2792,11 @@ function populateModels(
         modelSelect.appendChild(
             existingOption
         );
+
     }
 
 
-    /*
-     * Add models for selected brand.
-     */
+    /* Add models */
 
     models.forEach(function(model) {
 
@@ -2656,9 +2820,7 @@ function populateModels(
     });
 
 
-    /*
-     * Activate searchable dropdown.
-     */
+    /* Activate searchable dropdown */
 
     makeModelSearchable(modelSelect);
 
@@ -2692,9 +2854,7 @@ document.addEventListener(
         if (newBrand && newModel) {
 
 
-            /*
-             * Initial state
-             */
+            /* Initial state */
 
             newModel.innerHTML = "";
 
@@ -2709,16 +2869,12 @@ document.addEventListener(
             newModel.appendChild(option);
 
 
-            /*
-             * Make initial dropdown searchable.
-             */
+            /* Make searchable */
 
             makeModelSearchable(newModel);
 
 
-            /*
-             * When Brand changes.
-             */
+            /* Brand change */
 
             newBrand.addEventListener(
                 "change",
@@ -2756,22 +2912,20 @@ document.addEventListener(
 
 
                     if (!modelSelect) {
+
                         return;
+
                     }
 
 
-                    /*
-                     * Existing database model.
-                     */
+                    /* Existing model */
 
                     const currentModel =
                         modelSelect.dataset.currentModel ||
                         "";
 
 
-                    /*
-                     * Populate model list.
-                     */
+                    /* Populate */
 
                     populateModels(
                         brandSelect,
@@ -2780,9 +2934,7 @@ document.addEventListener(
                     );
 
 
-                    /*
-                     * Brand changed.
-                     */
+                    /* Brand changed */
 
                     brandSelect.addEventListener(
                         "change",
@@ -2803,12 +2955,21 @@ document.addEventListener(
 );
 
 </script>
+
+
+
+<!-- =========================================================
+     REPLACEMENT ASSET AUTO-SELECT
+========================================================= -->
+
 <script>
+
 document.addEventListener("DOMContentLoaded", function () {
 
     const replaceButtons = document.querySelectorAll(
         '[data-bs-target="#replaceAssetModal"][data-old-asset-id]'
     );
+
 
     replaceButtons.forEach(function (button) {
 
@@ -2817,21 +2978,33 @@ document.addEventListener("DOMContentLoaded", function () {
             const oldAssetId =
                 this.getAttribute("data-old-asset-id");
 
+
             const oldAssetSelect =
                 document.getElementById("old_asset_id");
 
+
             if (!oldAssetSelect || !oldAssetId) {
+
                 return;
+
             }
 
-            oldAssetSelect.value = oldAssetId;
+
+            oldAssetSelect.value =
+                oldAssetId;
+
 
             /*
-             * If the dropdown is converted to Tom Select,
-             * update the Tom Select value also.
+             * If Tom Select is used,
+             * update it as well.
              */
+
             if (oldAssetSelect.tomselect) {
-                oldAssetSelect.tomselect.setValue(oldAssetId);
+
+                oldAssetSelect.tomselect.setValue(
+                    oldAssetId
+                );
+
             }
 
         });
@@ -2839,130 +3012,118 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
 });
+
 </script>
-<!-- Return to Vendor Modal -->
-<div class="modal fade" id="returnVendorModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
 
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-truck me-2"></i>
-                    Send Back to Vendor
-                </h5>
 
-                <button type="button"
-                        class="btn-close"
-                        data-bs-dismiss="modal">
-                </button>
-            </div>
 
-            <form action="{{ url_for('assets.return_to_vendor') }}"
-                  method="POST">
+<!-- =========================================================
+     VENDOR RETURN MODAL JAVASCRIPT
+========================================================= -->
 
-                <div class="modal-body">
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            Asset
-                        </label>
-
-                        <input type="text"
-                               id="returnVendorAssetName"
-                               class="form-control"
-                               readonly>
-
-                        <input type="hidden"
-                               name="asset_id"
-                               id="returnVendorAssetId">
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            Select Vendor
-                        </label>
-
-                        <select name="vendor_id"
-                                class="form-select"
-                                required>
-
-                            <option value="">
-                                -- Select Vendor --
-                            </option>
-
-                            {% for vendor in vendors %}
-                                {% if vendor.name in ['Techvity', 'Spurge'] %}
-                                    <option value="{{ vendor.id }}">
-                                        {{ vendor.name }}
-                                    </option>
-                                {% endif %}
-                            {% endfor %}
-
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">
-                            Reason
-                        </label>
-
-                        <textarea name="reason"
-                                  class="form-control"
-                                  rows="4"
-                                  placeholder="Enter reason for returning the laptop to vendor..."
-                                  required></textarea>
-                    </div>
-
-                </div>
-
-                <div class="modal-footer">
-
-                    <button type="button"
-                            class="btn btn-secondary"
-                            data-bs-dismiss="modal">
-                        Cancel
-                    </button>
-
-                    <button type="submit"
-                            class="btn btn-warning text-dark fw-semibold">
-                        <i class="fas fa-truck me-1"></i>
-                        Send Back to Vendor
-                    </button>
-
-                </div>
-
-            </form>
-
-        </div>
-    </div>
-</div>
 <script>
+
 document.addEventListener("DOMContentLoaded", function () {
+
 
     const vendorButtons = document.querySelectorAll(
         '[data-bs-target="#returnVendorModal"][data-asset-id]'
     );
 
+
     vendorButtons.forEach(function (button) {
 
+
         button.addEventListener("click", function () {
+
 
             const assetId =
                 this.getAttribute("data-asset-id");
 
+
             const assetName =
                 this.getAttribute("data-asset-name");
 
-            document.getElementById("returnVendorAssetId").value =
-                assetId;
 
-            document.getElementById("returnVendorAssetName").value =
-                assetName;
+            const assetIdInput =
+                document.getElementById(
+                    "returnVendorAssetId"
+                );
+
+
+            const assetNameInput =
+                document.getElementById(
+                    "returnVendorAssetName"
+                );
+
+
+            const dateInput =
+                document.getElementById(
+                    "vendorReturnDate"
+                );
+
+
+            const vendorSelect =
+                document.getElementById(
+                    "returnVendorVendorId"
+                );
+
+
+            const reasonInput =
+                document.getElementById(
+                    "vendorReturnReason"
+                );
+
+
+            /* Set asset */
+
+            if (assetIdInput) {
+
+                assetIdInput.value =
+                    assetId || "";
+
+            }
+
+
+            if (assetNameInput) {
+
+                assetNameInput.value =
+                    assetName || "";
+
+            }
+
+
+            /*
+             * Clear previous values
+             * whenever modal opens.
+             */
+
+            if (dateInput) {
+
+                dateInput.value = "";
+
+            }
+
+
+            if (vendorSelect) {
+
+                vendorSelect.value = "";
+
+            }
+
+
+            if (reasonInput) {
+
+                reasonInput.value = "";
+
+            }
 
         });
 
     });
 
 });
+
 </script>
+
 {% endblock %}
