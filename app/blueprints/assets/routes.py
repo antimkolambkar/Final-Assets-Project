@@ -473,7 +473,13 @@ def get_asset_history(asset_id):
 
 @assets_bp.route('/return-to-vendor', methods=['POST'])
 @login_required
+@assets_bp.route('/return-to-vendor', methods=['POST'])
+@login_required
 def return_to_vendor():
+
+    # ---------------------------------------------------------
+    # IT ADMIN PERMISSION
+    # ---------------------------------------------------------
     if not current_user.is_it_admin:
         flash(
             'Permission denied. Only IT Admins can return assets to vendors.',
@@ -481,109 +487,193 @@ def return_to_vendor():
         )
         return redirect(url_for('assets.index'))
 
+
+    # ---------------------------------------------------------
+    # GET FORM DATA
+    # ---------------------------------------------------------
     asset_id = request.form.get('asset_id', type=int)
     vendor_id = request.form.get('vendor_id', type=int)
+
     reason = request.form.get('reason', '').strip()
+
     vendor_return_date_str = request.form.get(
         'vendor_return_date',
         ''
     ).strip()
 
-    # Validate return date
-    if not vendor_return_date_str:
-        flash(
-            'Please select the vendor return date.',
-            'danger'
-        )
-        return redirect(url_for('assets.index'))
 
-    try:
-        vendor_return_date = datetime.strptime(
-            vendor_return_date_str,
-            '%Y-%m-%d'
-        )
-    except ValueError:
-        flash(
-            'Invalid vendor return date.',
-            'danger'
-        )
+    # ---------------------------------------------------------
+    # VALIDATE ASSET
+    # ---------------------------------------------------------
+    if not asset_id:
+        flash('Asset ID is missing.', 'danger')
         return redirect(url_for('assets.index'))
 
     asset = Asset.query.get_or_404(asset_id)
+
+
+    # ---------------------------------------------------------
+    # VALIDATE VENDOR
+    # ---------------------------------------------------------
+    if not vendor_id:
+        flash('Please select a vendor.', 'danger')
+        return redirect(url_for('assets.index'))
+
     vendor = Vendor.query.get_or_404(vendor_id)
 
-    # Only Techvity and Spurge are allowed
+
+    # ---------------------------------------------------------
+    # ONLY ALLOW TECHVITY / SPURGE
+    # ---------------------------------------------------------
     if vendor.name not in ['Techvity', 'Spurge']:
+
         flash(
             'This vendor is not allowed for vendor return.',
             'danger'
         )
+
         return redirect(url_for('assets.index'))
 
-    # Assigned laptop must be returned first
+
+    # ---------------------------------------------------------
+    # CHECK ASSET STATUS
+    # ---------------------------------------------------------
     if asset.status == AssetStatus.ASSIGNED:
+
         flash(
             f'Cannot return assigned asset {asset.asset_id} '
             'to vendor. Return it from the employee first.',
             'warning'
         )
+
         return redirect(url_for('assets.index'))
 
-    # Prevent duplicate vendor return
+
     if asset.status == AssetStatus.RETURNED_TO_VENDOR:
+
         flash(
-            f'Asset {asset.asset_id} has already been returned '
-            'to vendor.',
+            f'Asset {asset.asset_id} has already been returned to vendor.',
             'warning'
         )
+
         return redirect(url_for('assets.index'))
 
-    # Reason is required
+
+    # ---------------------------------------------------------
+    # VALIDATE RETURN DATE
+    # ---------------------------------------------------------
+    if not vendor_return_date_str:
+
+        flash(
+            'Please select the vendor return date.',
+            'danger'
+        )
+
+        return redirect(url_for('assets.index'))
+
+
+    try:
+
+        vendor_return_date = datetime.strptime(
+            vendor_return_date_str,
+            '%Y-%m-%d'
+        )
+
+    except ValueError:
+
+        flash(
+            'Invalid vendor return date.',
+            'danger'
+        )
+
+        return redirect(url_for('assets.index'))
+
+
+    # ---------------------------------------------------------
+    # VALIDATE REASON
+    # ---------------------------------------------------------
     if not reason:
+
         flash(
             'Please provide a reason for returning the asset to vendor.',
             'danger'
         )
+
         return redirect(url_for('assets.index'))
 
-    # Update asset
+
+    # ---------------------------------------------------------
+    # UPDATE ASSET
+    # ---------------------------------------------------------
     asset.vendor_id = vendor.id
+
     asset.status = AssetStatus.RETURNED_TO_VENDOR
+
+    # IMPORTANT:
+    # Save the DATE selected in the HTML form
     asset.vendor_return_date = vendor_return_date
+
     asset.vendor_return_reason = reason
+
     asset.assigned_employee_id = None
+
     asset.assignment_date = None
 
-    # Add history
+
+    # ---------------------------------------------------------
+    # HISTORY
+    # ---------------------------------------------------------
     hist = AssetAssignmentHistory(
+
         asset_id=asset.id,
+
         action='Send Back to Vendor',
+
         notes=(
             f'Asset returned to Vendor {vendor.name}. '
+            f'Return Date: {vendor_return_date_str}. '
             f'Reason: {reason}'
         ),
+
         performed_by=current_user.full_name
     )
 
     db.session.add(hist)
 
-    # Audit log
+
+    # ---------------------------------------------------------
+    # AUDIT LOG
+    # ---------------------------------------------------------
     AuditService.log(
+
         action='Asset Returned to Vendor',
+
         entity_type='Asset',
+
         entity_id=asset.asset_id,
+
         details=(
             f'Asset {asset.asset_id} returned to vendor '
-            f'{vendor.name}. Reason: {reason}'
+            f'{vendor.name} on {vendor_return_date_str}. '
+            f'Reason: {reason}'
         )
     )
 
+
+    # ---------------------------------------------------------
+    # SAVE DATABASE
+    # ---------------------------------------------------------
     db.session.commit()
 
+
+    # ---------------------------------------------------------
+    # SUCCESS MESSAGE
+    # ---------------------------------------------------------
     flash(
-        f'Asset {asset.asset_id} successfully returned '
-        f'to {vendor.name}.',
+        f'Asset {asset.asset_id} successfully returned to '
+        f'{vendor.name} on {vendor_return_date_str}.',
         'success'
     )
+
 
     return redirect(url_for('assets.index'))
