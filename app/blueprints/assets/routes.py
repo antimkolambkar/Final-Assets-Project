@@ -9,6 +9,32 @@ from app.services.audit_service import AuditService
 
 assets_bp = Blueprint('assets', __name__, url_prefix='/assets')
 
+
+# ---------------------------------------------------------
+# ALLOWED VENDORS FOR VENDOR RETURN
+# ---------------------------------------------------------
+# Keep vendor names in one shared constant so the same list
+# can be reused anywhere vendor-return validation is required.
+# Matching is case-insensitive and ignores leading/trailing spaces.
+ALLOWED_VENDOR_RETURN_NAMES = {
+    'Techvity',
+    'Spurge',
+    'WBG',
+    'Exalogic Bangalore',
+    'Exalogic Dubai',
+}
+
+
+def normalize_vendor_name(name):
+    """Normalize a vendor name for case-insensitive comparison."""
+    return ' '.join((name or '').strip().casefold().split())
+
+
+ALLOWED_VENDOR_RETURN_NAMES_NORMALIZED = {
+    normalize_vendor_name(name)
+    for name in ALLOWED_VENDOR_RETURN_NAMES
+}
+
 def generate_asset_id():
     year = datetime.utcnow().strftime('%Y')
     count = Asset.query.count() + 1
@@ -557,15 +583,18 @@ def return_to_vendor():
 
 
     # ---------------------------------------------------------
-    # ONLY ALLOW TECHVITY / SPURGE
+    # ALLOWED VENDORS FOR VENDOR RETURN
     # ---------------------------------------------------------
-    if vendor.name not in ['Techvity', 'Spurge']:
+    # Compare normalized names so differences such as
+    # "techvity", "TECHVITY", or extra spaces do not fail
+    # validation.
+    normalized_vendor_name = normalize_vendor_name(vendor.name)
 
+    if normalized_vendor_name not in ALLOWED_VENDOR_RETURN_NAMES_NORMALIZED:
         flash(
-            'This vendor is not allowed for vendor return.',
+            f'Vendor "{vendor.name}" is not allowed for vendor return.',
             'danger'
         )
-
         return redirect(url_for('assets.index'))
 
 
