@@ -627,13 +627,7 @@
                                                             <span class="employee-option-name">
                                                                 {{ emp.name }}
                                                             </span>
-
-                                                            <small class="employee-option-details">
-                                                                {{ emp.employee_id }}
-                                                                {% if emp.department %}
-                                                                    &bull; {{ emp.department }}
-                                                                {% endif %}
-                                                            </small>
+                                                        <span class="employee-option-name">{{ emp.name }}</span>
                                                         </span>
 
                                                     </button>
@@ -3373,12 +3367,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 hiddenInput.value = databaseId;
 
                 /* Show selected employee */
-                searchInput.value =
-                    name +
-                    " (" +
-                    code +
-                    (department ? " - " + department : "") +
-                    ")";
+               searchInput.value = name;
 
                 searchInput.classList.remove("is-invalid");
 
