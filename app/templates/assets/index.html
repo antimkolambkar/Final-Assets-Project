@@ -2022,9 +2022,7 @@
                     <div class="mb-3">
 
                         <label class="form-label fw-semibold">
-
                             Asset
-
                         </label>
 
                         <input type="text"
@@ -2059,15 +2057,13 @@
                                 -- Select Vendor --
                             </option>
 
+                            <!-- ALL VENDORS ARE SHOWN HERE -->
+
                             {% for vendor in vendors %}
 
-                                {% if vendor.name in ['Techvity', 'Spurge'] %}
-
-                                    <option value="{{ vendor.id }}">
-                                        {{ vendor.name }}
-                                    </option>
-
-                                {% endif %}
+                            <option value="{{ vendor.id }}">
+                                {{ vendor.name }}
+                            </option>
 
                             {% endfor %}
 
