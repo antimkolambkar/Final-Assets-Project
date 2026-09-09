@@ -344,3 +344,208 @@ body {
 .modal-header .btn-close{
     margin:0;
 }
+/* =========================================================
+   UNIVERSAL SEARCHABLE DROPDOWN
+   ========================================================= */
+
+.searchable-select-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.searchable-select-wrapper .searchable-select-input-group {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.searchable-select-wrapper .searchable-select-input-group:focus-within {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+.searchable-select-icon {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    background: #f8f9fa;
+    border-right: 1px solid #e9ecef;
+}
+
+.searchable-select-input {
+    flex: 1;
+    min-width: 0;
+    height: 44px;
+    border: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    padding: 0 12px;
+    font-size: 15px;
+    background: #fff;
+}
+
+.searchable-select-input::placeholder {
+    color: #6c757d;
+}
+
+.searchable-select-arrow {
+    width: 40px;
+    min-width: 40px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    cursor: pointer;
+}
+
+.searchable-select-results {
+    position: absolute;
+    z-index: 2050;
+    left: 0;
+    right: 0;
+    top: calc(100% + 2px);
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    max-height: 315px;
+    overflow-y: auto;
+    display: none;
+}
+
+.searchable-select-results.show {
+    display: block;
+}
+
+.searchable-select-option {
+    width: 100%;
+    min-height: 64px;
+    padding: 10px 14px;
+    border: 0;
+    border-bottom: 1px solid #f0f0f0;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.searchable-select-option:last-child {
+    border-bottom: 0;
+}
+
+.searchable-select-option:hover,
+.searchable-select-option.active {
+    background: #f4f8ff;
+}
+
+.searchable-option-icon {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    border-radius: 50%;
+    background: #eaf3ff;
+    color: #0d6efd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.searchable-option-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.searchable-option-title {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: #212529;
+    line-height: 1.3;
+}
+
+.searchable-option-subtitle {
+    display: block;
+    margin-top: 3px;
+    font-size: 13px;
+    color: #6c757d;
+    line-height: 1.3;
+}
+
+.searchable-no-results {
+    padding: 22px 15px;
+    text-align: center;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.searchable-select-results::-webkit-scrollbar {
+    width: 7px;
+}
+
+.searchable-select-results::-webkit-scrollbar-track {
+    background: #f8f9fa;
+}
+
+.searchable-select-results::-webkit-scrollbar-thumb {
+    background: #adb5bd;
+    border-radius: 10px;
+}
+
+.searchable-select-results::-webkit-scrollbar-thumb:hover {
+    background: #868e96;
+}
+
+/* Selected state */
+.searchable-select-input.selected {
+    font-weight: 500;
+    color: #212529;
+}
+
+/* Dark mode */
+[data-theme="dark"] .searchable-select-input-group {
+    background: #212529;
+    border-color: #495057;
+}
+
+[data-theme="dark"] .searchable-select-input,
+[data-theme="dark"] .searchable-select-results {
+    background: #212529;
+    color: #f8f9fa;
+}
+
+[data-theme="dark"] .searchable-select-icon {
+    background: #343a40;
+    border-color: #495057;
+}
+
+[data-theme="dark"] .searchable-select-option {
+    background: #212529;
+    color: #f8f9fa;
+    border-color: #343a40;
+}
+
+[data-theme="dark"] .searchable-select-option:hover,
+[data-theme="dark"] .searchable-select-option.active {
+    background: #343a40;
+}
+
+[data-theme="dark"] .searchable-option-title {
+    color: #f8f9fa;
+}
+
+[data-theme="dark"] .searchable-option-subtitle {
+    color: #adb5bd;
+}
