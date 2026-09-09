@@ -207,15 +207,73 @@
     <div class="table-responsive">
 
         <style>
-    .asset-table { min-width: 1450px; }
-    .asset-table th, .asset-table td { vertical-align: middle !important; }
-    .asset-table .status-column { width: 155px; min-width: 155px; text-align: center !important; white-space: nowrap; }
-    .asset-table .date-column { width: 150px; min-width: 150px; text-align: center !important; white-space: nowrap; }
-    .asset-table .status-badge { min-width: 125px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-    .asset-table .asset-date { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 125px; }
-</style>
+            .asset-table {
+                min-width: 1450px;
+            }
 
-<table class="table table-custom mb-0 asset-table">
+            .asset-table th,
+            .asset-table td {
+                vertical-align: middle !important;
+            }
+
+            .asset-table .status-column {
+                width: 155px;
+                min-width: 155px;
+                text-align: center !important;
+                white-space: nowrap;
+            }
+
+            .asset-table .date-column {
+                width: 150px;
+                min-width: 150px;
+                text-align: center !important;
+                white-space: nowrap;
+            }
+
+            .asset-table .status-badge {
+                min-width: 135px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                padding: 7px 12px;
+                border-radius: 6px;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+
+            .asset-table .asset-date {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                min-width: 125px;
+            }
+
+            .asset-table .badge-available {
+                background-color: #198754 !important;
+                color: #ffffff !important;
+            }
+
+            .asset-table .badge-assigned {
+                background-color: #0d6efd !important;
+                color: #ffffff !important;
+            }
+
+            .asset-table .badge-repair,
+            .asset-table .badge-under-repair {
+                background-color: #ffc107 !important;
+                color: #212529 !important;
+            }
+
+            .asset-table .badge-returned-to-vendor,
+            .asset-table .badge-sent-to-vendor {
+                background-color: #6f42c1 !important;
+                color: #ffffff !important;
+            }
+        </style>
+
+        <table class="table table-custom mb-0 asset-table">
 
             <thead>
 
@@ -301,43 +359,83 @@
 
                     <!-- Status -->
                     {% set status_value = ast.status.value if ast.status.value is defined else ast.status|string %}
+
                     <td class="status-column">
-                        <span class="badge badge-status status-badge badge-{{ status_value.lower().replace(' ', '-') }}">
-                            <i class="fas
-                                {% if status_value == 'Available' %}fa-box-open
-                                {% elif status_value == 'Assigned' %}fa-user-check
-                                {% elif status_value == 'Returned to Vendor' %}fa-truck
-                                {% else %}fa-wrench
-                                {% endif %}
-                            "></i>
-                            {{ status_value }}
-                        </span>
+
+                        {% if status_value == 'Available' %}
+
+                            <span class="badge status-badge badge-available">
+                                <i class="fas fa-box-open"></i>
+                                Available
+                            </span>
+
+                        {% elif status_value == 'Assigned' %}
+
+                            <span class="badge status-badge badge-assigned">
+                                <i class="fas fa-user-check"></i>
+                                Assigned
+                            </span>
+
+                        {% elif status_value in ['Repair', 'Under Repair'] %}
+
+                            <span class="badge status-badge badge-repair">
+                                <i class="fas fa-wrench"></i>
+                                Under Repair
+                            </span>
+
+                        {% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] %}
+
+                            <span class="badge status-badge badge-returned-to-vendor">
+                                <i class="fas fa-truck"></i>
+                                Sent to Vendor
+                            </span>
+
+                        {% else %}
+
+                            <span class="badge status-badge bg-secondary text-white">
+                                {{ status_value }}
+                            </span>
+
+                        {% endif %}
+
                     </td>
+
 
                     <!-- Date - shown for every asset -->
                     <td class="date-column">
+
                         {% if status_value == 'Assigned' and ast.assignment_date %}
+
                             <span class="asset-date fw-semibold text-dark">
                                 <i class="fas fa-calendar-check text-primary"></i>
                                 {{ ast.assignment_date.strftime('%d-%m-%Y') }}
                             </span>
-                        {% elif status_value == 'Returned to Vendor' and ast.vendor_return_date %}
+
+                        {% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] and ast.vendor_return_date %}
+
                             <span class="asset-date fw-semibold text-dark">
-                                <i class="fas fa-calendar-check text-danger"></i>
+                                <i class="fas fa-calendar-check" style="color:#6f42c1;"></i>
                                 {{ ast.vendor_return_date.strftime('%d-%m-%Y') }}
                             </span>
+
                         {% elif ast.purchase_date %}
+
                             <span class="asset-date fw-semibold text-dark">
                                 <i class="fas fa-calendar-alt text-secondary"></i>
                                 {{ ast.purchase_date.strftime('%d-%m-%Y') }}
                             </span>
+
                         {% else %}
+
                             <span class="asset-date text-muted">
                                 <i class="fas fa-calendar-alt"></i>
                                 —
                             </span>
+
                         {% endif %}
+
                     </td>
+
 
                     <!-- Assigned Employee -->
                     <td>
