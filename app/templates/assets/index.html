@@ -218,6 +218,7 @@
                     <th>Specifications</th>
                     <th>Vendor</th>
                     <th>Status</th>
+                    <th>Date</th>
                     <th>Assigned User Name</th>
                     <th class="text-end">Actions</th>
 
@@ -309,6 +310,37 @@
                             {{ ast.status }}
 
                         </span>
+
+                    </td>
+
+
+                    <!-- =================================================
+                         DATE
+                    ================================================== -->
+
+                    <td>
+
+                        {% if ast.status == 'Assigned' and ast.assignment_date %}
+
+                            <span class="text-dark fw-semibold">
+                                <i class="fas fa-calendar-check text-primary me-1"></i>
+                                {{ ast.assignment_date.strftime('%d-%m-%Y') }}
+                            </span>
+
+                        {% elif ast.status == 'Returned to Vendor' and ast.vendor_return_date %}
+
+                            <span class="text-dark fw-semibold">
+                                <i class="fas fa-calendar-check text-danger me-1"></i>
+                                {{ ast.vendor_return_date.strftime('%d-%m-%Y') }}
+                            </span>
+
+                        {% else %}
+
+                            <span class="text-muted">
+                                -
+                            </span>
+
+                        {% endif %}
 
                     </td>
 
@@ -781,7 +813,7 @@
 
                 <tr>
 
-                    <td colspan="8"
+                    <td colspan="9"
                         class="text-center text-muted py-4">
 
                         <i class="fas fa-laptop fa-2x mb-2 d-block text-secondary"></i>
@@ -910,8 +942,6 @@
 
         <div class="modal-content border-0 shadow-lg">
 
-
-            <!-- Header -->
 
             <div class="modal-header bg-primary text-white">
 
@@ -1135,9 +1165,6 @@
 
                     <div class="row g-3 mb-3">
 
-
-                        <!-- RAM -->
-
                         <div class="col-md-6">
 
                             <label class="form-label fw-semibold">
@@ -1192,8 +1219,6 @@
 
                         </div>
 
-
-                        <!-- SSD -->
 
                         <div class="col-md-6">
 
@@ -1277,8 +1302,6 @@
                 </div>
 
 
-                <!-- Footer -->
-
                 <div class="modal-footer">
 
                     <button type="button"
@@ -1360,7 +1383,6 @@
 
                     <div class="row g-3 mb-3">
 
-
                         <div class="col-md-6">
 
                             <label class="form-label fw-semibold">
@@ -1427,7 +1449,6 @@
 
                     <div class="row g-3 mb-3">
 
-
                         <div class="col-md-6">
 
                             <label class="form-label fw-semibold">
@@ -1475,7 +1496,6 @@
                     <!-- Processor -->
 
                     <div class="row g-3">
-
 
                         <div class="col-md-4">
 
@@ -1869,7 +1889,6 @@
 
             <div class="modal-body p-4">
 
-
                 <div class="mb-3 p-3 bg-light rounded-3 border">
 
                     <strong class="text-dark">
@@ -1980,8 +1999,6 @@
         <div class="modal-content border-0 shadow-lg">
 
 
-            <!-- HEADER -->
-
             <div class="modal-header bg-warning text-dark">
 
                 <h5 class="modal-title fw-bold"
@@ -2002,12 +2019,8 @@
             </div>
 
 
-            <!-- FORM -->
-
             <form action="{{ url_for('assets.return_to_vendor') }}"
                   method="POST">
-
-                <!-- CSRF TOKEN -->
 
                 <input type="hidden"
                        name="csrf_token"
@@ -2056,8 +2069,6 @@
                             <option value="">
                                 -- Select Vendor --
                             </option>
-
-                            <!-- ALL VENDORS ARE SHOWN HERE -->
 
                             {% for vendor in vendors %}
 
@@ -2145,8 +2156,6 @@
                 </div>
 
 
-                <!-- FOOTER -->
-
                 <div class="modal-footer">
 
                     <button type="button"
@@ -2190,10 +2199,6 @@
 
 
 <script>
-
-/* =========================================================
-   MODEL DATABASE
-========================================================= */
 
 const assetModels = {
 
@@ -2654,15 +2659,9 @@ function makeModelSearchable(modelSelect) {
         return;
     }
 
-
-    /* Remove old TomSelect instance */
-
     if (modelSelect.tomselect) {
-
         modelSelect.tomselect.destroy();
-
     }
-
 
     new TomSelect(modelSelect, {
 
@@ -2727,32 +2726,21 @@ function populateModels(
 ) {
 
     if (!brandSelect || !modelSelect) {
-
         return;
-
     }
-
 
     const brand = brandSelect.value;
 
     const models = assetModels[brand] || [];
 
 
-    /* Destroy searchable dropdown */
-
     if (modelSelect.tomselect) {
-
         modelSelect.tomselect.destroy();
-
     }
 
 
-    /* Clear options */
-
     modelSelect.innerHTML = "";
 
-
-    /* Default option */
 
     const defaultOption =
         document.createElement("option");
@@ -2766,8 +2754,6 @@ function populateModels(
         defaultOption
     );
 
-
-    /* Preserve existing model */
 
     if (
         currentModel &&
@@ -2792,8 +2778,6 @@ function populateModels(
     }
 
 
-    /* Add models */
-
     models.forEach(function(model) {
 
         const option =
@@ -2815,8 +2799,6 @@ function populateModels(
 
     });
 
-
-    /* Activate searchable dropdown */
 
     makeModelSearchable(modelSelect);
 
@@ -2849,9 +2831,6 @@ document.addEventListener(
 
         if (newBrand && newModel) {
 
-
-            /* Initial state */
-
             newModel.innerHTML = "";
 
             const option =
@@ -2865,12 +2844,8 @@ document.addEventListener(
             newModel.appendChild(option);
 
 
-            /* Make searchable */
-
             makeModelSearchable(newModel);
 
-
-            /* Brand change */
 
             newBrand.addEventListener(
                 "change",
@@ -2908,20 +2883,14 @@ document.addEventListener(
 
 
                     if (!modelSelect) {
-
                         return;
-
                     }
 
-
-                    /* Existing model */
 
                     const currentModel =
                         modelSelect.dataset.currentModel ||
                         "";
 
-
-                    /* Populate */
 
                     populateModels(
                         brandSelect,
@@ -2929,8 +2898,6 @@ document.addEventListener(
                         currentModel
                     );
 
-
-                    /* Brand changed */
 
                     brandSelect.addEventListener(
                         "change",
@@ -2980,20 +2947,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
             if (!oldAssetSelect || !oldAssetId) {
-
                 return;
-
             }
 
 
             oldAssetSelect.value =
                 oldAssetId;
 
-
-            /*
-             * If Tom Select is used,
-             * update it as well.
-             */
 
             if (oldAssetSelect.tomselect) {
 
@@ -3071,8 +3031,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 );
 
 
-            /* Set asset */
-
             if (assetIdInput) {
 
                 assetIdInput.value =
@@ -3088,11 +3046,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             }
 
-
-            /*
-             * Clear previous values
-             * whenever modal opens.
-             */
 
             if (dateInput) {
 
