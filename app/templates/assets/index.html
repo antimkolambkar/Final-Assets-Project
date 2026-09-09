@@ -421,7 +421,17 @@
     </li>
 
 {% elif ast.status == 'Assigned' %}
-
+<!-- Replace Laptop -->
+<li>
+    <button type="button"
+            class="dropdown-item text-warning"
+            data-bs-toggle="modal"
+            data-bs-target="#replaceAssetModal"
+            data-old-asset-id="{{ ast.id }}">
+        <i class="fas fa-sync me-2"></i>
+        Replace Laptop
+    </button>
+</li>
                                 <!-- Return -->
                                 <li>
 
@@ -1755,8 +1765,9 @@
                         </label>
 
                         <select name="old_asset_id"
-                                class="form-select"
-                                required>
+        id="old_asset_id"
+        class="form-select"
+        required>
 
                             <option value="">
                                 -- Choose Assigned Laptop --
@@ -2788,5 +2799,42 @@ document.addEventListener(
     }
 );
 
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const replaceButtons = document.querySelectorAll(
+        '[data-bs-target="#replaceAssetModal"][data-old-asset-id]'
+    );
+
+    replaceButtons.forEach(function (button) {
+
+        button.addEventListener("click", function () {
+
+            const oldAssetId =
+                this.getAttribute("data-old-asset-id");
+
+            const oldAssetSelect =
+                document.getElementById("old_asset_id");
+
+            if (!oldAssetSelect || !oldAssetId) {
+                return;
+            }
+
+            oldAssetSelect.value = oldAssetId;
+
+            /*
+             * If the dropdown is converted to Tom Select,
+             * update the Tom Select value also.
+             */
+            if (oldAssetSelect.tomselect) {
+                oldAssetSelect.tomselect.setValue(oldAssetId);
+            }
+
+        });
+
+    });
+
+});
 </script>
 {% endblock %}
