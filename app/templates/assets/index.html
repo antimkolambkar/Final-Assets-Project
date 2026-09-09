@@ -3266,6 +3266,181 @@ document.addEventListener("DOMContentLoaded", function () {
 
 document.addEventListener("DOMContentLoaded", function () {
 
+    /* =========================================================
+       GENERIC OFFLINE SEARCHABLE DROPDOWNS
+       Works for every normal <select> in this page.
+       Employee picker is already custom and is skipped.
+       ========================================================= */
+    document.querySelectorAll("select").forEach(function (select) {
+        if (select.closest(".employee-picker") || select.dataset.searchableInitialized === "true") {
+            return;
+        }
+
+        /* Do not transform a multi-select. */
+        if (select.multiple) {
+            return;
+        }
+
+        const options = Array.from(select.options);
+        if (options.length <= 1) {
+            return;
+        }
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "searchable-select-wrapper";
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "form-control searchable-select-input";
+        input.autocomplete = "off";
+        input.placeholder = select.dataset.searchPlaceholder || "Type to search...";
+        input.setAttribute("aria-label", select.getAttribute("aria-label") || "Search options");
+
+        const hidden = document.createElement("input");
+        hidden.type = "hidden";
+        if (select.name) {
+            hidden.name = select.name;
+        }
+        hidden.value = select.value || "";
+
+        const results = document.createElement("div");
+        results.className = "searchable-select-results";
+
+        const noResults = document.createElement("div");
+        noResults.className = "searchable-select-no-results";
+        noResults.innerHTML = '<i class="fas fa-search me-2"></i>No matching option found';
+
+        const optionButtons = [];
+
+        options.forEach(function (option) {
+            /* Keep empty/placeholder option as a selectable option, but don't make
+               it part of normal search matching unless the search is empty. */
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "searchable-select-option";
+            button.dataset.value = option.value;
+            button.dataset.text = (option.textContent || "").trim();
+
+            const text = document.createElement("span");
+            text.textContent = button.dataset.text || "-- Select --";
+            button.appendChild(text);
+
+            if (option.value === "") {
+                button.dataset.placeholder = "true";
+            }
+
+            button.addEventListener("click", function () {
+                hidden.value = this.dataset.value;
+                input.value = this.dataset.text;
+                input.classList.remove("is-invalid");
+                results.style.display = "none";
+                select.value = this.dataset.value;
+                select.dispatchEvent(new Event("change", { bubbles: true }));
+            });
+
+            results.appendChild(button);
+            optionButtons.push(button);
+        });
+
+        results.appendChild(noResults);
+
+        /* Put the custom control beside the original select's location. */
+        select.parentNode.insertBefore(wrapper, select);
+        wrapper.appendChild(input);
+        wrapper.appendChild(hidden);
+        wrapper.appendChild(results);
+
+        /* Keep the original select hidden as a compatibility layer, but remove
+           its name so the form submits only the hidden value. */
+        select.dataset.searchableInitialized = "true";
+        select.removeAttribute("name");
+        select.classList.add("d-none");
+        select.tabIndex = -1;
+
+        const selectedOption = select.options[select.selectedIndex];
+        if (selectedOption) {
+            input.value = (selectedOption.textContent || "").trim();
+        }
+
+        function filterOptions() {
+            const query = input.value.toLowerCase().trim();
+            let visible = 0;
+
+            optionButtons.forEach(function (button) {
+                const text = (button.dataset.text || "").toLowerCase();
+                const isPlaceholder = button.dataset.placeholder === "true";
+                const matches = query === "" || (!isPlaceholder && text.includes(query));
+                button.style.display = matches ? "block" : "none";
+                button.classList.remove("active");
+                if (matches) visible++;
+            });
+
+            /* Always allow the placeholder when the field is empty. */
+            if (query === "") {
+                optionButtons.forEach(function (button) {
+                    if (button.dataset.placeholder === "true") {
+                        button.style.display = "block";
+                    }
+                });
+            }
+
+            noResults.style.display = visible === 0 ? "block" : "none";
+            results.style.display = "block";
+        }
+
+        function closeResults() {
+            results.style.display = "none";
+        }
+
+        input.addEventListener("focus", function () {
+            filterOptions();
+        });
+
+        input.addEventListener("input", function () {
+            /* Typing means the previous selection is no longer guaranteed. */
+            hidden.value = "";
+            select.value = "";
+            input.classList.remove("is-invalid");
+            filterOptions();
+        });
+
+        input.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                closeResults();
+                return;
+            }
+
+            if (event.key === "Enter") {
+                const first = optionButtons.find(function (button) {
+                    return button.style.display !== "none";
+                });
+
+                if (first) {
+                    event.preventDefault();
+                    first.click();
+                }
+            }
+        });
+
+        const form = input.closest("form");
+        if (form) {
+            form.addEventListener("submit", function (event) {
+                if (select.required && !hidden.value) {
+                    event.preventDefault();
+                    input.classList.add("is-invalid");
+                    input.focus();
+                    filterOptions();
+                }
+            });
+        }
+
+        document.addEventListener("click", function (event) {
+            if (!wrapper.contains(event.target)) {
+                closeResults();
+            }
+        });
+    });
+
     document.querySelectorAll(".employee-picker").forEach(function (picker) {
 
         const searchInput =
