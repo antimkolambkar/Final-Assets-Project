@@ -3,110 +3,601 @@
 {% block title %}Reports Center | Enterprise ITAM{% endblock %}
 
 {% block content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
+
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+
     <div>
-        <h3 class="fw-bold mb-1"><i class="fas fa-file-invoice-dollar text-primary me-2"></i>Enterprise Reports Center</h3>
-        <p class="text-muted small mb-0">Generate comprehensive ITAM analytics and export production reports in Excel, PDF, and CSV formats.</p>
+        <h3 class="fw-bold mb-1">
+            <i class="fas fa-file-invoice-dollar text-primary me-2"></i>
+            Enterprise Reports Center
+        </h3>
+
+        <p class="text-muted small mb-0">
+            Generate comprehensive ITAM analytics and export production reports
+            in Excel, PDF, and CSV formats.
+        </p>
     </div>
-    <div class="d-flex gap-2">
-        <a href="{{ url_for('reports.export_report', fmt='excel', type=selected_type, department=selected_dept, vendor_id=selected_vendor, employee_id=selected_employee) }}" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm fw-semibold">
-            <i class="fas fa-file-excel me-1"></i>Export Excel (.xlsx)
+
+    <!-- EXPORT BUTTONS -->
+    <div class="d-flex gap-2 flex-wrap">
+
+        <!-- EXCEL -->
+        <a href="{{ url_for(
+            'reports.export_report',
+            fmt='excel',
+            type=selected_type,
+            department=selected_dept,
+            vendor_id=selected_vendor,
+            employee_id=selected_employee,
+            start_date=selected_start_date,
+            end_date=selected_end_date
+        ) }}"
+           class="btn btn-success btn-sm rounded-pill px-3 shadow-sm fw-semibold">
+
+            <i class="fas fa-file-excel me-1"></i>
+            Export Excel (.xlsx)
+
         </a>
-        <a href="{{ url_for('reports.export_report', fmt='pdf', type=selected_type, department=selected_dept, vendor_id=selected_vendor, employee_id=selected_employee) }}" target="_blank" class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm fw-semibold">
-            <i class="fas fa-file-pdf me-1"></i>Export PDF (.pdf)
+
+        <!-- PDF -->
+        <a href="{{ url_for(
+            'reports.export_report',
+            fmt='pdf',
+            type=selected_type,
+            department=selected_dept,
+            vendor_id=selected_vendor,
+            employee_id=selected_employee,
+            start_date=selected_start_date,
+            end_date=selected_end_date
+        ) }}"
+           target="_blank"
+           class="btn btn-danger btn-sm rounded-pill px-3 shadow-sm fw-semibold">
+
+            <i class="fas fa-file-pdf me-1"></i>
+            Export PDF (.pdf)
+
         </a>
-        <a href="{{ url_for('reports.export_report', fmt='csv', type=selected_type, department=selected_dept, vendor_id=selected_vendor, employee_id=selected_employee) }}" class="btn btn-secondary btn-sm rounded-pill px-3 shadow-sm fw-semibold">
-            <i class="fas fa-file-csv me-1"></i>Export CSV (.csv)
+
+        <!-- CSV -->
+        <a href="{{ url_for(
+            'reports.export_report',
+            fmt='csv',
+            type=selected_type,
+            department=selected_dept,
+            vendor_id=selected_vendor,
+            employee_id=selected_employee,
+            start_date=selected_start_date,
+            end_date=selected_end_date
+        ) }}"
+           class="btn btn-secondary btn-sm rounded-pill px-3 shadow-sm fw-semibold">
+
+            <i class="fas fa-file-csv me-1"></i>
+            Export CSV (.csv)
+
         </a>
+
     </div>
+
 </div>
+
 
 <div class="row g-4">
-    <!-- Report Type Selector Panel -->
+
+    <!-- ==========================================================
+         REPORT TYPE SELECTOR
+    =========================================================== -->
+
     <div class="col-12 col-lg-3">
+
         <div class="card border-0 shadow-sm mb-4">
+
             <div class="card-header bg-dark text-white fw-bold">
-                <i class="fas fa-list-check me-2 text-primary"></i>Available Report Types (17)
+
+                <i class="fas fa-list-check me-2 text-primary"></i>
+
+                Available Report Types (18)
+
             </div>
-            <div class="list-group list-group-flush small" style="max-height: 540px; overflow-y: auto;">
+
+            <div class="list-group list-group-flush small"
+                 style="max-height: 540px; overflow-y: auto;">
+
                 {% for key, label in report_types.items() %}
-                <a href="{{ url_for('reports.index', type=key, department=selected_dept, vendor_id=selected_vendor, employee_id=selected_employee) }}" class="list-group-item list-group-item-action {% if selected_type == key %}active fw-bold{% endif %} py-2.5">
-                    <i class="fas {% if 'asset' in key %}fa-laptop{% elif 'employee' in key or 'offboard' in key %}fa-user{% elif 'ticket' in key %}fa-headset{% else %}fa-chart-line{% endif %} me-2"></i>
-                    {{ label }}
-                </a>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
 
-    <!-- Report Preview & Filter Panel -->
-    <div class="col-12 col-lg-9">
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-transparent py-3 border-bottom d-flex align-items-center justify-content-between">
-                <h5 class="fw-bold text-dark mb-0"><i class="fas fa-table me-2 text-primary"></i>{{ report_title }}</h5>
-                <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold">{{ rows|length }} Data Records</span>
-            </div>
-            <div class="card-body p-3 bg-light border-bottom">
-                <!-- Report Filter Form -->
-                <form action="{{ url_for('reports.index') }}" method="GET" class="row g-2">
-                    <input type="hidden" name="type" value="{{ selected_type }}">
-                    
-                    <div class="col-12 col-sm-4">
-                        <label class="form-label small fw-semibold text-muted mb-1">Filter Department</label>
-                        <select name="department" class="form-select form-select-sm bg-white">
-                            <option value="">All Departments</option>
-                            {% for d in departments %}
-                            <option value="{{ d }}" {% if selected_dept == d %}selected{% endif %}>{{ d }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                <a href="{{ url_for(
+                    'reports.index',
+                    type=key,
+                    department=selected_dept,
+                    vendor_id=selected_vendor,
+                    employee_id=selected_employee,
+                    start_date=selected_start_date,
+                    end_date=selected_end_date
+                ) }}"
+                   class="list-group-item list-group-item-action
+                   {% if selected_type == key %}active fw-bold{% endif %}
+                   py-2">
 
-                    <div class="col-6 col-sm-4">
-                        <label class="form-label small fw-semibold text-muted mb-1">Filter Vendor</label>
-                        <select name="vendor_id" class="form-select form-select-sm bg-white">
-                            <option value="">All Vendors</option>
-                            {% for v in vendors %}
-                            <option value="{{ v.id }}" {% if selected_vendor == v.id %}selected{% endif %}>{{ v.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="col-6 col-sm-4 d-flex align-items-end gap-2">
-                        <button type="submit" class="btn btn-dark btn-sm flex-grow-1"><i class="fas fa-filter me-1"></i>Apply Filters</button>
-                        <a href="{{ url_for('reports.index', type=selected_type) }}" class="btn btn-outline-secondary btn-sm" title="Reset Filters"><i class="fas fa-undo"></i></a>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Report Data Table Preview -->
-            <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
-                <table class="table table-custom table-striped mb-0">
-                    <thead class="sticky-top bg-white">
-                        <tr>
-                            {% for h in headers %}
-                            <th>{{ h }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in rows %}
-                        <tr>
-                            {% for cell in row %}
-                            <td>{{ cell }}</td>
-                            {% endfor %}
-                        </tr>
+                    <!-- ICON -->
+                    <i class="fas
+                        {% if key == 'replacement' %}
+                            fa-right-left
+                        {% elif 'asset' in key %}
+                            fa-laptop
+                        {% elif 'employee' in key or 'offboard' in key %}
+                            fa-user
+                        {% elif 'ticket' in key %}
+                            fa-headset
+                        {% elif key == 'vendor' or key == 'vendor_return' %}
+                            fa-building
+                        {% elif key == 'audit' %}
+                            fa-shield-halved
                         {% else %}
-                        <tr>
-                            <td colspan="{{ headers|length }}" class="text-center text-muted py-4">
-                                <i class="fas fa-folder-open fa-2x mb-2 d-block text-secondary"></i>
-                                No records found for the selected report filters.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                            fa-chart-line
+                        {% endif %}
+                        me-2">
+                    </i>
+
+                    {{ label }}
+
+                </a>
+
+                {% endfor %}
+
             </div>
+
         </div>
+
     </div>
+
+
+    <!-- ==========================================================
+         REPORT PREVIEW
+    =========================================================== -->
+
+    <div class="col-12 col-lg-9">
+
+        <div class="card border-0 shadow-sm mb-4">
+
+            <!-- REPORT HEADER -->
+            <div class="card-header bg-transparent py-3 border-bottom
+                        d-flex align-items-center justify-content-between
+                        flex-wrap gap-2">
+
+                <h5 class="fw-bold text-dark mb-0">
+
+                    <i class="fas fa-table me-2 text-primary"></i>
+
+                    {{ report_title }}
+
+                </h5>
+
+                <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold">
+
+                    {{ rows|length }} Data Records
+
+                </span>
+
+            </div>
+
+
+            <!-- ======================================================
+                 FILTER PANEL
+            ======================================================= -->
+
+            <div class="card-body p-3 bg-light border-bottom">
+
+                <form action="{{ url_for('reports.index') }}"
+                      method="GET"
+                      class="row g-3">
+
+                    <!-- REPORT TYPE -->
+                    <input type="hidden"
+                           name="type"
+                           value="{{ selected_type }}">
+
+
+                    <!-- ==================================================
+                         DEPARTMENT
+                    =================================================== -->
+
+                    <div class="col-12 col-md-6 col-xl-3">
+
+                        <label class="form-label small fw-semibold text-muted mb-1">
+
+                            <i class="fas fa-building me-1"></i>
+                            Department
+
+                        </label>
+
+                        <select name="department"
+                                class="form-select form-select-sm bg-white">
+
+                            <option value="">
+                                All Departments
+                            </option>
+
+                            {% for d in departments %}
+
+                            <option value="{{ d }}"
+                                {% if selected_dept == d %}selected{% endif %}>
+
+                                {{ d }}
+
+                            </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         VENDOR
+                    =================================================== -->
+
+                    <div class="col-12 col-md-6 col-xl-3">
+
+                        <label class="form-label small fw-semibold text-muted mb-1">
+
+                            <i class="fas fa-building-circle-check me-1"></i>
+                            Vendor
+
+                        </label>
+
+                        <select name="vendor_id"
+                                class="form-select form-select-sm bg-white">
+
+                            <option value="">
+                                All Vendors
+                            </option>
+
+                            {% for v in vendors %}
+
+                            <option value="{{ v.id }}"
+                                {% if selected_vendor == v.id %}selected{% endif %}>
+
+                                {{ v.name }}
+
+                            </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         EMPLOYEE
+                    =================================================== -->
+
+                    <div class="col-12 col-md-6 col-xl-3">
+
+                        <label class="form-label small fw-semibold text-muted mb-1">
+
+                            <i class="fas fa-user me-1"></i>
+                            Employee
+
+                        </label>
+
+                        <select name="employee_id"
+                                class="form-select form-select-sm bg-white">
+
+                            <option value="">
+                                All Employees
+                            </option>
+
+                            {% if employees is defined %}
+
+                                {% for emp in employees %}
+
+                                <option value="{{ emp.id }}"
+                                    {% if selected_employee == emp.id %}selected{% endif %}>
+
+                                    {{ emp.name }}
+                                    {% if emp.employee_id %}
+                                        - {{ emp.employee_id }}
+                                    {% endif %}
+
+                                </option>
+
+                                {% endfor %}
+
+                            {% endif %}
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         FROM DATE
+                    =================================================== -->
+
+                    <div class="col-12 col-md-6 col-xl-3">
+
+                        <label class="form-label small fw-semibold text-muted mb-1">
+
+                            <i class="fas fa-calendar-days me-1"></i>
+                            From Date
+
+                        </label>
+
+                        <input type="date"
+                               name="start_date"
+                               value="{{ selected_start_date or '' }}"
+                               class="form-control form-control-sm bg-white">
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         TO DATE
+                    =================================================== -->
+
+                    <div class="col-12 col-md-6 col-xl-3">
+
+                        <label class="form-label small fw-semibold text-muted mb-1">
+
+                            <i class="fas fa-calendar-check me-1"></i>
+                            To Date
+
+                        </label>
+
+                        <input type="date"
+                               name="end_date"
+                               value="{{ selected_end_date or '' }}"
+                               class="form-control form-control-sm bg-white">
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         BUTTONS
+                    =================================================== -->
+
+                    <div class="col-12 col-md-6 col-xl-4 d-flex align-items-end gap-2">
+
+                        <!-- APPLY -->
+                        <button type="submit"
+                                class="btn btn-dark btn-sm flex-grow-1">
+
+                            <i class="fas fa-filter me-1"></i>
+
+                            Apply Filters
+
+                        </button>
+
+
+                        <!-- RESET -->
+                        <a href="{{ url_for(
+                            'reports.index',
+                            type=selected_type
+                        ) }}"
+                           class="btn btn-outline-secondary btn-sm"
+                           title="Reset Filters">
+
+                            <i class="fas fa-undo"></i>
+
+                        </a>
+
+                    </div>
+
+
+                    <!-- ==================================================
+                         ACTIVE FILTER INDICATOR
+                    =================================================== -->
+
+                    {% if selected_dept
+                       or selected_vendor
+                       or selected_employee
+                       or selected_start_date
+                       or selected_end_date %}
+
+                    <div class="col-12">
+
+                        <div class="alert alert-primary py-2 px-3 mb-0 small">
+
+                            <i class="fas fa-filter me-1"></i>
+
+                            <strong>Filters applied:</strong>
+
+                            {% if selected_dept %}
+                                <span class="badge bg-primary ms-1">
+                                    Department: {{ selected_dept }}
+                                </span>
+                            {% endif %}
+
+                            {% if selected_vendor %}
+
+                                {% for v in vendors %}
+
+                                    {% if v.id == selected_vendor %}
+
+                                    <span class="badge bg-primary ms-1">
+                                        Vendor: {{ v.name }}
+                                    </span>
+
+                                    {% endif %}
+
+                                {% endfor %}
+
+                            {% endif %}
+
+                            {% if selected_employee %}
+
+                                {% if employees is defined %}
+
+                                    {% for emp in employees %}
+
+                                        {% if emp.id == selected_employee %}
+
+                                        <span class="badge bg-primary ms-1">
+                                            Employee: {{ emp.name }}
+                                        </span>
+
+                                        {% endif %}
+
+                                    {% endfor %}
+
+                                {% endif %}
+
+                            {% endif %}
+
+                            {% if selected_start_date %}
+
+                                <span class="badge bg-primary ms-1">
+                                    From: {{ selected_start_date }}
+                                </span>
+
+                            {% endif %}
+
+                            {% if selected_end_date %}
+
+                                <span class="badge bg-primary ms-1">
+                                    To: {{ selected_end_date }}
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+                    {% endif %}
+
+                </form>
+
+            </div>
+
+
+            <!-- ======================================================
+                 REPORT DATA TABLE
+            ======================================================= -->
+
+            <div class="table-responsive"
+                 style="max-height: 480px; overflow-y: auto;">
+
+                <table class="table table-custom table-striped
+                              table-hover mb-0">
+
+                    <thead class="sticky-top bg-white">
+
+                        <tr>
+
+                            {% for h in headers %}
+
+                            <th class="text-nowrap">
+                                {{ h }}
+                            </th>
+
+                            {% endfor %}
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        {% for row in rows %}
+
+                        <tr>
+
+                            {% for cell in row %}
+
+                            <td class="text-nowrap">
+
+                                {{ cell }}
+
+                            </td>
+
+                            {% endfor %}
+
+                        </tr>
+
+                        {% else %}
+
+                        <tr>
+
+                            <td colspan="{{ headers|length }}"
+                                class="text-center text-muted py-5">
+
+                                <i class="fas fa-folder-open fa-2x
+                                          mb-2 d-block text-secondary">
+                                </i>
+
+                                <div class="fw-semibold">
+                                    No records found
+                                </div>
+
+                                <div class="small">
+                                    No records found for the selected
+                                    report filters.
+                                </div>
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+
+        <!-- ==========================================================
+             REPLACEMENT REPORT INFORMATION
+        =========================================================== -->
+
+        {% if selected_type == 'replacement' %}
+
+        <div class="card border-0 shadow-sm">
+
+            <div class="card-body">
+
+                <div class="d-flex align-items-start gap-3">
+
+                    <div class="text-primary">
+
+                        <i class="fas fa-right-left fa-2x"></i>
+
+                    </div>
+
+                    <div>
+
+                        <h6 class="fw-bold mb-1">
+                            Replacement Report
+                        </h6>
+
+                        <p class="text-muted small mb-0">
+
+                            This report displays laptop replacement
+                            transactions, including the old asset,
+                            new asset, employee, vendor, replacement
+                            reason, and the person who performed the
+                            replacement.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
 </div>
+
 {% endblock %}
