@@ -121,7 +121,7 @@ class ReportService:
         elif report_type == 'vendor_return':
             headers = [
                 'Asset ID', 'Brand', 'Model', 'Serial Number', 'Vendor',
-                'Return Date', 'Return Reason', 'Status', 'Remarks'
+                'Return Date', 'Return Reason', 'Status'
             ]
 
             query = Asset.query.filter_by(status=AssetStatus.RETURNED_TO_VENDOR)
@@ -151,8 +151,7 @@ class ReportService:
                     ast.vendor_return_date.strftime('%Y-%m-%d %H:%M')
                     if ast.vendor_return_date else '-',
                     ast.vendor_return_reason or '-',
-                    ast.status,
-                    ast.remarks or '-'
+                    ast.status
                 ])
 
         elif report_type == 'vendor':
