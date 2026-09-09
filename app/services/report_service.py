@@ -8,12 +8,13 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
+from app.extensions import db
+
 from app.models.employee import Employee, AccountStatus
 from app.models.asset import Asset, AssetStatus, AssetAssignmentHistory
 from app.models.vendor import Vendor, VendorRepairTicket
 from app.models.ticket import Ticket, TicketStatus
 from app.models.audit import AuditLog
-
 class ReportService:
     REPORT_TYPES = {
         'employee': 'Employee Report',
