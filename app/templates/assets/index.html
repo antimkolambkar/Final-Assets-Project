@@ -819,24 +819,19 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <!-- Return -->
                                 <li>
 
-                                    <form action="{{ url_for('assets.return_asset', asset_id=ast.id) }}"
-                                          method="POST">
+                                    <button type="button"
+                                            class="dropdown-item text-success btn-return-asset"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#returnAssetModal"
+                                            data-asset-id="{{ ast.id }}"
+                                            data-asset-name="{{ ast.asset_id }} - {{ ast.brand }} {{ ast.model }}"
+                                            data-user-name="{{ ast.assigned_employee.name if ast.assigned_employee else '' }}">
 
-                                        <input type="hidden"
-                                               name="csrf_token"
-                                               value="{{ csrf_token() }}">
+                                        <i class="fas fa-undo me-2"></i>
 
-                                        <button type="submit"
-                                                class="dropdown-item text-success"
-                                                onclick="return confirm('Return this laptop from employee back to available stock?')">
+                                        Return to Available
 
-                                            <i class="fas fa-undo me-2"></i>
-
-                                            Return to Available
-
-                                        </button>
-
-                                    </form>
+                                    </button>
 
                                 </li>
 
@@ -978,6 +973,26 @@ document.addEventListener("DOMContentLoaded", function () {
                                             <div class="mb-3">
 
                                                 <label class="form-label fw-semibold">
+                                                    Assignment Date
+                                                    <span class="text-danger">*</span>
+                                                </label>
+
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light">
+                                                        <i class="fas fa-calendar-check text-primary"></i>
+                                                    </span>
+                                                    <input type="date"
+                                                           name="assignment_date"
+                                                           class="form-control"
+                                                           required>
+                                                </div>
+
+                                            </div>
+
+
+                                            <div class="mb-3">
+
+                                                <label class="form-label fw-semibold">
                                                     Allocation Notes
                                                 </label>
 
@@ -1085,6 +1100,26 @@ document.addEventListener("DOMContentLoaded", function () {
                                                     {% endfor %}
 
                                                 </select>
+
+                                            </div>
+
+
+                                            <div class="mb-3">
+
+                                                <label class="form-label fw-semibold">
+                                                    Repair Start Date
+                                                    <span class="text-danger">*</span>
+                                                </label>
+
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-light">
+                                                        <i class="fas fa-calendar-alt text-primary"></i>
+                                                    </span>
+                                                    <input type="date"
+                                                           name="repair_start_date"
+                                                           class="form-control"
+                                                           required>
+                                                </div>
 
                                             </div>
 
@@ -1835,6 +1870,29 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
 
 
+                    <!-- STOCK / RECEIVED DATE -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Stock / Received Date
+                            <span class="text-danger">*</span>
+                        </label>
+
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">
+                                <i class="fas fa-calendar-alt text-primary"></i>
+                            </span>
+
+                            <input type="date"
+                                   name="stock_date"
+                                   class="form-control"
+                                   required>
+                        </div>
+
+                    </div>
+
+
                     <!-- Processor -->
 
                     <div class="row g-3">
@@ -2131,6 +2189,28 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
 
 
+                    <!-- REPLACEMENT DATE -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Replacement Date
+                            <span class="text-danger">*</span>
+                        </label>
+
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">
+                                <i class="fas fa-calendar-check text-primary"></i>
+                            </span>
+                            <input type="date"
+                                   name="replacement_date"
+                                   class="form-control"
+                                   required>
+                        </div>
+
+                    </div>
+
+
                     <!-- REASON -->
 
                     <div class="mb-3">
@@ -2285,11 +2365,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
                             <tr>
 
-                                <th>Timestamp</th>
+                                <th>Event Date</th>
                                 <th>Action</th>
-                                <th>Employee Name</th>
-                                <th>Replacement / Notes</th>
+                                <th>Employee</th>
+                                <th>Notes</th>
                                 <th>Logged By</th>
+                                <th>Recorded At</th>
 
                             </tr>
 
@@ -2544,6 +2625,75 @@ document.addEventListener("DOMContentLoaded", function () {
 
 </div>
 
+
+
+<!-- =========================================================
+     RETURN ASSET MODAL
+========================================================= -->
+
+<div class="modal fade text-start"
+     id="returnAssetModal"
+     tabindex="-1"
+     aria-labelledby="returnAssetModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold" id="returnAssetModalLabel">
+                    <i class="fas fa-undo me-2"></i>
+                    Return Asset to Available Stock
+                </h5>
+                <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <form id="returnAssetForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Asset</label>
+                        <input type="text" id="returnAssetName" class="form-control bg-light" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Employee / User</label>
+                        <input type="text" id="returnAssetUser" class="form-control bg-light" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Return Date <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">
+                                <i class="fas fa-calendar-check text-success"></i>
+                            </span>
+                            <input type="date" name="return_date" id="returnAssetDate"
+                                   class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold">Notes</label>
+                        <textarea name="notes" id="returnAssetNotes" class="form-control" rows="3"
+                                  placeholder="Reason or notes for returning the asset..."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success fw-bold">
+                        <i class="fas fa-undo me-1"></i> Confirm Return
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
 
 
 <!-- =========================================================
@@ -3461,9 +3611,12 @@ document.addEventListener("DOMContentLoaded", function () {
              * whenever modal opens.
              */
 
-            if (dateInput) {
+            if (dateInput && !dateInput.value) {
 
-                dateInput.value = "";
+                const now = new Date();
+                dateInput.value = now.getFullYear() + "-" +
+                    String(now.getMonth() + 1).padStart(2, "0") + "-" +
+                    String(now.getDate()).padStart(2, "0");
 
             }
 
@@ -3709,6 +3862,45 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
         }
+    });
+});
+</script>
+
+<!-- =========================================================
+     ASSET LIFECYCLE DATE DEFAULTS + RETURN MODAL
+========================================================= -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    function getToday() {
+        const now = new Date();
+        return now.getFullYear() + "-" +
+               String(now.getMonth() + 1).padStart(2, "0") + "-" +
+               String(now.getDate()).padStart(2, "0");
+    }
+
+    ["stock_date", "assignment_date", "replacement_date",
+     "repair_start_date", "repair_completed_date", "vendor_return_date"]
+    .forEach(function (fieldName) {
+        document.querySelectorAll('input[type="date"][name="' + fieldName + '"]').forEach(function (input) {
+            if (!input.value) input.value = getToday();
+        });
+    });
+
+    const returnForm = document.getElementById("returnAssetForm");
+    const returnAssetName = document.getElementById("returnAssetName");
+    const returnAssetUser = document.getElementById("returnAssetUser");
+    const returnAssetDate = document.getElementById("returnAssetDate");
+    const returnAssetNotes = document.getElementById("returnAssetNotes");
+
+    document.querySelectorAll(".btn-return-asset").forEach(function (button) {
+        button.addEventListener("click", function () {
+            const assetId = this.getAttribute("data-asset-id") || "";
+            if (returnForm) returnForm.action = "/assets/return/" + encodeURIComponent(assetId);
+            if (returnAssetName) returnAssetName.value = this.getAttribute("data-asset-name") || "";
+            if (returnAssetUser) returnAssetUser.value = this.getAttribute("data-user-name") || "";
+            if (returnAssetDate) returnAssetDate.value = getToday();
+            if (returnAssetNotes) returnAssetNotes.value = "";
+        });
     });
 });
 </script>
