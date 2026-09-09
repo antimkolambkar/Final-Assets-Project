@@ -1,3 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Asset Inventory | Enterprise ITAM{% endblock %}
+
+{% block content %}
+<style>
+/* =========================================================
+   SEARCHABLE DROPDOWNS
+========================================================= */
+.ts-wrapper { width: 100%; }
+.ts-control {
+    min-height: 38px !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: .375rem !important;
+    background: #f8f9fa !important;
+    box-shadow: none !important;
+    padding: 6px 12px !important;
+    font-size: .95rem;
+}
+.ts-control.focus {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12) !important;
+}
+.ts-dropdown {
+    border: 1px solid #dee2e6 !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15) !important;
+    z-index: 3000 !important;
+}
+.ts-dropdown .ts-dropdown-content {
+    max-height: 280px;
+    overflow-y: auto;
+}
+.ts-dropdown .option {
+    padding: 10px 12px !important;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+}
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+    background: #f0f6ff !important;
+    color: #212529 !important;
+}
+.ts-control input { font-size: .95rem !important; }
+.ts-control .item { color: #212529; }
+
+/* =========================================================
+   EMPLOYEE NAME-ONLY POPUP
+========================================================= */
+.employee-picker { width: 100%; }
+.employee-search-input {
+    height: 42px;
+    font-size: 16px;
+}
+.employee-search-input:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12);
+}
+.employee-search-results {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 2px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 10px 10px;
+    max-height: 315px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    z-index: 3050;
+    display: none;
+}
+.employee-search-option {
+    width: 100%;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #fff;
+    border: 0;
+    border-bottom: 1px solid #edf0f2;
+    text-align: left;
+    cursor: pointer;
+}
+.employee-search-option:hover,
+.employee-search-option.active {
+    background: #f0f6ff;
+}
+.employee-option-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 50%;
+    background: #eaf3ff;
+    color: #0d6efd;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.employee-option-content {
+    min-width: 0;
+    display: block;
+}
+.employee-option-name {
+    display: block;
+    color: #212529;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.25;
+}
+.employee-search-results::-webkit-scrollbar { width: 8px; }
+.employee-search-results::-webkit-scrollbar-thumb {
+    background: #adb5bd;
+    border-radius: 10px;
+}
+</style>
+
+<script>
+/* =========================================================
+   UNIVERSAL SEARCHABLE DROPDOWNS
+   Applies Tom Select to every normal <select> except the
+   model dropdowns, which already have their own logic.
+========================================================= */
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("select.searchable-dropdown").forEach(function (select) {
+        if (select.tomselect) return;
+
+        new TomSelect(select, {
+            create: false,
+            allowEmptyOption: true,
+            closeAfterSelect: true,
+            maxOptions: 1000,
+            searchField: ["text", "value"],
+            plugins: ["clear_button"],
+            placeholder: select.options[0]?.text?.trim() || "Search or select...",
+            dropdownParent: "body",
+            render: {
+                option: function (data, escape) {
+                    return '<div class="searchable-option">' + escape(data.text) + '</div>';
+                },
+                item: function (data, escape) {
+                    return '<div class="searchable-item">' + escape(data.text) + '</div>';
+                }
+            }
+        });
+    });
+
+    /* =========================================================
+       EMPLOYEE NAME-ONLY SEARCH POPUP
+    ========================================================= */
+    document.querySelectorAll(".employee-picker").forEach(function (picker) {
+        const searchInput = picker.querySelector(".employee-search-input");
+        const hiddenInput = picker.querySelector(".employee-id-input");
+        const resultsBox = picker.querySelector(".employee-search-results");
+        const options = Array.from(picker.querySelectorAll(".employee-search-option"));
+        const noResults = picker.querySelector(".employee-no-results");
+
+        if (!searchInput || !hiddenInput || !resultsBox) return;
+
+        function showResults() {
+            const search = searchInput.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            options.forEach(function (option) {
+                const name = (option.dataset.name || "").toLowerCase();
+                const matches = search === "" || name.includes(search);
+                option.style.display = matches ? "flex" : "none";
+                if (matches) visibleCount++;
+            });
+
+            if (noResults) {
+                noResults.style.display = visibleCount === 0 ? "block" : "none";
+            }
+
+            resultsBox.style.display = "block";
+        }
+
+        function hideResults() {
+            resultsBox.style.display = "none";
+        }
+
+        searchInput.addEventListener("focus", showResults);
+        searchInput.addEventListener("input", function () {
+            hiddenInput.value = "";
+            showResults();
+        });
+
+        options.forEach(function (option) {
+            option.addEventListener("click", function () {
+                hiddenInput.value = this.dataset.employeeId || "";
+                searchInput.value = this.dataset.name || "";
+                searchInput.classList.remove("is-invalid");
+                hideResults();
+            });
+        });
+
+        searchInput.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                hideResults();
+                searchInput.blur();
+            }
+        });
+
+        document.addEventListener("click", function (event) {
+            if (!picker.contains(event.target)) {
+                hideResults();
+            }
+        });
+
+        const form = picker.closest("form");
+        if (form) {
+            form.addEventListener("submit", function (event) {
+                if (!hiddenInput.value) {
+                    event.preventDefault();
+                    searchInput.classList.add("is-invalid");
+                    searchInput.focus();
+                    showResults();
+                }
+            });
+        }
+    });
+});
+</script>
+
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
         <h3 class="fw-bold mb-1">
@@ -2327,72 +2554,6 @@
       href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css">
 
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll(".employee-picker").forEach(function (picker) {
-        const input = picker.querySelector(".employee-search-input");
-        const hidden = picker.querySelector(".employee-id-input");
-        const box = picker.querySelector(".employee-search-results");
-        const options = Array.from(picker.querySelectorAll(".employee-search-option"));
-        const noResults = picker.querySelector(".employee-no-results");
-
-        if (!input || !hidden || !box) return;
-
-        function filterEmployees() {
-            const term = input.value.trim().toLowerCase();
-            let count = 0;
-
-            options.forEach(function (option) {
-                const name = (option.getAttribute("data-name") || option.querySelector(".employee-option-name")?.textContent || "").trim().toLowerCase();
-                const match = !term || name.includes(term);
-                option.hidden = !match;
-                if (match) count++;
-            });
-
-            if (noResults) noResults.style.display = count ? "none" : "block";
-            box.style.display = "block";
-        }
-
-        input.addEventListener("focus", filterEmployees);
-        input.addEventListener("click", filterEmployees);
-        input.addEventListener("input", function () {
-            hidden.value = "";
-            filterEmployees();
-        });
-
-        options.forEach(function (option) {
-            option.addEventListener("mousedown", function (e) { e.preventDefault(); });
-            option.addEventListener("click", function () {
-                hidden.value = this.getAttribute("data-employee-id") || "";
-                input.value = (this.getAttribute("data-name") || this.querySelector(".employee-option-name")?.textContent || "").trim();
-                box.style.display = "none";
-                input.classList.remove("is-invalid");
-            });
-        });
-
-        input.addEventListener("keydown", function (e) {
-            if (e.key === "Escape") { box.style.display = "none"; input.blur(); }
-        });
-
-        document.addEventListener("click", function (e) {
-            if (!picker.contains(e.target)) box.style.display = "none";
-        });
-
-        const form = picker.closest("form");
-        if (form) {
-            form.addEventListener("submit", function (e) {
-                if (!hidden.value) {
-                    e.preventDefault();
-                    input.classList.add("is-invalid");
-                    filterEmployees();
-                    input.focus();
-                }
-            });
-        }
-    });
-});
-</script>
-
 
 
 <script>
