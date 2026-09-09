@@ -1,6 +1,230 @@
 {% extends "base.html" %}
 
-{% block title %}Asset Inventory | Enterprise ITAM{% endblock %}
+{% block title %}Asset Inventory | Enterprise ITAM
+
+<style>
+/* =========================================================
+   SEARCHABLE DROPDOWNS
+========================================================= */
+.ts-wrapper { width: 100%; }
+.ts-control {
+    min-height: 38px !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: .375rem !important;
+    background: #f8f9fa !important;
+    box-shadow: none !important;
+    padding: 6px 12px !important;
+    font-size: .95rem;
+}
+.ts-control.focus {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12) !important;
+}
+.ts-dropdown {
+    border: 1px solid #dee2e6 !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15) !important;
+    z-index: 3000 !important;
+}
+.ts-dropdown .ts-dropdown-content {
+    max-height: 280px;
+    overflow-y: auto;
+}
+.ts-dropdown .option {
+    padding: 10px 12px !important;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+}
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+    background: #f0f6ff !important;
+    color: #212529 !important;
+}
+.ts-control input { font-size: .95rem !important; }
+.ts-control .item { color: #212529; }
+
+/* =========================================================
+   EMPLOYEE NAME-ONLY POPUP
+========================================================= */
+.employee-picker { width: 100%; }
+.employee-search-input {
+    height: 42px;
+    font-size: 16px;
+}
+.employee-search-input:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12);
+}
+.employee-search-results {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 2px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 10px 10px;
+    max-height: 315px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    z-index: 3050;
+    display: none;
+}
+.employee-search-option {
+    width: 100%;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #fff;
+    border: 0;
+    border-bottom: 1px solid #edf0f2;
+    text-align: left;
+    cursor: pointer;
+}
+.employee-search-option:hover,
+.employee-search-option.active {
+    background: #f0f6ff;
+}
+.employee-option-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 50%;
+    background: #eaf3ff;
+    color: #0d6efd;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.employee-option-content {
+    min-width: 0;
+    display: block;
+}
+.employee-option-name {
+    display: block;
+    color: #212529;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.25;
+}
+.employee-search-results::-webkit-scrollbar { width: 8px; }
+.employee-search-results::-webkit-scrollbar-thumb {
+    background: #adb5bd;
+    border-radius: 10px;
+}
+</style>
+
+<script>
+/* =========================================================
+   UNIVERSAL SEARCHABLE DROPDOWNS
+   Applies Tom Select to every normal <select> except the
+   model dropdowns, which already have their own logic.
+========================================================= */
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("select.searchable-dropdown").forEach(function (select) {
+        if (select.tomselect) return;
+
+        new TomSelect(select, {
+            create: false,
+            allowEmptyOption: true,
+            closeAfterSelect: true,
+            maxOptions: 1000,
+            searchField: ["text", "value"],
+            plugins: ["clear_button"],
+            placeholder: select.options[0]?.text?.trim() || "Search or select...",
+            dropdownParent: "body",
+            render: {
+                option: function (data, escape) {
+                    return '<div class="searchable-option">' + escape(data.text) + '</div>';
+                },
+                item: function (data, escape) {
+                    return '<div class="searchable-item">' + escape(data.text) + '</div>';
+                }
+            }
+        });
+    });
+
+    /* =========================================================
+       EMPLOYEE NAME-ONLY SEARCH POPUP
+    ========================================================= */
+    document.querySelectorAll(".employee-picker").forEach(function (picker) {
+        const searchInput = picker.querySelector(".employee-search-input");
+        const hiddenInput = picker.querySelector(".employee-id-input");
+        const resultsBox = picker.querySelector(".employee-search-results");
+        const options = Array.from(picker.querySelectorAll(".employee-search-option"));
+        const noResults = picker.querySelector(".employee-no-results");
+
+        if (!searchInput || !hiddenInput || !resultsBox) return;
+
+        function showResults() {
+            const search = searchInput.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            options.forEach(function (option) {
+                const name = (option.dataset.name || "").toLowerCase();
+                const matches = search === "" || name.includes(search);
+                option.style.display = matches ? "flex" : "none";
+                if (matches) visibleCount++;
+            });
+
+            if (noResults) {
+                noResults.style.display = visibleCount === 0 ? "block" : "none";
+            }
+
+            resultsBox.style.display = "block";
+        }
+
+        function hideResults() {
+            resultsBox.style.display = "none";
+        }
+
+        searchInput.addEventListener("focus", showResults);
+        searchInput.addEventListener("input", function () {
+            hiddenInput.value = "";
+            showResults();
+        });
+
+        options.forEach(function (option) {
+            option.addEventListener("click", function () {
+                hiddenInput.value = this.dataset.employeeId || "";
+                searchInput.value = this.dataset.name || "";
+                searchInput.classList.remove("is-invalid");
+                hideResults();
+            });
+        });
+
+        searchInput.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                hideResults();
+                searchInput.blur();
+            }
+        });
+
+        document.addEventListener("click", function (event) {
+            if (!picker.contains(event.target)) {
+                hideResults();
+            }
+        });
+
+        const form = picker.closest("form");
+        if (form) {
+            form.addEventListener("submit", function (event) {
+                if (!hiddenInput.value) {
+                    event.preventDefault();
+                    searchInput.classList.add("is-invalid");
+                    searchInput.focus();
+                    showResults();
+                }
+            });
+        }
+    });
+});
+</script>
+
+{% endblock %}
 
 {% block content %}
 
@@ -73,7 +297,7 @@
             <div class="col-6 col-md-3">
 
                 <select name="status"
-                        class="form-select bg-light">
+                        class="form-select searchable-dropdown bg-light">
 
                     <option value="">All Asset Statuses</option>
 
@@ -105,7 +329,7 @@
             <div class="col-6 col-md-2">
 
                 <select name="vendor_id"
-                        class="form-select bg-light">
+                        class="form-select searchable-dropdown bg-light">
 
                     <option value="">All Vendors</option>
 
@@ -206,7 +430,74 @@
 
     <div class="table-responsive">
 
-        <table class="table table-custom mb-0">
+        <style>
+            .asset-table {
+                min-width: 1450px;
+            }
+
+            .asset-table th,
+            .asset-table td {
+                vertical-align: middle !important;
+            }
+
+            .asset-table .status-column {
+                width: 155px;
+                min-width: 155px;
+                text-align: center !important;
+                white-space: nowrap;
+            }
+
+            .asset-table .date-column {
+                width: 150px;
+                min-width: 150px;
+                text-align: center !important;
+                white-space: nowrap;
+            }
+
+            .asset-table .status-badge {
+                min-width: 135px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                padding: 7px 12px;
+                border-radius: 6px;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+
+            .asset-table .asset-date {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                min-width: 125px;
+            }
+
+            .asset-table .badge-available {
+                background-color: #198754 !important;
+                color: #ffffff !important;
+            }
+
+            .asset-table .badge-assigned {
+                background-color: #0d6efd !important;
+                color: #ffffff !important;
+            }
+
+            .asset-table .badge-repair,
+            .asset-table .badge-under-repair {
+                background-color: #ffc107 !important;
+                color: #212529 !important;
+            }
+
+            .asset-table .badge-returned-to-vendor,
+            .asset-table .badge-sent-to-vendor {
+                background-color: #6f42c1 !important;
+                color: #ffffff !important;
+            }
+        </style>
+
+        <table class="table table-custom mb-0 asset-table">
 
             <thead>
 
@@ -217,7 +508,8 @@
                     <th>Serial Number</th>
                     <th>Specifications</th>
                     <th>Vendor</th>
-                    <th>Status</th>
+                    <th class="status-column">Status</th>
+                    <th class="date-column">Date</th>
                     <th>Assigned User Name</th>
                     <th class="text-end">Actions</th>
 
@@ -290,25 +582,81 @@
 
 
                     <!-- Status -->
-                    <td>
+                    {% set status_value = ast.status.value if ast.status.value is defined else ast.status|string %}
 
-                        <span class="badge badge-status badge-{{ ast.status.lower().replace(' ', '-') }}">
+                    <td class="status-column">
 
-                            <i class="fas
-                                {% if ast.status == 'Available' %}
-                                    fa-box-open
-                                {% elif ast.status == 'Assigned' %}
-                                    fa-user-check
-                                {% elif ast.status == 'Returned to Vendor' %}
-                                    fa-truck
-                                {% else %}
-                                    fa-wrench
-                                {% endif %}
-                            "></i>
+                        {% if status_value == 'Available' %}
 
-                            {{ ast.status }}
+                            <span class="badge status-badge badge-available">
+                                <i class="fas fa-box-open"></i>
+                                Available
+                            </span>
 
-                        </span>
+                        {% elif status_value == 'Assigned' %}
+
+                            <span class="badge status-badge badge-assigned">
+                                <i class="fas fa-user-check"></i>
+                                Assigned
+                            </span>
+
+                        {% elif status_value in ['Repair', 'Under Repair'] %}
+
+                            <span class="badge status-badge badge-repair">
+                                <i class="fas fa-wrench"></i>
+                                Under Repair
+                            </span>
+
+                        {% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] %}
+
+                            <span class="badge status-badge badge-returned-to-vendor">
+                                <i class="fas fa-truck"></i>
+                                Sent to Vendor
+                            </span>
+
+                        {% else %}
+
+                            <span class="badge status-badge bg-secondary text-white">
+                                {{ status_value }}
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+
+                    <!-- Date - shown for every asset -->
+                    <td class="date-column">
+
+                        {% if status_value == 'Assigned' and ast.assignment_date %}
+
+                            <span class="asset-date fw-semibold text-dark">
+                                <i class="fas fa-calendar-check text-primary"></i>
+                                {{ ast.assignment_date.strftime('%d-%m-%Y') }}
+                            </span>
+
+                        {% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] and ast.vendor_return_date %}
+
+                            <span class="asset-date fw-semibold text-dark">
+                                <i class="fas fa-calendar-check" style="color:#6f42c1;"></i>
+                                {{ ast.vendor_return_date.strftime('%d-%m-%Y') }}
+                            </span>
+
+                        {% elif ast.purchase_date %}
+
+                            <span class="asset-date fw-semibold text-dark">
+                                <i class="fas fa-calendar-alt text-secondary"></i>
+                                {{ ast.purchase_date.strftime('%d-%m-%Y') }}
+                            </span>
+
+                        {% else %}
+
+                            <span class="asset-date text-muted">
+                                <i class="fas fa-calendar-alt"></i>
+                                —
+                            </span>
+
+                        {% endif %}
 
                     </td>
 
@@ -583,67 +931,54 @@
 
                                         <div class="modal-body p-4">
 
-                                            <div class="mb-3 position-relative employee-picker">
+                                            <div class="mb-3">
 
                                                 <label class="form-label fw-semibold">
                                                     Select Employee
                                                 </label>
 
-                                                <!-- Search input shown to the user -->
-                                                <div class="input-group">
-                                                    <span class="input-group-text bg-light">
-                                                        <i class="fas fa-search text-muted"></i>
-                                                    </span>
+                                                <div class="employee-picker position-relative">
 
-                                                    <input type="text"
-                                                           class="form-control employee-search-input"
-                                                           placeholder="Type employee name or ID..."
-                                                           autocomplete="off"
-                                                           required>
-                                                </div>
-
-                                                <!-- Actual employee database ID submitted to Flask -->
-                                                <input type="hidden"
-                                                       name="employee_id"
-                                                       class="employee-id-input">
-
-                                                <!-- Employee suggestions -->
-                                                <div class="employee-search-results">
-
-                                                    {% for emp in active_employees %}
-
-                                                    <button type="button"
-                                                            class="employee-search-option"
-                                                            data-employee-id="{{ emp.id }}"
-                                                            data-name="{{ emp.name|e }}"
-                                                            data-code="{{ emp.employee_id|e }}"
-                                                            data-department="{{ emp.department|e }}">
-
-                                                        <span class="employee-option-icon">
-                                                            <i class="fas fa-user"></i>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text bg-light">
+                                                            <i class="fas fa-search text-muted"></i>
                                                         </span>
-
-                                                        <span class="employee-option-content">
-                                                            <span class="employee-option-name">
-                                                                {{ emp.name }}
-                                                            </span>
-                                                        <span class="employee-option-name">{{ emp.name }}</span>
-                                                        </span>
-
-                                                    </button>
-
-                                                    {% endfor %}
-
-                                                    <div class="employee-no-results">
-                                                        <i class="fas fa-user-slash me-2"></i>
-                                                        No employee found
+                                                        <input type="text"
+                                                               class="form-control employee-search-input"
+                                                               placeholder="Type employee name..."
+                                                               autocomplete="off"
+                                                               required>
                                                     </div>
 
+                                                    <input type="hidden"
+                                                           name="employee_id"
+                                                           class="employee-id-input">
+
+                                                    <div class="employee-search-results">
+                                                        {% for emp in active_employees %}
+                                                        <button type="button"
+                                                                class="employee-search-option"
+                                                                data-employee-id="{{ emp.id }}"
+                                                                data-name="{{ emp.name|e }}">
+                                                            <span class="employee-option-icon">
+                                                                <i class="fas fa-user"></i>
+                                                            </span>
+                                                            <span class="employee-option-content">
+                                                                <span class="employee-option-name">{{ emp.name }}</span>
+                                                            </span>
+                                                        </button>
+                                                        {% endfor %}
+
+                                                        <div class="employee-no-results text-muted text-center py-3" style="display:none;">
+                                                            No employee found
+                                                        </div>
+                                                    </div>
                                                 </div>
 
-                                                <small class="text-muted d-block mt-1">
-                                                    Start typing the employee name or Employee ID.
-                                                </small>
+                                                    <option value="">
+                                                        -- Choose Entra ID Employee --
+                                                    </option>
+
 
                                             </div>
 
@@ -743,7 +1078,7 @@
                                                 </label>
 
                                                 <select name="vendor_id"
-                                                        class="form-select"
+                                                        class="form-select searchable-dropdown"
                                                         required>
 
                                                     {% for v in vendors %}
@@ -817,7 +1152,7 @@
 
                 <tr>
 
-                    <td colspan="8"
+                    <td colspan="9"
                         class="text-center text-muted py-4">
 
                         <i class="fas fa-laptop fa-2x mb-2 d-block text-secondary"></i>
@@ -1004,7 +1339,7 @@
                             </label>
 
                             <select name="brand"
-                                    class="form-select edit-brand"
+                                    class="form-select searchable-dropdown edit-brand"
                                     data-model-target="edit-model-{{ ast.id }}"
                                     required>
 
@@ -1095,7 +1430,7 @@
                         </label>
 
                         <select name="processor"
-                                class="form-select"
+                                class="form-select searchable-dropdown"
                                 required>
 
                             <option value="">
@@ -1181,7 +1516,7 @@
                             </label>
 
                             <select name="ram"
-                                    class="form-select"
+                                    class="form-select searchable-dropdown"
                                     required>
 
                                 <option value="N/A"
@@ -1238,7 +1573,7 @@
                             </label>
 
                             <select name="ssd"
-                                    class="form-select"
+                                    class="form-select searchable-dropdown"
                                     required>
 
                                 <option value="N/A"
@@ -1292,7 +1627,7 @@
                         </label>
 
                         <select name="vendor_id"
-                                class="form-select"
+                                class="form-select searchable-dropdown"
                                 required>
 
                             {% for v in vendors %}
@@ -1405,7 +1740,7 @@
 
                             <select name="brand"
                                     id="newAssetBrand"
-                                    class="form-select"
+                                    class="form-select searchable-dropdown"
                                     required>
 
                                 <option value="">
@@ -1486,7 +1821,7 @@
                             </label>
 
                             <select name="vendor_id"
-                                    class="form-select"
+                                    class="form-select searchable-dropdown"
                                     required>
 
                                 <option value="">
@@ -1520,7 +1855,7 @@
                             </label>
 
                             <select name="processor"
-                                    class="form-select"
+                                    class="form-select searchable-dropdown"
                                     required>
 
                                 <option value="">
@@ -1589,7 +1924,7 @@
                             </label>
 
                             <select name="ram"
-                                    class="form-select"
+                                    class="form-select searchable-dropdown"
                                     required>
 
                                 <option value="">
@@ -1618,7 +1953,7 @@
                             </label>
 
                             <select name="ssd"
-                                    class="form-select"
+                                    class="form-select searchable-dropdown"
                                     required>
 
                                 <option value="">
@@ -1735,7 +2070,7 @@
 
                         <select name="old_asset_id"
                                 id="old_asset_id"
-                                class="form-select"
+                                class="form-select searchable-dropdown"
                                 required>
 
                             <option value="">
@@ -1777,7 +2112,7 @@
                         </label>
 
                         <select name="new_asset_id"
-                                class="form-select"
+                                class="form-select searchable-dropdown"
                                 required>
 
                             <option value="">
@@ -2088,7 +2423,7 @@
 
                         <select name="vendor_id"
                                 id="returnVendorVendorId"
-                                class="form-select"
+                                class="form-select searchable-dropdown"
                                 required>
 
                             <option value="">
@@ -2218,94 +2553,6 @@
 </div>
 
 
-
-
-<style>
-
-/* =========================================================
-   SEARCHABLE EMPLOYEE PICKER
-========================================================= */
-
-.employee-picker {
-    position: relative;
-}
-
-.employee-search-results {
-    display: none;
-    position: absolute;
-    top: calc(100% - 28px);
-    left: 0;
-    right: 0;
-    background: #ffffff;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    max-height: 280px;
-    overflow-y: auto;
-    z-index: 1060;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-}
-
-.employee-search-option {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border: 0;
-    border-bottom: 1px solid #f0f0f0;
-    background: #ffffff;
-    text-align: left;
-    cursor: pointer;
-}
-
-.employee-search-option:hover,
-.employee-search-option.active {
-    background: #f0f6ff;
-}
-
-.employee-option-icon {
-    width: 34px;
-    height: 34px;
-    min-width: 34px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: #e9f2ff;
-    color: #0d6efd;
-}
-
-.employee-option-content {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-.employee-option-name {
-    font-weight: 600;
-    color: #212529;
-    line-height: 1.3;
-}
-
-.employee-option-details {
-    color: #6c757d;
-    line-height: 1.3;
-    margin-top: 2px;
-}
-
-.employee-no-results {
-    display: none;
-    padding: 14px;
-    color: #6c757d;
-    text-align: center;
-    font-size: 14px;
-}
-
-.employee-search-input.is-invalid {
-    border-color: #dc3545;
-}
-
-</style>
 
 <!-- =========================================================
      MODEL DATABASE + DEPENDENT DROPDOWN
@@ -3252,192 +3499,226 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 
-<!-- =========================================================
-     SEARCHABLE EMPLOYEE PICKER JAVASCRIPT
-========================================================= -->
+<style>
+/* =========================================================
+   SEARCHABLE DROPDOWNS
+========================================================= */
+.ts-wrapper { width: 100%; }
+.ts-control {
+    min-height: 38px !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: .375rem !important;
+    background: #f8f9fa !important;
+    box-shadow: none !important;
+    padding: 6px 12px !important;
+    font-size: .95rem;
+}
+.ts-control.focus {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12) !important;
+}
+.ts-dropdown {
+    border: 1px solid #dee2e6 !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15) !important;
+    z-index: 3000 !important;
+}
+.ts-dropdown .ts-dropdown-content {
+    max-height: 280px;
+    overflow-y: auto;
+}
+.ts-dropdown .option {
+    padding: 10px 12px !important;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+}
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+    background: #f0f6ff !important;
+    color: #212529 !important;
+}
+.ts-control input { font-size: .95rem !important; }
+.ts-control .item { color: #212529; }
+
+/* =========================================================
+   EMPLOYEE NAME-ONLY POPUP
+========================================================= */
+.employee-picker { width: 100%; }
+.employee-search-input {
+    height: 42px;
+    font-size: 16px;
+}
+.employee-search-input:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12);
+}
+.employee-search-results {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 2px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 10px 10px;
+    max-height: 315px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    z-index: 3050;
+    display: none;
+}
+.employee-search-option {
+    width: 100%;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #fff;
+    border: 0;
+    border-bottom: 1px solid #edf0f2;
+    text-align: left;
+    cursor: pointer;
+}
+.employee-search-option:hover,
+.employee-search-option.active {
+    background: #f0f6ff;
+}
+.employee-option-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 50%;
+    background: #eaf3ff;
+    color: #0d6efd;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.employee-option-content {
+    min-width: 0;
+    display: block;
+}
+.employee-option-name {
+    display: block;
+    color: #212529;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.25;
+}
+.employee-search-results::-webkit-scrollbar { width: 8px; }
+.employee-search-results::-webkit-scrollbar-thumb {
+    background: #adb5bd;
+    border-radius: 10px;
+}
+</style>
 
 <script>
-
+/* =========================================================
+   UNIVERSAL SEARCHABLE DROPDOWNS
+   Applies Tom Select to every normal <select> except the
+   model dropdowns, which already have their own logic.
+========================================================= */
 document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("select.searchable-dropdown").forEach(function (select) {
+        if (select.tomselect) return;
 
+        new TomSelect(select, {
+            create: false,
+            allowEmptyOption: true,
+            closeAfterSelect: true,
+            maxOptions: 1000,
+            searchField: ["text", "value"],
+            plugins: ["clear_button"],
+            placeholder: select.options[0]?.text?.trim() || "Search or select...",
+            dropdownParent: "body",
+            render: {
+                option: function (data, escape) {
+                    return '<div class="searchable-option">' + escape(data.text) + '</div>';
+                },
+                item: function (data, escape) {
+                    return '<div class="searchable-item">' + escape(data.text) + '</div>';
+                }
+            }
+        });
+    });
+
+    /* =========================================================
+       EMPLOYEE NAME-ONLY SEARCH POPUP
+    ========================================================= */
     document.querySelectorAll(".employee-picker").forEach(function (picker) {
+        const searchInput = picker.querySelector(".employee-search-input");
+        const hiddenInput = picker.querySelector(".employee-id-input");
+        const resultsBox = picker.querySelector(".employee-search-results");
+        const options = Array.from(picker.querySelectorAll(".employee-search-option"));
+        const noResults = picker.querySelector(".employee-no-results");
 
-        const searchInput =
-            picker.querySelector(".employee-search-input");
-
-        const hiddenInput =
-            picker.querySelector(".employee-id-input");
-
-        const resultsBox =
-            picker.querySelector(".employee-search-results");
-
-        const options =
-            Array.from(picker.querySelectorAll(".employee-search-option"));
-
-        const noResults =
-            picker.querySelector(".employee-no-results");
-
-        if (!searchInput || !hiddenInput || !resultsBox) {
-            return;
-        }
-
+        if (!searchInput || !hiddenInput || !resultsBox) return;
 
         function showResults() {
-
-            const search =
-                searchInput.value.toLowerCase().trim();
-
+            const search = searchInput.value.toLowerCase().trim();
             let visibleCount = 0;
 
             options.forEach(function (option) {
-
-                const name =
-                    (option.dataset.name || "").toLowerCase();
-
-                const employeeCode =
-                    (option.dataset.code || "").toLowerCase();
-
-                const department =
-                    (option.dataset.department || "").toLowerCase();
-
-                const matches =
-                    search === "" ||
-                    name.includes(search) ||
-                    employeeCode.includes(search) ||
-                    department.includes(search);
-
+                const name = (option.dataset.name || "").toLowerCase();
+                const matches = search === "" || name.includes(search);
                 option.style.display = matches ? "flex" : "none";
-
-                if (matches) {
-                    visibleCount++;
-                }
-
+                if (matches) visibleCount++;
             });
 
             if (noResults) {
-                noResults.style.display =
-                    visibleCount === 0 ? "block" : "none";
+                noResults.style.display = visibleCount === 0 ? "block" : "none";
             }
 
             resultsBox.style.display = "block";
-
         }
-
 
         function hideResults() {
             resultsBox.style.display = "none";
         }
 
-
-        /* Type employee name / ID */
+        searchInput.addEventListener("focus", showResults);
         searchInput.addEventListener("input", function () {
-
             hiddenInput.value = "";
-            searchInput.classList.remove("is-invalid");
-
-            showResults();
-
-        });
-
-
-        /* Open suggestions when clicking the field */
-        searchInput.addEventListener("focus", function () {
             showResults();
         });
 
-
-        /* Select employee */
         options.forEach(function (option) {
-
             option.addEventListener("click", function () {
-
-                const databaseId =
-                    this.dataset.employeeId || "";
-
-                const name =
-                    this.dataset.name || "";
-
-                const code =
-                    this.dataset.code || "";
-
-                const department =
-                    this.dataset.department || "";
-
-                /* Send actual employee DB ID to Flask */
-                hiddenInput.value = databaseId;
-
-                /* Show selected employee */
-               searchInput.value = name;
-
+                hiddenInput.value = this.dataset.employeeId || "";
+                searchInput.value = this.dataset.name || "";
                 searchInput.classList.remove("is-invalid");
-
                 hideResults();
-
             });
-
         });
 
-
-        /* Keyboard support */
         searchInput.addEventListener("keydown", function (event) {
-
             if (event.key === "Escape") {
                 hideResults();
-                return;
+                searchInput.blur();
             }
-
-            if (event.key === "Enter") {
-
-                const firstVisible =
-                    options.find(function (option) {
-                        return option.style.display !== "none";
-                    });
-
-                if (firstVisible) {
-                    event.preventDefault();
-                    firstVisible.click();
-                }
-
-            }
-
         });
 
-
-        /* Validate before submitting the assignment */
-        const form = searchInput.closest("form");
-
-        if (form) {
-
-            form.addEventListener("submit", function (event) {
-
-                if (!hiddenInput.value) {
-
-                    event.preventDefault();
-
-                    searchInput.classList.add("is-invalid");
-                    searchInput.focus();
-                    showResults();
-
-                }
-
-            });
-
-        }
-
-
-        /* Close suggestions when clicking elsewhere */
         document.addEventListener("click", function (event) {
-
             if (!picker.contains(event.target)) {
                 hideResults();
             }
-
         });
 
+        const form = picker.closest("form");
+        if (form) {
+            form.addEventListener("submit", function (event) {
+                if (!hiddenInput.value) {
+                    event.preventDefault();
+                    searchInput.classList.add("is-invalid");
+                    searchInput.focus();
+                    showResults();
+                }
+            });
+        }
     });
-
 });
-
 </script>
 
 {% endblock %}
