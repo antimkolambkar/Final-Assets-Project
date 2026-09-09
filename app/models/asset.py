@@ -76,8 +76,14 @@ class AssetAssignmentHistory(db.Model):
     replacement_reason = db.Column(db.Text, nullable=True)
     
     notes = db.Column(db.Text, nullable=True)
-    performed_by = db.Column(db.String(100), nullable=True) # User/Admin name
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+performed_by = db.Column(db.String(100), nullable=True)
+
+# Date on which the asset lifecycle event actually happened
+# Example: Assigned, Returned, Sent to Repair, Repaired, Available
+event_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+# Date/time when the record was created in the system
+timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     # Relationships for replacement tracking
     old_asset = db.relationship('Asset', foreign_keys=[old_asset_id])
