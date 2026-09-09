@@ -10,7 +10,6 @@ from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
-    Spacer,
     Table,
     TableStyle
 )
@@ -45,6 +44,10 @@ class ReportService:
         'disabled_employee': 'Disabled Employee Report',
         'offboarded_employee': 'Offboarding & Return Asset Report',
         'asset_history': 'Asset History & Replacement Log',
+
+        # NEW REPORT
+        'replacement': 'Replacement Report',
+
         'audit': 'Audit Log Report'
     }
 
@@ -57,6 +60,7 @@ class ReportService:
         vendor_id=None,
         employee_id=None
     ):
+
         headers = []
         rows = []
 
@@ -564,6 +568,168 @@ class ReportService:
                 ])
 
         # ==========================================================
+        # NEW - REPLACEMENT REPORT
+        # ==========================================================
+        elif report_type == 'replacement':
+
+            headers = [
+                'Replacement Date',
+                'Employee Name',
+                'Employee ID',
+                'Old Asset ID',
+                'Old Brand',
+                'Old Model',
+                'Old Serial Number',
+                'New Asset ID',
+                'New Brand',
+                'New Model',
+                'New Serial Number',
+                'Vendor',
+                'Replacement Reason',
+                'Performed By'
+            ]
+
+            # Only replacement records
+            query = AssetAssignmentHistory.query.filter(
+                AssetAssignmentHistory.action == 'Replaced'
+            )
+
+            # ------------------------------------------------------
+            # DATE FILTER
+            # ------------------------------------------------------
+            if start_date:
+
+                query = query.filter(
+                    AssetAssignmentHistory.timestamp >= start_date
+                )
+
+            if end_date:
+
+                query = query.filter(
+                    AssetAssignmentHistory.timestamp <= end_date
+                )
+
+            query = query.order_by(
+                AssetAssignmentHistory.timestamp.desc()
+            )
+
+            for h in query.all():
+
+                old_asset = h.old_asset
+                new_asset = h.new_asset
+
+                # --------------------------------------------------
+                # EMPLOYEE
+                # --------------------------------------------------
+                employee = None
+
+                if h.employee_id:
+
+                    employee = Employee.query.get(
+                        h.employee_id
+                    )
+
+                # --------------------------------------------------
+                # VENDOR
+                # --------------------------------------------------
+                vendor = None
+
+                if new_asset and new_asset.vendor:
+
+                    vendor = new_asset.vendor
+
+                elif old_asset and old_asset.vendor:
+
+                    vendor = old_asset.vendor
+
+                # --------------------------------------------------
+                # VENDOR FILTER
+                # --------------------------------------------------
+                if vendor_id:
+
+                    if not vendor or vendor.id != vendor_id:
+                        continue
+
+                # --------------------------------------------------
+                # EMPLOYEE FILTER
+                # --------------------------------------------------
+                if employee_id:
+
+                    if not employee or employee.id != employee_id:
+                        continue
+
+                # --------------------------------------------------
+                # DEPARTMENT FILTER
+                # --------------------------------------------------
+                if department:
+
+                    if not employee or employee.department != department:
+                        continue
+
+                # --------------------------------------------------
+                # ADD REPORT ROW
+                # --------------------------------------------------
+                rows.append([
+                    h.timestamp.strftime(
+                        '%Y-%m-%d %H:%M'
+                    ) if h.timestamp else '-',
+
+                    h.employee_name
+                    or (
+                        employee.name
+                        if employee
+                        else '-'
+                    ),
+
+                    employee.employee_id
+                    if employee
+                    else '-',
+
+                    old_asset.asset_id
+                    if old_asset
+                    else '-',
+
+                    old_asset.brand
+                    if old_asset
+                    else '-',
+
+                    old_asset.model
+                    if old_asset
+                    else '-',
+
+                    old_asset.serial_number
+                    if old_asset
+                    else '-',
+
+                    new_asset.asset_id
+                    if new_asset
+                    else '-',
+
+                    new_asset.brand
+                    if new_asset
+                    else '-',
+
+                    new_asset.model
+                    if new_asset
+                    else '-',
+
+                    new_asset.serial_number
+                    if new_asset
+                    else '-',
+
+                    vendor.name
+                    if vendor
+                    else '-',
+
+                    h.replacement_reason
+                    or h.notes
+                    or '-',
+
+                    h.performed_by
+                    or 'System'
+                ])
+
+        # ==========================================================
         # ASSET HISTORY & REPLACEMENT LOG
         # ==========================================================
         elif report_type == 'asset_history':
@@ -580,12 +746,9 @@ class ReportService:
                 'Timestamp'
             ]
 
-            # Start with all history records
             query = AssetAssignmentHistory.query
 
-            # ------------------------------------------------------
-            # VENDOR FILTER
-            # ------------------------------------------------------
+            # Vendor filter
             if vendor_id:
 
                 query = query.join(
@@ -595,20 +758,19 @@ class ReportService:
                     Asset.vendor_id == vendor_id
                 )
 
-            # ------------------------------------------------------
-            # DATE FILTER
-            # ------------------------------------------------------
+            # Date filter
             if start_date:
+
                 query = query.filter(
                     AssetAssignmentHistory.timestamp >= start_date
                 )
 
             if end_date:
+
                 query = query.filter(
                     AssetAssignmentHistory.timestamp <= end_date
                 )
 
-            # Latest records first
             query = query.order_by(
                 AssetAssignmentHistory.timestamp.desc()
             )
@@ -878,6 +1040,7 @@ class ReportService:
                 )
 
                 if row_idx % 2 == 0:
+
                     cell.fill = row_alt_fill
 
         # ----------------------------------------------------------
@@ -950,6 +1113,7 @@ class ReportService:
         writer.writerow(headers)
 
         for r in rows:
+
             writer.writerow(r)
 
         return output.getvalue().encode(
@@ -1062,7 +1226,7 @@ class ReportService:
         table_data = [
             [
                 Paragraph(
-                    h,
+                    str(h),
                     header_cell_style
                 )
                 for h in headers
