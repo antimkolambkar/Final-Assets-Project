@@ -422,56 +422,78 @@ def get_asset_history(asset_id):
 @login_required
 def return_to_vendor():
     if not current_user.is_it_admin:
-        flash('Permission denied. Only IT Admins can return assets to vendors.', 'danger')
+        flash(
+            'Permission denied. Only IT Admins can return assets to vendors.',
+            'danger'
+        )
         return redirect(url_for('assets.index'))
 
     asset_id = request.form.get('asset_id', type=int)
     vendor_id = request.form.get('vendor_id', type=int)
     reason = request.form.get('reason', '').strip()
-    vendor_return_date_str = request.form.get('vendor_return_date', '').strip()
+    vendor_return_date_str = request.form.get(
+        'vendor_return_date',
+        ''
+    ).strip()
 
-if not vendor_return_date_str:
-    flash('Please select the vendor return date.', 'danger')
-    return redirect(url_for('assets.index'))
+    # Validate return date
+    if not vendor_return_date_str:
+        flash(
+            'Please select the vendor return date.',
+            'danger'
+        )
+        return redirect(url_for('assets.index'))
 
-try:
-    vendor_return_date = datetime.strptime(
-        vendor_return_date_str,
-        '%Y-%m-%d'
-    )
-except ValueError:
-    flash('Invalid vendor return date.', 'danger')
-    return redirect(url_for('assets.index'))
+    try:
+        vendor_return_date = datetime.strptime(
+            vendor_return_date_str,
+            '%Y-%m-%d'
+        )
+    except ValueError:
+        flash(
+            'Invalid vendor return date.',
+            'danger'
+        )
+        return redirect(url_for('assets.index'))
 
     asset = Asset.query.get_or_404(asset_id)
     vendor = Vendor.query.get_or_404(vendor_id)
-    asset.vendor_id = vendor.id
-asset.status = AssetStatus.RETURNED_TO_VENDOR
-asset.vendor_return_date = vendor_return_date
-asset.vendor_return_reason = reason
-asset.assigned_employee_id = None
-asset.assignment_date = None
 
+    # Only Techvity and Spurge are allowed
     if vendor.name not in ['Techvity', 'Spurge']:
-        flash('This vendor is not allowed for vendor return.', 'danger')
+        flash(
+            'This vendor is not allowed for vendor return.',
+            'danger'
+        )
         return redirect(url_for('assets.index'))
 
+    # Assigned laptop must be returned first
     if asset.status == AssetStatus.ASSIGNED:
         flash(
-            f'Cannot return assigned asset {asset.asset_id} to vendor. '
-            'Return it from the employee first.',
+            f'Cannot return assigned asset {asset.asset_id} '
+            'to vendor. Return it from the employee first.',
             'warning'
         )
         return redirect(url_for('assets.index'))
 
+    # Prevent duplicate vendor return
     if asset.status == AssetStatus.RETURNED_TO_VENDOR:
-        flash(f'Asset {asset.asset_id} has already been returned to vendor.', 'warning')
+        flash(
+            f'Asset {asset.asset_id} has already been returned '
+            'to vendor.',
+            'warning'
+        )
         return redirect(url_for('assets.index'))
 
+    # Reason is required
     if not reason:
-        flash('Please provide a reason for returning the asset to vendor.', 'danger')
+        flash(
+            'Please provide a reason for returning the asset to vendor.',
+            'danger'
+        )
         return redirect(url_for('assets.index'))
 
+    # Update asset
     asset.vendor_id = vendor.id
     asset.status = AssetStatus.RETURNED_TO_VENDOR
     asset.vendor_return_date = vendor_return_date
@@ -479,26 +501,35 @@ asset.assignment_date = None
     asset.assigned_employee_id = None
     asset.assignment_date = None
 
+    # Add history
     hist = AssetAssignmentHistory(
         asset_id=asset.id,
         action='Send Back to Vendor',
-        notes=f'Asset returned to Vendor {vendor.name}. Reason: {reason}',
+        notes=(
+            f'Asset returned to Vendor {vendor.name}. '
+            f'Reason: {reason}'
+        ),
         performed_by=current_user.full_name
     )
 
     db.session.add(hist)
 
+    # Audit log
     AuditService.log(
         action='Asset Returned to Vendor',
         entity_type='Asset',
         entity_id=asset.asset_id,
-        details=f'Asset {asset.asset_id} returned to vendor {vendor.name}. Reason: {reason}'
+        details=(
+            f'Asset {asset.asset_id} returned to vendor '
+            f'{vendor.name}. Reason: {reason}'
+        )
     )
 
     db.session.commit()
 
     flash(
-        f'Asset {asset.asset_id} successfully returned to {vendor.name}.',
+        f'Asset {asset.asset_id} successfully returned '
+        f'to {vendor.name}.',
         'success'
     )
 
