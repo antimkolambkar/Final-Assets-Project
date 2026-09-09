@@ -750,7 +750,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     <button type="button"
                                             class="dropdown-item text-success btn-complete-repair"
                                             data-bs-toggle="modal"
-                                            data-bs-target="#completeRepairModal"
+                                            data-bs-target="#completeRepairModal{{ ast.id }}"
                                             data-asset-id="{{ ast.id }}"
                                             data-asset-name="{{ ast.asset_id }} - {{ ast.brand }} {{ ast.model }}">
                                         <i class="fas fa-check-circle me-2"></i>
@@ -1205,7 +1205,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     <div class="modal-header bg-success text-white">
 
                                         <h5 class="modal-title fw-bold"
-                                            id="completeRepairModalLabel">
+                                            id="completeRepairModalLabel{{ ast.id }}">
                                             <i class="fas fa-check-circle me-2"></i>
                                             Complete Repair
                                         </h5>
@@ -1217,7 +1217,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                                     </div>
 
-                                    <form id="completeRepairForm"
+                                    <form id="completeRepairForm{{ ast.id }}"
                                           action="{{ url_for('assets.complete_repair', asset_id=ast.id) }}"
                                           method="POST">
 
@@ -1240,7 +1240,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                                 </label>
 
                                                 <input type="text"
-                                                       id="completeRepairAssetName"
+                                                       id="completeRepairAssetName{{ ast.id }}"
                                                        class="form-control bg-light"
                                                        value="{{ ast.asset_id }} - {{ ast.brand }} {{ ast.model }}"
                                                        readonly>
@@ -1262,7 +1262,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                                                     <input type="date"
                                                            name="repair_completed_date"
-                                                           id="repairCompletedDate"
+                                                           id="repairCompletedDate{{ ast.id }}"
                                                            class="form-control"
                                                            required>
 
@@ -1277,7 +1277,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                                 </label>
 
                                                 <textarea name="notes"
-                                                          id="completeRepairNotes"
+                                                          id="completeRepairNotes{{ ast.id }}"
                                                           class="form-control"
                                                           rows="3"
                                                           placeholder="Enter repair completion details..."></textarea>
@@ -4047,19 +4047,8 @@ document.addEventListener("DOMContentLoaded", function () {
 });
     /* =========================================================
        COMPLETE REPAIR MODAL
+       Each repair asset has its own modal, form and fields.
     ========================================================= */
-
-    const completeRepairForm =
-        document.getElementById("completeRepairForm");
-
-    const completeRepairAssetName =
-        document.getElementById("completeRepairAssetName");
-
-    const repairCompletedDate =
-        document.getElementById("repairCompletedDate");
-
-    const completeRepairNotes =
-        document.getElementById("completeRepairNotes");
 
     document.querySelectorAll(".btn-complete-repair").forEach(function (button) {
 
@@ -4071,27 +4060,41 @@ document.addEventListener("DOMContentLoaded", function () {
             const assetName =
                 this.getAttribute("data-asset-name") || "";
 
-            if (completeRepairForm && assetId) {
-                completeRepairForm.action =
+            if (!assetId) return;
+
+            const form =
+                document.getElementById("completeRepairForm" + assetId);
+
+            const assetNameInput =
+                document.getElementById("completeRepairAssetName" + assetId);
+
+            const completedDate =
+                document.getElementById("repairCompletedDate" + assetId);
+
+            const notes =
+                document.getElementById("completeRepairNotes" + assetId);
+
+            if (form) {
+                form.action =
                     "/assets/repair/complete/" +
                     encodeURIComponent(assetId);
             }
 
-            if (completeRepairAssetName) {
-                completeRepairAssetName.value = assetName;
+            if (assetNameInput) {
+                assetNameInput.value = assetName;
             }
 
-            if (repairCompletedDate) {
+            if (completedDate) {
                 const now = new Date();
 
-                repairCompletedDate.value =
+                completedDate.value =
                     now.getFullYear() + "-" +
                     String(now.getMonth() + 1).padStart(2, "0") + "-" +
                     String(now.getDate()).padStart(2, "0");
             }
 
-            if (completeRepairNotes) {
-                completeRepairNotes.value = "";
+            if (notes) {
+                notes.value = "";
             }
 
         });
