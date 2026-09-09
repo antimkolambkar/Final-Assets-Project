@@ -428,9 +428,29 @@ def return_to_vendor():
     asset_id = request.form.get('asset_id', type=int)
     vendor_id = request.form.get('vendor_id', type=int)
     reason = request.form.get('reason', '').strip()
+    vendor_return_date_str = request.form.get('vendor_return_date', '').strip()
+
+if not vendor_return_date_str:
+    flash('Please select the vendor return date.', 'danger')
+    return redirect(url_for('assets.index'))
+
+try:
+    vendor_return_date = datetime.strptime(
+        vendor_return_date_str,
+        '%Y-%m-%d'
+    )
+except ValueError:
+    flash('Invalid vendor return date.', 'danger')
+    return redirect(url_for('assets.index'))
 
     asset = Asset.query.get_or_404(asset_id)
     vendor = Vendor.query.get_or_404(vendor_id)
+    asset.vendor_id = vendor.id
+asset.status = AssetStatus.RETURNED_TO_VENDOR
+asset.vendor_return_date = vendor_return_date
+asset.vendor_return_reason = reason
+asset.assigned_employee_id = None
+asset.assignment_date = None
 
     if vendor.name not in ['Techvity', 'Spurge']:
         flash('This vendor is not allowed for vendor return.', 'danger')
@@ -454,7 +474,7 @@ def return_to_vendor():
 
     asset.vendor_id = vendor.id
     asset.status = AssetStatus.RETURNED_TO_VENDOR
-    asset.vendor_return_date = datetime.utcnow()
+    asset.vendor_return_date = vendor_return_date
     asset.vendor_return_reason = reason
     asset.assigned_employee_id = None
     asset.assignment_date = None
