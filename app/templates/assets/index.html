@@ -714,25 +714,24 @@
                                                 </label>
 
                                                 <select name="employee_id"
-                                                        class="form-select"
-                                                        required>
+        class="form-select assign-employee-select"
+        required>
 
-                                                    <option value="">
-                                                        -- Choose Entra ID Employee --
-                                                    </option>
+    <option value="">
+        -- Search Employee Name / ID --
+    </option>
 
-                                                    {% for emp in active_employees %}
+    {% for emp in active_employees %}
 
-                                                    <option value="{{ emp.id }}">
-                                                        {{ emp.name }}
-                                                        ({{ emp.employee_id }} -
-                                                        {{ emp.department }})
-                                                    </option>
+    <option value="{{ emp.id }}">
+        {{ emp.name }}
+        ({{ emp.employee_id }} -
+        {{ emp.department }})
+    </option>
 
-                                                    {% endfor %}
+    {% endfor %}
 
-                                                </select>
-
+</select>
                                             </div>
 
 
@@ -3247,7 +3246,72 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
 });
+<script>
 
+document.addEventListener("DOMContentLoaded", function () {
+
+    document
+        .querySelectorAll(".assign-employee-select")
+        .forEach(function (employeeSelect) {
+
+            if (!employeeSelect || employeeSelect.tomselect) {
+                return;
+            }
+
+            new TomSelect(employeeSelect, {
+
+                create: false,
+
+                maxOptions: 1000,
+
+                allowEmptyOption: true,
+
+                searchField: [
+                    "text",
+                    "value"
+                ],
+
+                placeholder: "Type employee name or ID...",
+
+                closeAfterSelect: true,
+
+                plugins: [
+                    "clear_button"
+                ],
+
+                render: {
+
+                    option: function (data, escape) {
+
+                        return `
+                            <div class="py-1">
+                                <div class="fw-semibold">
+                                    ${escape(data.text)}
+                                </div>
+                            </div>
+                        `;
+
+                    },
+
+                    item: function (data, escape) {
+
+                        return `
+                            <div>
+                                ${escape(data.text)}
+                            </div>
+                        `;
+
+                    }
+
+                }
+
+            });
+
+        });
+
+});
+
+</script>
 </script>
 
 {% endblock %}
