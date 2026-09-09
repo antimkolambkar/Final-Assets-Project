@@ -24,6 +24,7 @@ class ReportService:
         'repair_asset': 'Repair Asset Report',
         'department': 'Department Asset & Employee Report',
         'vendor': 'Vendor & Repair Ticket Report',
+        'vendor_return': 'Send to Vendor Report',
         'ticket': 'Ticket Report',
         'open_ticket': 'Open Ticket Report',
         'closed_ticket': 'Closed Ticket Report',
@@ -116,6 +117,43 @@ class ReportService:
                 # Assigned assets to employees in this dept
                 assigned_count = Asset.query.join(Employee).filter(Employee.department == dept_name).count()
                 rows.append([dept_name, emp_count, active, blocked_dis, offboarded, assigned_count])
+
+        elif report_type == 'vendor_return':
+            headers = [
+                'Asset ID', 'Brand', 'Model', 'Serial Number', 'Vendor',
+                'Return Date', 'Return Reason', 'Status', 'Remarks'
+            ]
+
+            query = Asset.query.filter_by(status=AssetStatus.RETURNED_TO_VENDOR)
+
+            if vendor_id:
+                query = query.filter_by(vendor_id=vendor_id)
+
+            if start_date:
+                query = query.filter(
+                    Asset.vendor_return_date >= start_date
+                )
+
+            if end_date:
+                query = query.filter(
+                    Asset.vendor_return_date <= end_date
+                )
+
+            query = query.order_by(Asset.vendor_return_date.desc())
+
+            for ast in query.all():
+                rows.append([
+                    ast.asset_id,
+                    ast.brand or '-',
+                    ast.model or '-',
+                    ast.serial_number or '-',
+                    ast.vendor.name if ast.vendor else '-',
+                    ast.vendor_return_date.strftime('%Y-%m-%d %H:%M')
+                    if ast.vendor_return_date else '-',
+                    ast.vendor_return_reason or '-',
+                    ast.status,
+                    ast.remarks or '-'
+                ])
 
         elif report_type == 'vendor':
             headers = ['Vendor Name', 'Contact Person', 'Email', 'Phone', 'Total Assets Supplied', 'Under Repair Tickets']
