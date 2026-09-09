@@ -3468,6 +3468,11 @@ document.addEventListener("DOMContentLoaded", function () {
             const search =
                 searchInput.value.toLowerCase().trim();
 
+            // Normalize spaces/punctuation so searches like
+            // "Antim", "antim kol", or employee IDs work reliably.
+            const normalizedSearch = search.replace(/[^a-z0-9]+/g, " ").trim();
+            const searchTerms = normalizedSearch ? normalizedSearch.split(/\s+/) : [];
+
             let visibleCount = 0;
 
             options.forEach(function (option) {
@@ -3481,11 +3486,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 const department =
                     (option.dataset.department || "").toLowerCase();
 
+                const searchableText =
+                    (name + " " + employeeCode + " " + department)
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, " ");
+
                 const matches =
-                    search === "" ||
-                    name.includes(search) ||
-                    employeeCode.includes(search) ||
-                    department.includes(search);
+                    searchTerms.length === 0 ||
+                    searchTerms.every(function (term) {
+                        return searchableText.includes(term);
+                    });
 
                 option.style.display = matches ? "flex" : "none";
 
