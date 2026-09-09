@@ -274,3 +274,296 @@ if (editForm) {
     });
 }
 });
+// =========================================================
+// UNIVERSAL SEARCHABLE SELECT
+// =========================================================
+
+function initializeSearchableSelects() {
+
+    document.querySelectorAll(
+        'select.searchable-select:not([data-searchable-initialized])'
+    ).forEach(function(select) {
+
+        select.setAttribute('data-searchable-initialized', 'true');
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'searchable-select-wrapper';
+
+        const inputGroup = document.createElement('div');
+        inputGroup.className = 'searchable-select-input-group';
+
+        const icon = document.createElement('span');
+        icon.className = 'searchable-select-icon';
+
+        icon.innerHTML = `
+            <i class="fas fa-search"></i>
+        `;
+
+        const input = document.createElement('input');
+
+        input.type = 'text';
+        input.className = 'searchable-select-input';
+        input.autocomplete = 'off';
+
+        input.placeholder =
+            select.dataset.placeholder ||
+            'Type to search...';
+
+        const arrow = document.createElement('span');
+
+        arrow.className = 'searchable-select-arrow';
+
+        arrow.innerHTML = `
+            <i class="fas fa-chevron-down"></i>
+        `;
+
+        const results = document.createElement('div');
+
+        results.className = 'searchable-select-results';
+
+        // Move original select into wrapper
+        select.parentNode.insertBefore(wrapper, select);
+
+        wrapper.appendChild(select);
+
+        // Hide original select but keep it for form submission
+        select.style.display = 'none';
+
+        wrapper.appendChild(inputGroup);
+
+        inputGroup.appendChild(icon);
+        inputGroup.appendChild(input);
+        inputGroup.appendChild(arrow);
+
+        wrapper.appendChild(results);
+
+        const options = Array.from(select.options);
+
+        function renderOptions(searchText = '') {
+
+            results.innerHTML = '';
+
+            const search = searchText
+                .trim()
+                .toLowerCase();
+
+            let found = 0;
+
+            options.forEach(function(option) {
+
+                if (!option.value && !option.textContent.trim()) {
+                    return;
+                }
+
+                const title =
+                    option.dataset.title ||
+                    option.textContent.trim();
+
+                const subtitle =
+                    option.dataset.subtitle ||
+                    '';
+
+                const searchableText =
+                    `${title} ${subtitle}`.toLowerCase();
+
+                if (
+                    search &&
+                    !searchableText.includes(search)
+                ) {
+                    return;
+                }
+
+                const button =
+                    document.createElement('button');
+
+                button.type = 'button';
+
+                button.className =
+                    'searchable-select-option';
+
+                button.dataset.value =
+                    option.value;
+
+                const iconClass =
+                    option.dataset.icon ||
+                    'fa-user';
+
+                button.innerHTML = `
+                    <span class="searchable-option-icon">
+                        <i class="fas ${iconClass}"></i>
+                    </span>
+
+                    <span class="searchable-option-content">
+
+                        <span class="searchable-option-title">
+                            ${escapeHtml(title)}
+                        </span>
+
+                        ${
+                            subtitle
+                                ? `
+                                <small class="searchable-option-subtitle">
+                                    ${escapeHtml(subtitle)}
+                                </small>
+                                `
+                                : ''
+                        }
+
+                    </span>
+                `;
+
+                button.addEventListener(
+                    'click',
+                    function() {
+
+                        select.value =
+                            option.value;
+
+                        input.value =
+                            title;
+
+                        input.classList.add(
+                            'selected'
+                        );
+
+                        results.classList.remove(
+                            'show'
+                        );
+
+                        select.dispatchEvent(
+                            new Event(
+                                'change',
+                                {
+                                    bubbles: true
+                                }
+                            )
+                        );
+                    }
+                );
+
+                results.appendChild(button);
+
+                found++;
+            });
+
+            if (found === 0) {
+
+                results.innerHTML = `
+                    <div class="searchable-no-results">
+                        <i class="fas fa-search me-2"></i>
+                        No results found
+                    </div>
+                `;
+            }
+        }
+
+        function openResults() {
+
+            renderOptions(input.value);
+
+            results.classList.add('show');
+        }
+
+        input.addEventListener(
+            'focus',
+            function() {
+
+                openResults();
+            }
+        );
+
+        input.addEventListener(
+            'input',
+            function() {
+
+                // Clear selected value when user changes text
+                select.value = '';
+
+                input.classList.remove(
+                    'selected'
+                );
+
+                openResults();
+            }
+        );
+
+        arrow.addEventListener(
+            'click',
+            function() {
+
+                if (
+                    results.classList.contains(
+                        'show'
+                    )
+                ) {
+
+                    results.classList.remove(
+                        'show'
+                    );
+
+                } else {
+
+                    openResults();
+                    input.focus();
+                }
+            }
+        );
+
+        // Restore existing selected value
+        if (select.value) {
+
+            const selectedOption =
+                select.options[
+                    select.selectedIndex
+                ];
+
+            if (selectedOption) {
+
+                input.value =
+                    selectedOption.dataset.title ||
+                    selectedOption.textContent.trim();
+
+                input.classList.add(
+                    'selected'
+                );
+            }
+        }
+
+        // Close when clicking outside
+        document.addEventListener(
+            'click',
+            function(event) {
+
+                if (
+                    !wrapper.contains(
+                        event.target
+                    )
+                ) {
+
+                    results.classList.remove(
+                        'show'
+                    );
+                }
+            }
+        );
+
+        renderOptions();
+    });
+}
+
+
+// Escape HTML safely
+function escapeHtml(value) {
+
+    const div =
+        document.createElement('div');
+
+    div.textContent =
+        value || '';
+
+    return div.innerHTML;
+}
+
+
+// Initialize
+initializeSearchableSelects();
