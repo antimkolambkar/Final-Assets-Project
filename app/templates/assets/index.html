@@ -222,6 +222,33 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
     });
+
+    /* =========================================================
+       AUTO APPLY ASSET STATUS FILTER
+       Automatically submits the Asset Inventory filter form
+       when the Status dropdown is changed.
+    ========================================================= */
+    const filterForm = document.querySelector(
+        'form[action="{{ url_for("assets.index") }}"]'
+    );
+
+    if (filterForm) {
+        const statusSelect = filterForm.querySelector(
+            'select[name="status"]'
+        );
+
+        if (statusSelect) {
+            if (statusSelect.tomselect) {
+                statusSelect.tomselect.on("change", function () {
+                    filterForm.submit();
+                });
+            } else {
+                statusSelect.addEventListener("change", function () {
+                    filterForm.submit();
+                });
+            }
+        }
+    }
 });
 </script>
 
