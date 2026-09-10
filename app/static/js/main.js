@@ -10,21 +10,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (themeToggleBtn) {
         themeToggleBtn.addEventListener('click', function() {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            const currentTheme =
+                document.documentElement.getAttribute('data-theme') || 'light';
+
+            const newTheme =
+                currentTheme === 'light' ? 'dark' : 'light';
+
             setTheme(newTheme);
         });
     }
 
     function setTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('itam_theme', theme);
+        document.documentElement.setAttribute(
+            'data-theme',
+            theme
+        );
+
+        localStorage.setItem(
+            'itam_theme',
+            theme
+        );
 
         if (themeIcon) {
             if (theme === 'dark') {
-                themeIcon.className = 'fas fa-sun text-warning';
+                themeIcon.className =
+                    'fas fa-sun text-warning';
             } else {
-                themeIcon.className = 'fas fa-moon text-secondary';
+                themeIcon.className =
+                    'fas fa-moon text-secondary';
             }
         }
     }
@@ -34,64 +47,91 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('[data-bs-toggle="tooltip"]')
     );
 
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+    tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(
+            tooltipTriggerEl
+        );
     });
 
     var toastElList = [].slice.call(
         document.querySelectorAll('.toast')
     );
 
-    toastElList.map(function (toastEl) {
-        var toast = new bootstrap.Toast(toastEl, {
-            delay: 5000
-        });
+    toastElList.map(function(toastEl) {
+        var toast = new bootstrap.Toast(
+            toastEl,
+            {
+                delay: 5000
+            }
+        );
 
         toast.show();
     });
 
     // 3. Employee Detail Modal Handler
-    const viewEmpButtons = document.querySelectorAll('.btn-view-employee');
+    const viewEmpButtons =
+        document.querySelectorAll('.btn-view-employee');
 
     viewEmpButtons.forEach(btn => {
+
         btn.addEventListener('click', function() {
 
-            const empId = this.getAttribute('data-emp-id');
+            const empId =
+                this.getAttribute('data-emp-id');
 
             fetch(`/employees/${empId}/json`)
                 .then(res => res.json())
                 .then(data => {
 
                     const editProfileBtn =
-                        document.getElementById("editProfileBtn");
+                        document.getElementById(
+                            "editProfileBtn"
+                        );
 
                     if (editProfileBtn) {
-                        editProfileBtn.dataset.empId = data.id;
+                        editProfileBtn.dataset.empId =
+                            data.id;
                     }
 
-                    document.getElementById('modal-emp-name').textContent =
+                    document.getElementById(
+                        'modal-emp-name'
+                    ).textContent =
                         data.name;
 
-                    document.getElementById('modal-emp-id').textContent =
+                    document.getElementById(
+                        'modal-emp-id'
+                    ).textContent =
                         data.employee_id;
 
-                    document.getElementById('modal-emp-email').textContent =
+                    document.getElementById(
+                        'modal-emp-email'
+                    ).textContent =
                         data.email;
 
-                    document.getElementById('modal-emp-dept').textContent =
+                    document.getElementById(
+                        'modal-emp-dept'
+                    ).textContent =
                         data.department;
 
-                    document.getElementById('modal-emp-desig').textContent =
+                    document.getElementById(
+                        'modal-emp-desig'
+                    ).textContent =
                         data.designation;
 
-                    document.getElementById('modal-emp-manager').textContent =
+                    document.getElementById(
+                        'modal-emp-manager'
+                    ).textContent =
                         data.manager;
 
-                    document.getElementById('modal-emp-office').textContent =
+                    document.getElementById(
+                        'modal-emp-office'
+                    ).textContent =
                         data.office_location;
 
                     const statusBadge =
-                        document.getElementById('modal-emp-status');
+                        document.getElementById(
+                            'modal-emp-status'
+                        );
 
                     statusBadge.textContent =
                         data.account_status;
@@ -100,11 +140,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         `badge badge-status badge-${data.account_status.toLowerCase()}`;
 
                     const assetsTableBody =
-                        document.getElementById("modal-emp-assets-body");
+                        document.getElementById(
+                            "modal-emp-assets-body"
+                        );
 
                     assetsTableBody.innerHTML = "";
 
-                    if (data.assigned_assets.length === 0) {
+                    if (
+                        data.assigned_assets.length === 0
+                    ) {
 
                         assetsTableBody.innerHTML = `
                             <div class="alert alert-secondary text-center">
@@ -181,9 +225,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     }
 
-                    const empModal = new bootstrap.Modal(
-                        document.getElementById("employeeDetailModal")
-                    );
+                    const empModal =
+                        new bootstrap.Modal(
+                            document.getElementById(
+                                "employeeDetailModal"
+                            )
+                        );
 
                     empModal.show();
 
@@ -199,14 +246,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 4. Asset History Modal Handler
     const viewAssetHistButtons =
-        document.querySelectorAll('.btn-view-asset-history');
+        document.querySelectorAll(
+            '.btn-view-asset-history'
+        );
 
     viewAssetHistButtons.forEach(btn => {
 
         btn.addEventListener('click', function() {
 
             const assetId =
-                this.getAttribute('data-asset-id');
+                this.getAttribute(
+                    'data-asset-id'
+                );
 
             fetch(`/assets/${assetId}/history`)
                 .then(res => res.json())
@@ -214,19 +265,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     document.getElementById(
                         'modal-hist-asset-id'
-                    ).textContent = data.asset_id;
+                    ).textContent =
+                        data.asset_id;
 
                     document.getElementById(
                         'modal-hist-brand-model'
-                    ).textContent = data.brand_model;
+                    ).textContent =
+                        data.brand_model;
 
                     document.getElementById(
                         'modal-hist-serial'
-                    ).textContent = data.serial_number;
+                    ).textContent =
+                        data.serial_number;
 
                     document.getElementById(
                         'modal-hist-user'
-                    ).textContent = data.assigned_user;
+                    ).textContent =
+                        data.assigned_user;
 
                     const histTableBody =
                         document.getElementById(
@@ -235,7 +290,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     histTableBody.innerHTML = '';
 
-                    if (data.history.length === 0) {
+                    if (
+                        data.history.length === 0
+                    ) {
 
                         histTableBody.innerHTML =
                             '<tr><td colspan="6" class="text-center text-muted py-3">No history logs recorded for this asset yet.</td></tr>';
@@ -247,17 +304,23 @@ document.addEventListener('DOMContentLoaded', function() {
                             let actionBadge =
                                 `<span class="badge bg-secondary">${h.action}</span>`;
 
-                            if (h.action === 'Assigned') {
+                            if (
+                                h.action === 'Assigned'
+                            ) {
                                 actionBadge =
                                     `<span class="badge bg-primary">Assigned</span>`;
                             }
 
-                            if (h.action === 'Returned') {
+                            if (
+                                h.action === 'Returned'
+                            ) {
                                 actionBadge =
                                     `<span class="badge bg-success">Returned</span>`;
                             }
 
-                            if (h.action === 'Replaced') {
+                            if (
+                                h.action === 'Replaced'
+                            ) {
                                 actionBadge =
                                     `<span class="badge bg-warning text-dark">
                                         <i class="fas fa-sync me-1"></i>Replaced
@@ -265,7 +328,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
 
                             const oldNewInfo =
-                                (h.old_asset && h.new_asset)
+                                (
+                                    h.old_asset &&
+                                    h.new_asset
+                                )
                                     ? `<small class="text-muted">
                                         Old: ${h.old_asset}
                                         &rarr;
@@ -275,13 +341,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
                             const row = `
                                 <tr>
+
                                     <td>
                                         <small class="text-muted">
                                             ${h.timestamp}
                                         </small>
                                     </td>
 
-                                    <td>${actionBadge}</td>
+                                    <td>
+                                        ${actionBadge}
+                                    </td>
 
                                     <td>
                                         <strong>
@@ -299,6 +368,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                             ${h.performed_by}
                                         </small>
                                     </td>
+
                                 </tr>
                             `;
 
@@ -307,11 +377,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     }
 
-                    var histModal = new bootstrap.Modal(
-                        document.getElementById(
-                            'assetHistoryModal'
-                        )
-                    );
+                    var histModal =
+                        new bootstrap.Modal(
+                            document.getElementById(
+                                'assetHistoryModal'
+                            )
+                        );
 
                     histModal.show();
 
@@ -327,102 +398,129 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 5. Edit Employee Handler
     const editBtn =
-        document.getElementById("editProfileBtn");
+        document.getElementById(
+            "editProfileBtn"
+        );
 
     if (editBtn) {
 
-        editBtn.addEventListener("click", function() {
+        editBtn.addEventListener(
+            "click",
+            function() {
 
-            const empId = this.dataset.empId;
+                const empId =
+                    this.dataset.empId;
 
-            if (!empId) {
-                alert("Open an employee first.");
-                return;
-            }
+                if (!empId) {
+                    alert(
+                        "Open an employee first."
+                    );
+                    return;
+                }
 
-            fetch(`/employees/${empId}/json`)
-                .then(r => r.json())
-                .then(emp => {
+                fetch(`/employees/${empId}/json`)
+                    .then(r => r.json())
+                    .then(emp => {
 
-                    document.getElementById("editName").value =
-                        emp.name;
-
-                    document.getElementById("editDepartment").value =
-                        emp.department;
-
-                    document.getElementById("editDesignation").value =
-                        emp.designation;
-
-                    document.getElementById("editManager").value =
-                        emp.manager;
-
-                    document.getElementById("editOffice").value =
-                        emp.office_location;
-
-                    document.getElementById("editStatus").value =
-                        emp.account_status;
-
-                    document.getElementById(
-                        "editEmployeeForm"
-                    ).action =
-                        `/employees/${empId}/edit`;
-
-                    new bootstrap.Modal(
                         document.getElementById(
-                            "editEmployeeModal"
-                        )
-                    ).show();
+                            "editName"
+                        ).value =
+                            emp.name;
 
-                });
+                        document.getElementById(
+                            "editDepartment"
+                        ).value =
+                            emp.department;
 
-        });
+                        document.getElementById(
+                            "editDesignation"
+                        ).value =
+                            emp.designation;
+
+                        document.getElementById(
+                            "editManager"
+                        ).value =
+                            emp.manager;
+
+                        document.getElementById(
+                            "editOffice"
+                        ).value =
+                            emp.office_location;
+
+                        document.getElementById(
+                            "editStatus"
+                        ).value =
+                            emp.account_status;
+
+                        document.getElementById(
+                            "editEmployeeForm"
+                        ).action =
+                            `/employees/${empId}/edit`;
+
+                        new bootstrap.Modal(
+                            document.getElementById(
+                                "editEmployeeModal"
+                            )
+                        ).show();
+
+                    });
+
+            }
+        );
     }
 
     // 6. Save Employee Edit Form
     const editForm =
-        document.getElementById("editEmployeeForm");
+        document.getElementById(
+            "editEmployeeForm"
+        );
 
     if (editForm) {
 
-        editForm.addEventListener("submit", function(e) {
+        editForm.addEventListener(
+            "submit",
+            function(e) {
 
-            e.preventDefault();
+                e.preventDefault();
 
-            fetch(this.action, {
-                method: "POST",
-                body: new FormData(this)
-            })
-            .then(response => response.json())
-            .then(data => {
+                fetch(this.action, {
+                    method: "POST",
+                    body: new FormData(this)
+                })
+                .then(response => response.json())
+                .then(data => {
 
-                if (data.success) {
+                    if (data.success) {
 
-                    alert(data.message);
+                        alert(data.message);
 
-                    bootstrap.Modal.getInstance(
-                        document.getElementById(
-                            "editEmployeeModal"
-                        )
-                    ).hide();
+                        bootstrap.Modal.getInstance(
+                            document.getElementById(
+                                "editEmployeeModal"
+                            )
+                        ).hide();
 
-                    location.reload();
+                        location.reload();
 
-                } else {
+                    } else {
 
-                    alert(data.message);
+                        alert(data.message);
 
-                }
+                    }
 
-            })
-            .catch(error => {
+                })
+                .catch(error => {
 
-                console.error(error);
+                    console.error(error);
 
-                alert("Error updating employee.");
+                    alert(
+                        "Error updating employee."
+                    );
 
-            });
+                });
 
-        });
+            }
+        );
     }
 });
 
@@ -517,7 +615,9 @@ function initializeSearchableSelects() {
         const options =
             Array.from(select.options);
 
-        function renderOptions(searchText = '') {
+        function renderOptions(
+            searchText = ''
+        ) {
 
             results.innerHTML = '';
 
@@ -546,17 +646,22 @@ function initializeSearchableSelects() {
                     '';
 
                 const searchableText =
-                    `${title} ${subtitle}`.toLowerCase();
+                    `${title} ${subtitle}`
+                        .toLowerCase();
 
                 if (
                     search &&
-                    !searchableText.includes(search)
+                    !searchableText.includes(
+                        search
+                    )
                 ) {
                     return;
                 }
 
                 const button =
-                    document.createElement('button');
+                    document.createElement(
+                        'button'
+                    );
 
                 button.type = 'button';
 
@@ -623,9 +728,12 @@ function initializeSearchableSelects() {
                     }
                 );
 
-                results.appendChild(button);
+                results.appendChild(
+                    button
+                );
 
                 found++;
+
             });
 
             if (found === 0) {
@@ -641,9 +749,13 @@ function initializeSearchableSelects() {
 
         function openResults() {
 
-            renderOptions(input.value);
+            renderOptions(
+                input.value
+            );
 
-            results.classList.add('show');
+            results.classList.add(
+                'show'
+            );
         }
 
         input.addEventListener(
@@ -755,18 +867,41 @@ function initializeEmployeeAutocomplete() {
             'true'
         );
 
-        const wrapper =
-            document.createElement('div');
+        /*
+         * IMPORTANT:
+         * Global Search must NOT be wrapped because
+         * wrapping the navbar input can break its layout.
+         */
+        const isGlobalSearch =
+            input.closest('.global-search') !== null;
 
-        wrapper.className =
-            'employee-autocomplete-wrapper';
+        let wrapper;
 
-        input.parentNode.insertBefore(
-            wrapper,
-            input
-        );
+        if (isGlobalSearch) {
 
-        wrapper.appendChild(input);
+            // Keep Global Search structure unchanged.
+            wrapper =
+                input.closest('.global-search');
+
+        } else {
+
+            // Employee page / Asset page search
+            // can safely use the autocomplete wrapper.
+            wrapper =
+                document.createElement('div');
+
+            wrapper.className =
+                'employee-autocomplete-wrapper';
+
+            input.parentNode.insertBefore(
+                wrapper,
+                input
+            );
+
+            wrapper.appendChild(
+                input
+            );
+        }
 
         const results =
             document.createElement('div');
@@ -774,7 +909,22 @@ function initializeEmployeeAutocomplete() {
         results.className =
             'employee-autocomplete-results';
 
-        wrapper.appendChild(results);
+        if (isGlobalSearch) {
+
+            /*
+             * Put dropdown inside global search,
+             * without changing the form/input structure.
+             */
+            wrapper.appendChild(
+                results
+            );
+
+        } else {
+
+            wrapper.appendChild(
+                results
+            );
+        }
 
         let debounceTimer = null;
 
@@ -811,7 +961,9 @@ function initializeEmployeeAutocomplete() {
             employees.forEach(function(employee) {
 
                 const option =
-                    document.createElement('button');
+                    document.createElement(
+                        'button'
+                    );
 
                 option.type = 'button';
 
@@ -831,20 +983,29 @@ function initializeEmployeeAutocomplete() {
 
                         <div class="employee-autocomplete-details">
                             ${escapeHtml(employee.employee_id)}
-                            ${employee.email
-                                ? ' • ' + escapeHtml(employee.email)
-                                : ''}
+                            ${
+                                employee.email
+                                    ? ' • ' +
+                                      escapeHtml(
+                                          employee.email
+                                      )
+                                    : ''
+                            }
                         </div>
 
                         ${
                             employee.department
                                 ? `
                                 <div class="employee-autocomplete-department">
-                                    ${escapeHtml(employee.department)}
+                                    ${escapeHtml(
+                                        employee.department
+                                    )}
                                     ${
                                         employee.designation
                                             ? ' • ' +
-                                              escapeHtml(employee.designation)
+                                              escapeHtml(
+                                                  employee.designation
+                                              )
                                             : ''
                                     }
                                 </div>
@@ -864,6 +1025,11 @@ function initializeEmployeeAutocomplete() {
 
                         hideResults();
 
+                        /*
+                         * Keep existing form behavior.
+                         * The form will submit normally when
+                         * the user presses Enter or clicks Filter.
+                         */
                         input.dispatchEvent(
                             new Event(
                                 'change',
@@ -987,17 +1153,27 @@ function initializeEmployeeAutocomplete() {
                 }
             }
         );
+
     });
 
-    // Close employee autocomplete when clicking outside
+    // Close autocomplete when clicking outside
     document.addEventListener(
         'click',
         function(event) {
 
-            if (
-                !event.target.closest(
+            const insideAutocomplete =
+                event.target.closest(
                     '.employee-autocomplete-wrapper'
-                )
+                );
+
+            const insideGlobalSearch =
+                event.target.closest(
+                    '.global-search'
+                );
+
+            if (
+                !insideAutocomplete &&
+                !insideGlobalSearch
             ) {
 
                 document
