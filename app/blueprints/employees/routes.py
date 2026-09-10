@@ -591,7 +591,7 @@ def edit_employee(emp_id):
     emp.name = request.form.get(
         "name",
         emp.name
-    )
+    ).strip()
 
     emp.department = request.form.get(
         "department",
@@ -622,57 +622,110 @@ def edit_employee(emp_id):
         emp.account_status
     )
 
+    # -----------------------------------------------------
+    # Date Picker Values
+    # -----------------------------------------------------
+
+    disabled_date_value = request.form.get(
+        "disabled_date",
+        ""
+    ).strip()
+
+    offboarded_date_value = request.form.get(
+        "offboarded_date",
+        ""
+    ).strip()
+
+    # -----------------------------------------------------
+    # Disabled Date
+    # -----------------------------------------------------
+    #
+    # When Disabled is selected, the user must select a date
+    # from the date picker.
+    #
+    # Existing disabled_date is replaced with the date
+    # explicitly selected by the user.
+    # -----------------------------------------------------
+
+    if new_status == AccountStatus.DISABLED:
+
+        if not disabled_date_value:
+
+            return jsonify({
+                "success": False,
+                "message": "Please select the Disabled Date."
+            }), 400
+
+        try:
+
+            emp.disabled_date = datetime.strptime(
+                disabled_date_value,
+                "%Y-%m-%d"
+            ).date()
+
+        except ValueError:
+
+            return jsonify({
+                "success": False,
+                "message": "Invalid Disabled Date."
+            }), 400
+
+    # -----------------------------------------------------
+    # Offboarded Date
+    # -----------------------------------------------------
+    #
+    # When Offboarded is selected, the user must select a date
+    # from the date picker.
+    #
+    # Existing offboarded_date is replaced with the date
+    # explicitly selected by the user.
+    # -----------------------------------------------------
+
+    elif new_status == AccountStatus.OFFBOARDED:
+
+        if not offboarded_date_value:
+
+            return jsonify({
+                "success": False,
+                "message": "Please select the Offboarded Date."
+            }), 400
+
+        try:
+
+            emp.offboarded_date = datetime.strptime(
+                offboarded_date_value,
+                "%Y-%m-%d"
+            ).date()
+
+        except ValueError:
+
+            return jsonify({
+                "success": False,
+                "message": "Invalid Offboarded Date."
+            }), 400
+
+    # -----------------------------------------------------
+    # Update Status
+    # -----------------------------------------------------
+
     emp.account_status = new_status
 
     # -----------------------------------------------------
-    # AUTOMATIC STATUS DATE
+    # Save Changes
     # -----------------------------------------------------
 
-    today = datetime.utcnow().date()
+    try:
 
-    # =====================================================
-    # ACTIVE / ONBOARDED / BLOCKED
-    #             ↓
-    #          DISABLED
-    # =====================================================
+        db.session.commit()
 
-    if (
-        new_status == AccountStatus.DISABLED
-        and old_status != AccountStatus.DISABLED
-    ):
+    except Exception as e:
 
-        emp.disabled_date = today
+        db.session.rollback()
 
-    # =====================================================
-    # ACTIVE / ONBOARDED / BLOCKED / DISABLED
-    #             ↓
-    #          OFFBOARDED
-    # =====================================================
-
-    if (
-        new_status == AccountStatus.OFFBOARDED
-        and old_status != AccountStatus.OFFBOARDED
-    ):
-
-        emp.offboarded_date = today
-
-    # -----------------------------------------------------
-    # Do NOT overwrite existing dates
-    # -----------------------------------------------------
-
-    # If status is changed from Offboarded back to Active,
-    # the original offboarded_date remains stored.
-    #
-    # If status is changed from Disabled back to Active,
-    # the original disabled_date remains stored.
-    #
-    # This gives you historical information.
-
-    # -----------------------------------------------------
-    # Save
-    # -----------------------------------------------------
-
-    db.session.commit()
+        return jsonify({
+            "success": False,
+            "message": f"Failed to update employee: {str(e)}"
+        }), 500
 
     # -----------------------------------------------------
     # Audit Status Change
@@ -690,7 +743,11 @@ def edit_employee(emp_id):
             details=(
                 f'Employee {emp.name} '
                 f'({emp.employee_id}) status changed '
-                f'from {old_status} to {new_status}.'
+                f'from {old_status} to {new_status}. '
+                f'Disabled Date: '
+                f'{emp.disabled_date.strftime("%Y-%m-%d") if emp.disabled_date else "-"}, '
+                f'Offboarded Date: '
+                f'{emp.offboarded_date.strftime("%Y-%m-%d") if emp.offboarded_date else "-"}'
             )
         )
 
