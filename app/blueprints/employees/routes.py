@@ -103,11 +103,10 @@ def employee_autocomplete():
     if len(search_q) < 2:
         return jsonify([])
 
+    # Search ONLY by employee name or employee ID
     employees = Employee.query.filter(
         (Employee.name.ilike(f'%{search_q}%')) |
-        (Employee.employee_id.ilike(f'%{search_q}%')) |
-        (Employee.email.ilike(f'%{search_q}%')) |
-        (Employee.designation.ilike(f'%{search_q}%'))
+        (Employee.employee_id.ilike(f'%{search_q}%'))
     ).order_by(
         Employee.name.asc()
     ).limit(10).all()
