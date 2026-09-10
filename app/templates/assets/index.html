@@ -283,8 +283,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     <input type="text"
                            name="q"
                            value="{{ search_q }}"
-                           class="form-control border-start-0 bg-light"
-                           placeholder="Search Asset ID, brand, model, serial number, user name...">
+                           class="form-control border-start-0 bg-light employee-autocomplete"
+                           data-autocomplete-url="{{ url_for('employees.employee_autocomplete') }}"
+                           placeholder="Search Asset ID, brand, model, serial number, user name..."
+                           autocomplete="off">
 
                 </div>
 
