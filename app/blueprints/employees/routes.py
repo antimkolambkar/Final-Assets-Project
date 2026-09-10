@@ -529,22 +529,22 @@ def edit_employee(emp_id):
     emp.department = request.form.get(
         "department",
         emp.department
-    )
+    ).strip()
 
     emp.designation = request.form.get(
         "designation",
         emp.designation
-    )
+    ).strip()
 
     emp.manager = request.form.get(
         "manager",
         emp.manager
-    )
+    ).strip()
 
     emp.office_location = request.form.get(
         "office_location",
         emp.office_location
-    )
+    ).strip()
 
     # -----------------------------------------------------
     # New Account Status
@@ -553,7 +553,7 @@ def edit_employee(emp_id):
     new_status = request.form.get(
         "account_status",
         emp.account_status
-    )
+    ).strip()
 
     # -----------------------------------------------------
     # Date Picker Values
@@ -570,59 +570,61 @@ def edit_employee(emp_id):
     ).strip()
 
     # -----------------------------------------------------
-    # Disabled Date
+    # STATUS DATE LOGIC
     # -----------------------------------------------------
 
-   if new_status == AccountStatus.DISABLED:
+    if new_status == AccountStatus.DISABLED:
 
-    if not disabled_date_value:
-        return jsonify({
-            "success": False,
-            "message": "Please select the Disabled Date."
-        }), 400
+        if not disabled_date_value:
+            return jsonify({
+                "success": False,
+                "message": "Please select the Disabled Date."
+            }), 400
 
-    try:
-        emp.disabled_date = datetime.strptime(
-            disabled_date_value,
-            "%Y-%m-%d"
-        ).date()
-    except ValueError:
-        return jsonify({
-            "success": False,
-            "message": "Invalid Disabled Date."
-        }), 400
+        try:
+            emp.disabled_date = datetime.strptime(
+                disabled_date_value,
+                "%Y-%m-%d"
+            ).date()
 
-    # Clear Offboarded Date
-    emp.offboarded_date = None
+        except ValueError:
+            return jsonify({
+                "success": False,
+                "message": "Invalid Disabled Date."
+            }), 400
 
+        # Clear Offboarded Date
+        emp.offboarded_date = None
 
-elif new_status == AccountStatus.OFFBOARDED:
+    elif new_status == AccountStatus.OFFBOARDED:
 
-    if not offboarded_date_value:
-        return jsonify({
-            "success": False,
-            "message": "Please select the Offboarded Date."
-        }), 400
+        if not offboarded_date_value:
+            return jsonify({
+                "success": False,
+                "message": "Please select the Offboarded Date."
+            }), 400
 
-    try:
-        emp.offboarded_date = datetime.strptime(
-            offboarded_date_value,
-            "%Y-%m-%d"
-        ).date()
-    except ValueError:
-        return jsonify({
-            "success": False,
-            "message": "Invalid Offboarded Date."
-        }), 400
+        try:
+            emp.offboarded_date = datetime.strptime(
+                offboarded_date_value,
+                "%Y-%m-%d"
+            ).date()
 
-    # Clear Disabled Date
-    emp.disabled_date = None
+        except ValueError:
+            return jsonify({
+                "success": False,
+                "message": "Invalid Offboarded Date."
+            }), 400
 
+        # Clear Disabled Date
+        emp.disabled_date = None
 
-else:
-    # Active / Onboarded / Blocked
-    emp.disabled_date = None
-    emp.offboarded_date = None
+    else:
+
+        # Active / Onboarded / Blocked
+        emp.disabled_date = None
+        emp.offboarded_date = None
+
     # -----------------------------------------------------
     # Update Status
     # -----------------------------------------------------
@@ -634,9 +636,11 @@ else:
     # -----------------------------------------------------
 
     try:
+
         db.session.commit()
 
     except Exception as e:
+
         db.session.rollback()
 
         return jsonify({
@@ -659,9 +663,11 @@ else:
                 f'({emp.employee_id}) status changed '
                 f'from {old_status} to {new_status}. '
                 f'Disabled Date: '
-                f'{emp.disabled_date.strftime("%Y-%m-%d") if emp.disabled_date else "-"}, '
+                f'{emp.disabled_date.strftime("%Y-%m-%d") '
+                f'if emp.disabled_date else "-"}, '
                 f'Offboarded Date: '
-                f'{emp.offboarded_date.strftime("%Y-%m-%d") if emp.offboarded_date else "-"}'
+                f'{emp.offboarded_date.strftime("%Y-%m-%d") '
+                f'if emp.offboarded_date else "-"}'
             )
         )
 
@@ -674,12 +680,12 @@ else:
         "message": "Employee updated successfully",
         "account_status": emp.account_status,
         "disabled_date": (
-            emp.disabled_date.strftime('%Y-%m-%d')
+            emp.disabled_date.strftime("%Y-%m-%d")
             if emp.disabled_date
             else None
         ),
         "offboarded_date": (
-            emp.offboarded_date.strftime('%Y-%m-%d')
+            emp.offboarded_date.strftime("%Y-%m-%d")
             if emp.offboarded_date
             else None
         )
