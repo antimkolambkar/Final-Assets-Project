@@ -639,6 +639,13 @@ document.addEventListener("DOMContentLoaded", function () {
                                 {{ ast.vendor_return_date.strftime('%d-%m-%Y') }}
                             </span>
 
+                        {% elif status_value == 'Available' and repair_completion_dates.get(ast.id) %}
+
+                            <span class="asset-date fw-semibold text-dark">
+                                <i class="fas fa-check-circle text-success"></i>
+                                {{ repair_completion_dates[ast.id].strftime('%d-%m-%Y') }}
+                            </span>
+
                         {% elif ast.purchase_date %}
 
                             <span class="asset-date fw-semibold text-dark">
