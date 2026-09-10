@@ -190,7 +190,68 @@ def index():
             AccountStatus.OFFBOARDED
         ]
     )
+    return render_template(
+        'employees/index.html',
+        employees=employees,
+        pagination=pagination,
+        search_q=search_q,
+        status_filter=status_filter,
+        dept_filter=dept_filter,
+        departments=departments,
+        available_assets=available_assets,
+        account_statuses=[
+            AccountStatus.ONBOARDED,
+            AccountStatus.ACTIVE,
+            AccountStatus.BLOCKED,
+            AccountStatus.DISABLED,
+            AccountStatus.OFFBOARDED
+        ]
+    )
 
+
+# =========================================================
+# EMPLOYEE AUTOCOMPLETE
+# =========================================================
+
+@employees_bp.route('/autocomplete')
+@login_required
+def employee_autocomplete():
+    query = request.args.get('q', '').strip()
+
+    if not query:
+        return jsonify([])
+
+    employees = (
+        Employee.query
+        .filter(
+            (Employee.name.ilike(f'%{query}%')) |
+            (Employee.employee_id.ilike(f'%{query}%')) |
+            (Employee.email.ilike(f'%{query}%'))
+        )
+        .order_by(Employee.name.asc())
+        .limit(10)
+        .all()
+    )
+
+    return jsonify([
+        {
+            'id': emp.id,
+            'employee_id': emp.employee_id,
+            'name': emp.name,
+            'email': emp.email,
+            'department': emp.department
+        }
+        for emp in employees
+    ])
+
+
+# =========================================================
+# DIRECT EMPLOYEE ONBOARDING
+# =========================================================
+
+@employees_bp.route('/onboard', methods=['POST'])
+@login_required
+def onboard_employee():
 
 # =========================================================
 # DIRECT EMPLOYEE ONBOARDING
