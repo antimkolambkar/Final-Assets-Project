@@ -29,9 +29,18 @@
             <div class="col-12 col-md-5">
                 <div class="input-group">
                     <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
-                    <input type="text" name="q" value="{{ search_q }}" class="form-control border-start-0 bg-light" placeholder="Search employee name, ID, email, designation...">
+
+                    <!-- LIVE EMPLOYEE AUTOCOMPLETE -->
+                    <input type="text"
+                           name="q"
+                           value="{{ search_q }}"
+                           class="form-control border-start-0 bg-light employee-autocomplete"
+                           data-autocomplete-url="{{ url_for('employees.employee_autocomplete') }}"
+                           placeholder="Search employee name, ID, email, designation..."
+                           autocomplete="off">
                 </div>
             </div>
+
             <div class="col-6 col-md-3">
                 <select name="status" class="form-select bg-light">
                     <option value="">All Account Statuses</option>
@@ -40,6 +49,7 @@
                     {% endfor %}
                 </select>
             </div>
+
             <div class="col-6 col-md-2">
                 <select name="department" class="form-select bg-light">
                     <option value="">All Departments</option>
@@ -48,6 +58,7 @@
                     {% endfor %}
                 </select>
             </div>
+
             <div class="col-12 col-md-2 d-flex gap-2">
                 <button type="submit" class="btn btn-dark flex-grow-1"><i class="fas fa-filter me-1"></i>Filter</button>
                 <a href="{{ url_for('employees.index') }}" class="btn btn-outline-secondary" title="Reset Filters"><i class="fas fa-undo"></i></a>
@@ -72,10 +83,12 @@
                 <th style="width:170px;" class="text-end">Actions</th>
             </tr>
             </thead>
+
             <tbody>
                 {% for emp in employees %}
                 <tr>
                     <td data-sort-value="{{ emp.employee_id or '' }}"><strong class="text-primary">{{ emp.employee_id }}</strong></td>
+
                     <td data-sort-value="{{ emp.name or '' }}">
                         <div class="fw-bold">{{ emp.name }}</div>
                         <small class="text-muted d-block">
@@ -83,11 +96,17 @@
                             Manager: {{ emp.manager or 'N/A' }}
                         </small>
                     </td>
-                    <td data-sort-value="{{ emp.department or '' }}"><span class="badge bg-light text-dark border">{{ emp.department or 'N/A' }}</span></td>
+
+                    <td data-sort-value="{{ emp.department or '' }}">
+                        <span class="badge bg-light text-dark border">{{ emp.department or 'N/A' }}</span>
+                    </td>
+
                     <td data-sort-value="{{ emp.designation or '' }}">{{ emp.designation or 'N/A' }}</td>
+
                     <td data-sort-value="{{ emp.assigned_assets.count() }}" class="text-center">
                         <span class="badge bg-primary">{{ emp.assigned_assets.count() }}</span>
                     </td>
+
                     <td data-sort-value="{% for asset in emp.assigned_assets.all() %}{{ asset.serial_number }} {% endfor %}">
                         {% if emp.assigned_assets %}
                             {% for asset in emp.assigned_assets.all() %}
@@ -97,19 +116,27 @@
                             <span class="text-muted">—</span>
                         {% endif %}
                     </td>
-                    <td data-sort-value="{{ emp.office_location or '' }}"><small class="text-muted"><i class="fas fa-building me-1"></i>{{ emp.office_location or 'N/A' }}</small></td>
+
+                    <td data-sort-value="{{ emp.office_location or '' }}">
+                        <small class="text-muted">
+                            <i class="fas fa-building me-1"></i>{{ emp.office_location or 'N/A' }}
+                        </small>
+                    </td>
+
                     <td data-sort-value="{{ emp.account_status or '' }}">
                         <span class="badge badge-status badge-{{ emp.account_status.lower() }}">
                             <i class="fas {% if emp.account_status == 'Onboarded' %}fa-user-check text-info{% elif emp.account_status == 'Active' %}fa-circle-check{% elif emp.account_status == 'Offboarded' %}fa-user-xmark{% else %}fa-circle-exclamation{% endif %}"></i>
                             {{ emp.account_status }}
                         </span>
                     </td>
+
                     <td class="text-end">
                         <button class="btn btn-outline-primary btn-sm rounded-pill btn-view-employee" data-emp-id="{{ emp.id }}">
                             <i class="fas fa-eye me-1"></i>View Profile & Laptops
                         </button>
                     </td>
                 </tr>
+
                 {% else %}
                 <tr>
                     <td colspan="9" class="text-center text-muted py-4">
@@ -125,10 +152,12 @@
     {% if pagination.pages > 1 %}
     <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
         <small class="text-muted">Showing page {{ pagination.page }} of {{ pagination.pages }}</small>
+
         <ul class="pagination pagination-sm mb-0">
             <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
                 <a class="page-link" href="{{ url_for('employees.index', page=pagination.prev_num, q=search_q, status=status_filter, department=dept_filter) }}">Previous</a>
             </li>
+
             {% for p in pagination.iter_pages() %}
                 {% if p %}
                 <li class="page-item {% if p == pagination.page %}active{% endif %}">
@@ -138,6 +167,7 @@
                 <li class="page-item disabled"><span class="page-link">...</span></li>
                 {% endif %}
             {% endfor %}
+
             <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
                 <a class="page-link" href="{{ url_for('employees.index', page=pagination.next_num, q=search_q, status=status_filter, department=dept_filter) }}">Next</a>
             </li>
@@ -154,41 +184,91 @@
                 <h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i>Onboard New Employee</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
+
             <form action="{{ url_for('employees.onboard_employee') }}" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                 <div class="modal-body p-4">
                     <div class="row g-3 mb-3">
-                        <div class="col-md-6"><label class="form-label fw-semibold">Employee Full Name *</label><input type="text" name="name" class="form-control" placeholder="e.g. Vikramaditya Singh" required></div>
-                        <div class="col-md-6"><label class="form-label fw-semibold">Corporate Email Address *</label><input type="email" name="email" class="form-control" placeholder="vikram@company.com" required></div>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6"><label class="form-label fw-semibold">Employee ID (Optional - Auto generated if blank)</label><input type="text" name="employee_id" class="form-control" placeholder="e.g. EMP-1010"></div>
-                        <div class="col-md-6"><label class="form-label fw-semibold">Department</label><input type="text" name="department" class="form-control" placeholder="e.g. Software Engineering, Finance"></div>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6"><label class="form-label fw-semibold">Designation / Job Title</label><input type="text" name="designation" class="form-control" placeholder="e.g. Senior Software Engineer"></div>
-                        <div class="col-md-6"><label class="form-label fw-semibold">Office Location</label><input type="text" name="office_location" class="form-control" placeholder="e.g. Bangalore, Dubai, Mumbai"></div>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6"><label class="form-label fw-semibold">Reporting Manager Name</label><input type="text" name="manager" class="form-control" placeholder="e.g. Suresh Rao"></div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Initial Account Status</label>
-                            <select name="status" class="form-select" required><option value="Onboarded" selected>Onboarded</option><option value="Active">Active</option></select>
+                            <label class="form-label fw-semibold">Employee Full Name *</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Vikramaditya Singh" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Corporate Email Address *</label>
+                            <input type="email" name="email" class="form-control" placeholder="vikram@company.com" required>
                         </div>
                     </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Employee ID (Optional - Auto generated if blank)</label>
+                            <input type="text" name="employee_id" class="form-control" placeholder="e.g. EMP-1010">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Department</label>
+                            <input type="text" name="department" class="form-control" placeholder="e.g. Software Engineering, Finance">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Designation / Job Title</label>
+                            <input type="text" name="designation" class="form-control" placeholder="e.g. Senior Software Engineer">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Office Location</label>
+                            <input type="text" name="office_location" class="form-control" placeholder="e.g. Bangalore, Dubai, Mumbai">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Reporting Manager Name</label>
+                            <input type="text" name="manager" class="form-control" placeholder="e.g. Suresh Rao">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Initial Account Status</label>
+                            <select name="status" class="form-select" required>
+                                <option value="Onboarded" selected>Onboarded</option>
+                                <option value="Active">Active</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <hr class="my-3">
+
                     <div class="mb-3">
-                        <label class="form-label fw-semibold text-dark"><i class="fas fa-laptop text-primary me-2"></i>Assign Available Laptop Immediately (Optional)</label>
+                        <label class="form-label fw-semibold text-dark">
+                            <i class="fas fa-laptop text-primary me-2"></i>
+                            Assign Available Laptop Immediately (Optional)
+                        </label>
+
                         <select name="asset_id" class="form-select">
                             <option value="">-- No Laptop Allocation at Onboarding --</option>
+
                             {% for ast in available_assets %}
-                            <option value="{{ ast.id }}">{{ ast.asset_id }} - {{ ast.brand }} {{ ast.model }} (SN: {{ ast.serial_number }} &bull; {{ ast.ram }}/{{ ast.ssd }})</option>
+                            <option value="{{ ast.id }}">
+                                {{ ast.asset_id }} - {{ ast.brand }} {{ ast.model }}
+                                (SN: {{ ast.serial_number }} &bull; {{ ast.ram }}/{{ ast.ssd }})
+                            </option>
                             {% endfor %}
                         </select>
-                        <small class="text-muted">Selecting an available laptop automatically assigns it to this new employee upon creation.</small>
+
+                        <small class="text-muted">
+                            Selecting an available laptop automatically assigns it to this new employee upon creation.
+                        </small>
                     </div>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-success px-4 fw-bold">Complete Onboarding</button></div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success px-4 fw-bold">Complete Onboarding</button>
+                </div>
             </form>
         </div>
     </div>
@@ -197,15 +277,24 @@
 <div class="modal fade" id="employeeDetailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+
             <div class="modal-header bg-dark text-white border-0 py-3">
-                <h5 class="modal-title fw-bold d-flex align-items-center mb-0"><i class="fas fa-id-card me-2 text-primary"></i>Employee Profile & Assigned Laptops</h5>
+                <h5 class="modal-title fw-bold d-flex align-items-center mb-0">
+                    <i class="fas fa-id-card me-2 text-primary"></i>
+                    Employee Profile & Assigned Laptops
+                </h5>
+
                 <div class="ms-auto d-flex align-items-center">
                     {% if current_user.is_it_admin %}
-                    <button type="button" class="btn btn-warning btn-sm me-2" id="editProfileBtn"><i class="fas fa-edit me-1"></i>Edit Profile</button>
+                    <button type="button" class="btn btn-warning btn-sm me-2" id="editProfileBtn">
+                        <i class="fas fa-edit me-1"></i>Edit Profile
+                    </button>
                     {% endif %}
+
                     <button type="button" class="btn-close btn-close-white m-0" data-bs-dismiss="modal"></button>
                 </div>
             </div>
+
             <div class="modal-body p-4">
                 <div class="row g-3 mb-4 p-3 bg-light rounded-3 border">
                     <div class="col-md-6">
@@ -213,18 +302,29 @@
                         <div class="text-primary fw-bold mb-1" id="modal-emp-id">-</div>
                         <div class="small text-muted" id="modal-emp-email">-</div>
                     </div>
+
                     <div class="col-md-6 text-md-end">
-                        <div class="mb-2"><span id="modal-emp-status" class="badge">Active</span></div>
+                        <div class="mb-2">
+                            <span id="modal-emp-status" class="badge">Active</span>
+                        </div>
                         <div class="small text-muted"><strong class="text-dark">Dept:</strong> <span id="modal-emp-dept">-</span></div>
                         <div class="small text-muted"><strong class="text-dark">Designation:</strong> <span id="modal-emp-desig">-</span></div>
                         <div class="small text-muted"><strong class="text-dark">Manager:</strong> <span id="modal-emp-manager">-</span></div>
                         <div class="small text-muted"><strong class="text-dark">Office:</strong> <span id="modal-emp-office">-</span></div>
                     </div>
                 </div>
-                <h6 class="fw-bold text-dark mb-3"><i class="fas fa-boxes text-primary me-2"></i>Assigned Company Assets</h6>
+
+                <h6 class="fw-bold text-dark mb-3">
+                    <i class="fas fa-boxes text-primary me-2"></i>
+                    Assigned Company Assets
+                </h6>
+
                 <div id="modal-emp-assets-body"></div>
             </div>
-            <div class="modal-footer bg-light border-0"><button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button></div>
+
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
 </div>
@@ -232,30 +332,61 @@
 <div class="modal fade" id="editEmployeeModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
+
             <form id="editEmployeeForm" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                 <div class="modal-header bg-warning">
-                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Employee</h5>
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit me-2"></i>Edit Employee
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
+
                 <div class="modal-body">
-                    <div class="mb-3"><label>Name</label><input class="form-control" id="editName" name="name"></div>
-                    <div class="mb-3"><label>Department</label><input class="form-control" id="editDepartment" name="department"></div>
-                    <div class="mb-3"><label>Designation</label><input class="form-control" id="editDesignation" name="designation"></div>
-                    <div class="mb-3"><label>Manager</label><input class="form-control" id="editManager" name="manager"></div>
-                    <div class="mb-3"><label>Office</label><input class="form-control" id="editOffice" name="office_location"></div>
+                    <div class="mb-3">
+                        <label>Name</label>
+                        <input class="form-control" id="editName" name="name">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Department</label>
+                        <input class="form-control" id="editDepartment" name="department">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Designation</label>
+                        <input class="form-control" id="editDesignation" name="designation">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Manager</label>
+                        <input class="form-control" id="editManager" name="manager">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Office</label>
+                        <input class="form-control" id="editOffice" name="office_location">
+                    </div>
+
                     <div class="mb-3">
                         <label>Status</label>
                         <select class="form-select" id="editStatus" name="account_status">
-                            <option>Onboarded</option><option>Active</option><option>Blocked</option><option>Disabled</option><option>Offboarded</option>
+                            <option>Onboarded</option>
+                            <option>Active</option>
+                            <option>Blocked</option>
+                            <option>Disabled</option>
+                            <option>Offboarded</option>
                         </select>
                     </div>
                 </div>
+
                 <div class="modal-footer">
                     <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
                     <button class="btn btn-success" type="submit">Save Changes</button>
                 </div>
             </form>
+
         </div>
     </div>
 </div>
@@ -266,15 +397,18 @@
         user-select: none;
         white-space: nowrap;
     }
+
     #employeeTable thead th.sortable:hover {
         background-color: rgba(13, 110, 253, 0.06);
     }
+
     .sort-icon {
         display: inline-block;
         margin-left: 5px;
         font-size: 12px;
         color: #6c757d;
     }
+
     #employeeTable thead th.sort-active .sort-icon {
         color: #0d6efd;
         font-weight: 700;
@@ -317,6 +451,7 @@ document.addEventListener('DOMContentLoaded', function () {
             headers.forEach(function (h) {
                 h.removeAttribute('data-direction');
                 h.classList.remove('sort-active');
+
                 const icon = h.querySelector('.sort-icon');
                 if (icon) icon.textContent = '↕';
             });
