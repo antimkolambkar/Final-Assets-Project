@@ -573,58 +573,56 @@ def edit_employee(emp_id):
     # Disabled Date
     # -----------------------------------------------------
 
-    if new_status == AccountStatus.DISABLED:
+   if new_status == AccountStatus.DISABLED:
 
-        if not disabled_date_value:
-            return jsonify({
-                "success": False,
-                "message": "Please select the Disabled Date."
-            }), 400
+    if not disabled_date_value:
+        return jsonify({
+            "success": False,
+            "message": "Please select the Disabled Date."
+        }), 400
 
-        try:
-            emp.disabled_date = datetime.strptime(
-                disabled_date_value,
-                "%Y-%m-%d"
-            ).date()
+    try:
+        emp.disabled_date = datetime.strptime(
+            disabled_date_value,
+            "%Y-%m-%d"
+        ).date()
+    except ValueError:
+        return jsonify({
+            "success": False,
+            "message": "Invalid Disabled Date."
+        }), 400
 
-        except ValueError:
-            return jsonify({
-                "success": False,
-                "message": "Invalid Disabled Date."
-            }), 400
+    # Clear Offboarded Date
+    emp.offboarded_date = None
 
-    # -----------------------------------------------------
-    # Offboarded Date
-    # -----------------------------------------------------
 
-    elif new_status == AccountStatus.OFFBOARDED:
+elif new_status == AccountStatus.OFFBOARDED:
 
-        if not offboarded_date_value:
-            return jsonify({
-                "success": False,
-                "message": "Please select the Offboarded Date."
-            }), 400
+    if not offboarded_date_value:
+        return jsonify({
+            "success": False,
+            "message": "Please select the Offboarded Date."
+        }), 400
 
-        try:
-            emp.offboarded_date = datetime.strptime(
-                offboarded_date_value,
-                "%Y-%m-%d"
-            ).date()
+    try:
+        emp.offboarded_date = datetime.strptime(
+            offboarded_date_value,
+            "%Y-%m-%d"
+        ).date()
+    except ValueError:
+        return jsonify({
+            "success": False,
+            "message": "Invalid Offboarded Date."
+        }), 400
 
-        except ValueError:
-            return jsonify({
-                "success": False,
-                "message": "Invalid Offboarded Date."
-            }), 400
+    # Clear Disabled Date
+    emp.disabled_date = None
 
-    # -----------------------------------------------------
-    # Clear Date When Status Is Not Disabled/Offboarded
-    # -----------------------------------------------------
 
-    else:
-        emp.disabled_date = None
-        emp.offboarded_date = None
-
+else:
+    # Active / Onboarded / Blocked
+    emp.disabled_date = None
+    emp.offboarded_date = None
     # -----------------------------------------------------
     # Update Status
     # -----------------------------------------------------
