@@ -27,9 +27,10 @@
     <div class="card-body p-3">
         <form action="{{ url_for('employees.index') }}" method="GET" class="row g-2">
             <div class="col-12 col-md-5">
-                <div class="input-group">
+                <div class="input-group position-relative">
                     <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
-                    <input type="text" name="q" value="{{ search_q }}" class="form-control border-start-0 bg-light" placeholder="Search employee name, ID, email, designation...">
+                    <input type="text" id="employeeSearchInput" name="q" value="{{ search_q }}" class="form-control border-start-0 bg-light" autocomplete="off" placeholder="Search employee name, ID, email, designation...">
+                    <div id="employeeSuggestions" class="employee-suggestions shadow-sm"></div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
@@ -279,6 +280,32 @@
         color: #0d6efd;
         font-weight: 700;
     }
+
+    .employee-suggestions {
+        position: absolute;
+        top: calc(100% + 2px);
+        left: 0;
+        right: 0;
+        z-index: 1050;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0 0 8px 8px;
+        max-height: 280px;
+        overflow-y: auto;
+        display: none;
+    }
+    .employee-suggestion-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    .employee-suggestion-item:last-child { border-bottom: 0; }
+    .employee-suggestion-item:hover, .employee-suggestion-item.active {
+        background: #f1f6ff;
+    }
+    .employee-suggestion-name { font-weight: 600; color: #212529; }
+    .employee-suggestion-meta { font-size: 12px; color: #6c757d; margin-top: 2px; }
+
 </style>
 
 <script>
@@ -343,6 +370,5 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
-</script>
-
+</script>\n\n// Employee name/ID autocomplete using employee records rendered from the database.\ndocument.addEventListener('DOMContentLoaded', function () {\n    const input = document.getElementById('employeeSearchInput');\n    const box = document.getElementById('employeeSuggestions');\n    const table = document.getElementById('employeeTable');\n    if (!input || !box || !table) return;\n\n    const employees = [];\n    table.querySelectorAll('tbody tr').forEach(function (row) {\n        if (!row.cells.length || row.cells.length < 8) return;\n        const id = (row.cells[0].textContent || '').trim();\n        const name = (row.cells[1].querySelector('.fw-bold')?.textContent || row.cells[1].textContent || '').trim();\n        const department = (row.cells[2].textContent || '').trim();\n        const designation = (row.cells[3].textContent || '').trim();\n        const status = (row.cells[7].textContent || '').trim();\n        if (name && name !== 'No employees found matching criteria.') {\n            employees.push({id, name, department, designation, status});\n        }\n    });\n\n    let activeIndex = -1;\n\n    function hideSuggestions() {\n        box.style.display = 'none';\n        box.innerHTML = '';\n        activeIndex = -1;\n    }\n\n    function showSuggestions(value) {\n        const q = value.trim().toLowerCase();\n        box.innerHTML = '';\n        activeIndex = -1;\n        if (q.length < 1) { hideSuggestions(); return; }\n\n        const matches = employees.filter(function (emp) {\n            return [emp.name, emp.id, emp.department, emp.designation]\n                .some(function (v) { return v.toLowerCase().includes(q); });\n        }).slice(0, 8);\n\n        if (!matches.length) {\n            box.innerHTML = '<div class="employee-suggestion-item text-muted">No matching employee found</div>';\n            box.style.display = 'block';\n            return;\n        }\n\n        matches.forEach(function (emp) {\n            const item = document.createElement('div');\n            item.className = 'employee-suggestion-item';\n            item.innerHTML = '<div class="employee-suggestion-name"><i class="fas fa-user me-2 text-primary"></i>' + escapeHtml(emp.name) + '</div>' +\n                '<div class="employee-suggestion-meta">' + escapeHtml(emp.id) + ' · ' + escapeHtml(emp.department || 'N/A') + ' · ' + escapeHtml(emp.designation || 'N/A') + '</div>';\n            item.addEventListener('mousedown', function (e) {\n                e.preventDefault();\n                input.value = emp.name;\n                hideSuggestions();\n                input.closest('form').submit();\n            });\n            box.appendChild(item);\n        });\n        box.style.display = 'block';\n    }\n\n    function escapeHtml(value) {\n        return String(value).replace(/[&<>'"]/g, function (ch) {\n            return {'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch];\n        });\n    }\n\n    input.addEventListener('input', function () { showSuggestions(this.value); });\n    input.addEventListener('focus', function () { if (this.value.trim()) showSuggestions(this.value); });\n    input.addEventListener('keydown', function (e) {\n        const items = box.querySelectorAll('.employee-suggestion-item');\n        if (!items.length || box.style.display === 'none') return;\n        if (e.key === 'ArrowDown') {\n            e.preventDefault();\n            activeIndex = Math.min(activeIndex + 1, items.length - 1);\n        } else if (e.key === 'ArrowUp') {\n            e.preventDefault();\n            activeIndex = Math.max(activeIndex - 1, 0);\n        } else if (e.key === 'Enter' && activeIndex >= 0) {\n            e.preventDefault();\n            items[activeIndex].dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));\n            return;\n        } else if (e.key === 'Escape') { hideSuggestions(); return; }\n        items.forEach(function (item, i) { item.classList.toggle('active', i === activeIndex); });\n    });\n    document.addEventListener('click', function (e) {\n        if (!input.contains(e.target) && !box.contains(e.target)) hideSuggestions();\n    });\n});\n
 {% endblock %}
