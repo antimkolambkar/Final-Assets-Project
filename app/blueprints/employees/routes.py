@@ -40,6 +40,7 @@ employees_bp = Blueprint(
 @employees_bp.route('/autocomplete')
 @login_required
 def employee_autocomplete():
+
     query = request.args.get('q', '').strip()
 
     if not query:
@@ -74,7 +75,9 @@ def employee_autocomplete():
 # =========================================================
 
 def generate_employee_id():
+
     count = Employee.query.count() + 1001
+
     return f"EMP-{count}"
 
 
@@ -98,6 +101,7 @@ def index():
     # -----------------------------------------------------
 
     if search_q:
+
         query = query.filter(
             (Employee.name.ilike(f'%{search_q}%')) |
             (Employee.employee_id.ilike(f'%{search_q}%')) |
@@ -110,6 +114,7 @@ def index():
     # -----------------------------------------------------
 
     if status_filter:
+
         query = query.filter_by(
             account_status=status_filter
         )
@@ -119,6 +124,7 @@ def index():
     # -----------------------------------------------------
 
     if dept_filter:
+
         query = query.filter_by(
             department=dept_filter
         )
@@ -161,8 +167,12 @@ def index():
 
     available_assets = (
         Asset.query
-        .filter_by(status=AssetStatus.AVAILABLE)
-        .order_by(Asset.brand.asc())
+        .filter_by(
+            status=AssetStatus.AVAILABLE
+        )
+        .order_by(
+            Asset.brand.asc()
+        )
         .all()
     )
 
@@ -198,11 +208,17 @@ def index():
 def onboard_employee():
     """Direct Employee Onboarding & Laptop Allocation"""
 
+    # -----------------------------------------------------
+    # Permission Check
+    # -----------------------------------------------------
+
     if not current_user.is_it_admin:
+
         flash(
             'Permission denied. Only IT Admins can onboard new employees.',
             'danger'
         )
+
         return redirect(
             url_for('employees.index')
         )
@@ -211,28 +227,62 @@ def onboard_employee():
     # Form Data
     # -----------------------------------------------------
 
-    name = request.form.get('name', '').strip()
-    email = request.form.get('email', '').strip()
-    emp_code = request.form.get('employee_id', '').strip()
-    department = request.form.get('department', '').strip()
-    designation = request.form.get('designation', '').strip()
-    office_location = request.form.get('office_location', '').strip()
-    manager = request.form.get('manager', '').strip()
+    name = request.form.get(
+        'name',
+        ''
+    ).strip()
+
+    email = request.form.get(
+        'email',
+        ''
+    ).strip()
+
+    emp_code = request.form.get(
+        'employee_id',
+        ''
+    ).strip()
+
+    department = request.form.get(
+        'department',
+        ''
+    ).strip()
+
+    designation = request.form.get(
+        'designation',
+        ''
+    ).strip()
+
+    office_location = request.form.get(
+        'office_location',
+        ''
+    ).strip()
+
+    manager = request.form.get(
+        'manager',
+        ''
+    ).strip()
+
     status = request.form.get(
         'status',
         AccountStatus.ONBOARDED
+    ).strip()
+
+    asset_id = request.form.get(
+        'asset_id',
+        type=int
     )
-    asset_id = request.form.get('asset_id', type=int)
 
     # -----------------------------------------------------
     # Required Fields
     # -----------------------------------------------------
 
     if not name or not email:
+
         flash(
             'Employee Name and Email Address are required for onboarding.',
             'danger'
         )
+
         return redirect(
             url_for('employees.index')
         )
@@ -251,11 +301,13 @@ def onboard_employee():
     ).first()
 
     if existing:
+
         flash(
             f'An employee with email "{email}" or ID '
             f'"{emp_code}" already exists in the system.',
             'danger'
         )
+
         return redirect(
             url_for('employees.index')
         )
@@ -265,23 +317,27 @@ def onboard_employee():
     # -----------------------------------------------------
 
     if not emp_code:
+
         emp_code = generate_employee_id()
 
     # -----------------------------------------------------
-    # Status Dates For New Employee
+    # Status Dates
     # -----------------------------------------------------
 
     disabled_date = None
     offboarded_date = None
 
-    # Keep existing onboarding behavior:
-    # if Disabled/Offboarded is selected during onboarding,
-    # the date is set to the current date.
+    # Keep onboarding behavior.
+    # Manual status changes use the date picker below.
+
     today = datetime.utcnow().date()
 
     if status == AccountStatus.DISABLED:
+
         disabled_date = today
+
     elif status == AccountStatus.OFFBOARDED:
+
         offboarded_date = today
 
     # -----------------------------------------------------
@@ -303,6 +359,7 @@ def onboard_employee():
     )
 
     db.session.add(new_emp)
+
     db.session.flush()
 
     # -----------------------------------------------------
@@ -318,7 +375,9 @@ def onboard_employee():
         if asset and asset.status == AssetStatus.AVAILABLE:
 
             asset.status = AssetStatus.ASSIGNED
+
             asset.assigned_employee_id = new_emp.id
+
             asset.assignment_date = datetime.utcnow()
 
             # -------------------------------------------------
@@ -348,7 +407,22 @@ def onboard_employee():
     # Save Employee
     # -----------------------------------------------------
 
-    db.session.commit()
+    try:
+
+        db.session.commit()
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        flash(
+            f'Failed to onboard employee: {str(e)}',
+            'danger'
+        )
+
+        return redirect(
+            url_for('employees.index')
+        )
 
     # -----------------------------------------------------
     # Audit
@@ -500,6 +574,7 @@ def edit_employee(emp_id):
     # -----------------------------------------------------
 
     if not current_user.is_it_admin:
+
         return jsonify({
             "success": False,
             "message": "Permission denied"
@@ -528,22 +603,22 @@ def edit_employee(emp_id):
 
     emp.department = request.form.get(
         "department",
-        emp.department
+        emp.department or ""
     ).strip()
 
     emp.designation = request.form.get(
         "designation",
-        emp.designation
+        emp.designation or ""
     ).strip()
 
     emp.manager = request.form.get(
         "manager",
-        emp.manager
+        emp.manager or ""
     ).strip()
 
     emp.office_location = request.form.get(
         "office_location",
-        emp.office_location
+        emp.office_location or ""
     ).strip()
 
     # -----------------------------------------------------
@@ -575,53 +650,63 @@ def edit_employee(emp_id):
 
     if new_status == AccountStatus.DISABLED:
 
+        # Disabled requires a manually selected date
+
         if not disabled_date_value:
+
             return jsonify({
                 "success": False,
                 "message": "Please select the Disabled Date."
             }), 400
 
         try:
+
             emp.disabled_date = datetime.strptime(
                 disabled_date_value,
                 "%Y-%m-%d"
             ).date()
 
         except ValueError:
+
             return jsonify({
                 "success": False,
                 "message": "Invalid Disabled Date."
             }), 400
 
-        # Clear Offboarded Date
+        # Only one status date should exist
         emp.offboarded_date = None
 
     elif new_status == AccountStatus.OFFBOARDED:
 
+        # Offboarded requires a manually selected date
+
         if not offboarded_date_value:
+
             return jsonify({
                 "success": False,
                 "message": "Please select the Offboarded Date."
             }), 400
 
         try:
+
             emp.offboarded_date = datetime.strptime(
                 offboarded_date_value,
                 "%Y-%m-%d"
             ).date()
 
         except ValueError:
+
             return jsonify({
                 "success": False,
                 "message": "Invalid Offboarded Date."
             }), 400
 
-        # Clear Disabled Date
+        # Only one status date should exist
         emp.disabled_date = None
 
     else:
 
-        # Active / Onboarded / Blocked
+        # Onboarded / Active / Blocked
         emp.disabled_date = None
         emp.offboarded_date = None
 
@@ -654,6 +739,18 @@ def edit_employee(emp_id):
 
     if old_status != new_status:
 
+        disabled_date_text = (
+            emp.disabled_date.strftime("%Y-%m-%d")
+            if emp.disabled_date
+            else "-"
+        )
+
+        offboarded_date_text = (
+            emp.offboarded_date.strftime("%Y-%m-%d")
+            if emp.offboarded_date
+            else "-"
+        )
+
         AuditService.log(
             action='Employee Status Changed',
             entity_type='Employee',
@@ -662,12 +759,8 @@ def edit_employee(emp_id):
                 f'Employee {emp.name} '
                 f'({emp.employee_id}) status changed '
                 f'from {old_status} to {new_status}. '
-                f'Disabled Date: '
-                f'{emp.disabled_date.strftime("%Y-%m-%d") '
-                f'if emp.disabled_date else "-"}, '
-                f'Offboarded Date: '
-                f'{emp.offboarded_date.strftime("%Y-%m-%d") '
-                f'if emp.offboarded_date else "-"}'
+                f'Disabled Date: {disabled_date_text}, '
+                f'Offboarded Date: {offboarded_date_text}'
             )
         )
 
@@ -679,11 +772,13 @@ def edit_employee(emp_id):
         "success": True,
         "message": "Employee updated successfully",
         "account_status": emp.account_status,
+
         "disabled_date": (
             emp.disabled_date.strftime("%Y-%m-%d")
             if emp.disabled_date
             else None
         ),
+
         "offboarded_date": (
             emp.offboarded_date.strftime("%Y-%m-%d")
             if emp.offboarded_date
