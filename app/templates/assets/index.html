@@ -137,18 +137,6 @@ document.addEventListener("DOMContentLoaded", function () {
             plugins: ["clear_button"],
             placeholder: select.options[0]?.text?.trim() || "Search or select...",
             dropdownParent: "body",
-            onChange: function (value) {
-                if (
-                    select.name === "status" ||
-                    select.name === "vendor_id"
-                ) {
-                    const form = select.closest('form');
-
-                    if (form && form.action.includes("/assets")) {
-                        form.submit();
-                    }
-                }
-            },
             render: {
                 option: function (data, escape) {
                     return '<div class="searchable-option">' + escape(data.text) + '</div>';
@@ -235,6 +223,44 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    /* =========================================================
+       AUTO APPLY ASSET FILTERS
+       Automatically submits the Asset Inventory filter form
+       when Status or Vendor is changed.
+    ========================================================= */
+    const filterForm = document.querySelector(
+        'form[action="{{ url_for("assets.index") }}"]'
+    );
+
+    if (filterForm) {
+        const statusSelect = filterForm.querySelector(
+            'select[name="status"]'
+        );
+
+        const vendorSelect = filterForm.querySelector(
+            'select[name="vendor_id"]'
+        );
+
+        function autoSubmitFilter() {
+            filterForm.submit();
+        }
+
+        if (statusSelect) {
+            if (statusSelect.tomselect) {
+                statusSelect.tomselect.on("change", autoSubmitFilter);
+            } else {
+                statusSelect.addEventListener("change", autoSubmitFilter);
+            }
+        }
+
+        if (vendorSelect) {
+            if (vendorSelect.tomselect) {
+                vendorSelect.tomselect.on("change", autoSubmitFilter);
+            } else {
+                vendorSelect.addEventListener("change", autoSubmitFilter);
+            }
+        }
+    }
 });
 </script>
 
@@ -507,7 +533,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 background-color: #6f42c1 !important;
                 color: #ffffff !important;
             }
-        </style>
+        
+/* Modern visible asset action menu */
+.asset-table td:last-child { overflow: visible !important; position: relative; }
+.table-responsive { overflow-x: auto !important; overflow-y: visible !important; }
+.asset-table .dropdown { position: relative; }
+.asset-table .dropdown-menu { min-width: 240px !important; padding: 8px !important; border: 1px solid #e5e7eb !important; border-radius: 12px !important; background: #fff !important; box-shadow: 0 10px 30px rgba(0,0,0,.15) !important; z-index: 99999 !important; }
+.asset-table .dropdown-item { padding: 11px 14px !important; border-radius: 8px !important; font-size: 14px !important; font-weight: 500; }
+.asset-table .dropdown-item:hover { background: #f1f5f9 !important; }
+.asset-table .dropdown-item i { width: 22px; text-align: center; }
+</style>
 
         <style>
             .asset-table th.sortable-th {
@@ -750,14 +785,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
                             <button class="btn btn-light btn-sm rounded-circle p-2"
                                     type="button"
-                                    data-bs-toggle="dropdown">
+                                    data-bs-toggle="dropdown"
+                                    data-bs-display="static"
+                                    aria-expanded="false"
+                                    title="Asset Actions">
 
                                 <i class="fas fa-ellipsis-v text-secondary"></i>
 
                             </button>
 
 
-                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0 asset-action-menu">
 
                                 <!-- History -->
                                 <li>
