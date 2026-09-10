@@ -222,6 +222,45 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
     });
+
+    /* =========================================================
+       AUTO APPLY ASSET FILTERS
+       Automatically submits the Asset Inventory filter form
+       when Status or Vendor is changed.
+    ========================================================= */
+    const filterForm = document.querySelector(
+        'form[action="{{ url_for("assets.index") }}"]'
+    );
+
+    if (filterForm) {
+        const statusSelect = filterForm.querySelector(
+            'select[name="status"]'
+        );
+
+        const vendorSelect = filterForm.querySelector(
+            'select[name="vendor_id"]'
+        );
+
+        function autoSubmitFilter() {
+            filterForm.submit();
+        }
+
+        if (statusSelect) {
+            if (statusSelect.tomselect) {
+                statusSelect.tomselect.on("change", autoSubmitFilter);
+            } else {
+                statusSelect.addEventListener("change", autoSubmitFilter);
+            }
+        }
+
+        if (vendorSelect) {
+            if (vendorSelect.tomselect) {
+                vendorSelect.tomselect.on("change", autoSubmitFilter);
+            } else {
+                vendorSelect.addEventListener("change", autoSubmitFilter);
+            }
+        }
+    }
 });
 </script>
 
