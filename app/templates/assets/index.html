@@ -494,20 +494,40 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         </style>
 
-        <table class="table table-custom mb-0 asset-table">
+        <style>
+            .asset-table th.sortable-th {
+                cursor: pointer;
+                user-select: none;
+                white-space: nowrap;
+            }
+            .asset-table th.sortable-th:hover {
+                background-color: #eef3f8;
+            }
+            .asset-table .sort-icon {
+                font-size: 0.8em;
+                opacity: 0.55;
+                margin-left: 4px;
+            }
+            .asset-table th.sortable-th.sort-active .sort-icon {
+                opacity: 1;
+                font-weight: 700;
+            }
+        </style>
+
+        <table class="table table-custom mb-0 asset-table" id="assetTable">
 
             <thead>
 
                 <tr>
 
-                    <th>Asset ID</th>
-                    <th>Brand & Model</th>
-                    <th>Serial Number</th>
-                    <th>Specifications</th>
-                    <th>Vendor</th>
-                    <th class="status-column">Status</th>
-                    <th class="date-column">Date</th>
-                    <th>Assigned User Name</th>
+                    <th class="sortable-th" data-sort-type="text">Asset ID <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th" data-sort-type="text">Brand & Model <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th" data-sort-type="text">Serial Number <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th" data-sort-type="text">Specifications <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th" data-sort-type="text">Vendor <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th status-column" data-sort-type="text">Status <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th date-column" data-sort-type="date">Date <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th" data-sort-type="text">Assigned User Name <span class="sort-icon">↕</span></th>
                     <th class="text-end">Actions</th>
 
                 </tr>
@@ -623,7 +643,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
                     <!-- Date - shown for every asset -->
-                    <td class="date-column">
+                    <td class="date-column" data-sort-value="{% if status_value == 'Assigned' and ast.assignment_date %}{{ ast.assignment_date.strftime('%Y-%m-%d') }}{% elif status_value in ['Repair', 'Under Repair'] and repair_start_dates.get(ast.id) %}{{ repair_start_dates[ast.id].strftime('%Y-%m-%d') }}{% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] and ast.vendor_return_date %}{{ ast.vendor_return_date.strftime('%Y-%m-%d') }}{% elif status_value == 'Available' and repair_completion_dates.get(ast.id) %}{{ repair_completion_dates[ast.id].strftime('%Y-%m-%d') }}{% elif ast.purchase_date %}{{ ast.purchase_date.strftime('%Y-%m-%d') }}{% endif %}">
 
                         {% if status_value == 'Assigned' and ast.assignment_date %}
 
@@ -4090,6 +4110,74 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+</script>
+
+<!-- =========================================================
+     ASSET TABLE SORTING
+     Click column headers to sort A-Z / Z-A or oldest/newest.
+========================================================= -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const table = document.getElementById("assetTable");
+    if (!table) return;
+
+    const headers = table.querySelectorAll("thead th.sortable-th");
+    const tbody = table.querySelector("tbody");
+    if (!tbody) return;
+
+    headers.forEach(function (header) {
+        header.addEventListener("click", function () {
+            const columnIndex = Array.from(header.parentElement.children).indexOf(header);
+            const type = header.dataset.sortType || "text";
+            const rows = Array.from(tbody.querySelectorAll("tr"));
+            const ascending = header.dataset.sortDirection !== "asc";
+
+            // Reset other headers
+            headers.forEach(function (h) {
+                h.dataset.sortDirection = "";
+                h.classList.remove("sort-active");
+                const icon = h.querySelector(".sort-icon");
+                if (icon) icon.textContent = "↕";
+            });
+
+            header.dataset.sortDirection = ascending ? "asc" : "desc";
+            header.classList.add("sort-active");
+            const activeIcon = header.querySelector(".sort-icon");
+            if (activeIcon) activeIcon.textContent = ascending ? "↑" : "↓";
+
+            rows.sort(function (a, b) {
+                const cellA = a.children[columnIndex];
+                const cellB = b.children[columnIndex];
+                let valueA;
+                let valueB;
+
+                if (type === "date") {
+                    valueA = cellA ? (cellA.dataset.sortValue || "") : "";
+                    valueB = cellB ? (cellB.dataset.sortValue || "") : "";
+                } else {
+                    valueA = cellA ? cellA.textContent.trim().toLowerCase() : "";
+                    valueB = cellB ? cellB.textContent.trim().toLowerCase() : "";
+                }
+
+                // Keep blank values at the bottom.
+                if (!valueA && valueB) return 1;
+                if (valueA && !valueB) return -1;
+                if (!valueA && !valueB) return 0;
+
+                const result = valueA.localeCompare(valueB, undefined, {
+                    numeric: true,
+                    sensitivity: "base"
+                });
+
+                return ascending ? result : -result;
+            });
+
+            rows.forEach(function (row) {
+                tbody.appendChild(row);
+            });
+        });
+    });
+});
 </script>
 
 {% endblock %}
