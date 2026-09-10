@@ -31,7 +31,38 @@ employees_bp = Blueprint(
     __name__,
     url_prefix='/employees'
 )
+@employees_bp.route('/autocomplete')
+@login_required
+def employee_autocomplete():
+    query = request.args.get('q', '').strip()
 
+    if not query:
+        return jsonify([])
+
+    employees = (
+        Employee.query
+        .filter(
+            db.or_(
+                Employee.name.ilike(f'%{query}%'),
+                Employee.employee_id.ilike(f'%{query}%'),
+                Employee.email.ilike(f'%{query}%')
+            )
+        )
+        .order_by(Employee.name.asc())
+        .limit(10)
+        .all()
+    )
+
+    return jsonify([
+        {
+            'id': emp.id,
+            'employee_id': emp.employee_id,
+            'name': emp.name,
+            'email': emp.email,
+            'department': emp.department
+        }
+        for emp in employees
+    ])
 
 # =========================================================
 # EMPLOYEE ID GENERATOR
