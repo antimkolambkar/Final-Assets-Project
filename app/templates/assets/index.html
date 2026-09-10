@@ -203,15 +203,15 @@ document.addEventListener("DOMContentLoaded", function () {
             menu.style.visibility = "visible";
         }
 
-        button.addEventListener("shown.bs.dropdown", function () {
+        dropdown.addEventListener("shown.bs.dropdown", function () {
             requestAnimationFrame(placeMenu);
         });
 
-        button.addEventListener("hide.bs.dropdown", function () {
+        dropdown.addEventListener("hide.bs.dropdown", function () {
             menu.style.visibility = "hidden";
         });
 
-        button.addEventListener("hidden.bs.dropdown", function () {
+        dropdown.addEventListener("hidden.bs.dropdown", function () {
             menu.style.position = "";
             menu.style.top = "";
             menu.style.left = "";
@@ -666,6 +666,35 @@ document.addEventListener("DOMContentLoaded", function () {
 body > .asset-action-menu {
     position: fixed !important;
     z-index: 999999 !important;
+    min-width: 250px !important;
+    max-width: 320px !important;
+    max-height: calc(100vh - 24px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 8px !important;
+    margin: 0 !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+    box-shadow: 0 12px 35px rgba(0,0,0,.18) !important;
+}
+
+body > .asset-action-menu .dropdown-item {
+    padding: 11px 14px !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+body > .asset-action-menu .dropdown-item:hover,
+body > .asset-action-menu .dropdown-item:focus {
+    background: #f1f5f9 !important;
+}
+
+body > .asset-action-menu .dropdown-item i {
+    width: 22px;
+    text-align: center;
 }
 </style>
 
@@ -1007,7 +1036,7 @@ body > .asset-action-menu {
                                 <li>
 
                                     <button type="button"
-                                            class="dropdown-item text-warning"
+                                            class="dropdown-item text-danger"
                                             data-bs-toggle="modal"
                                             data-bs-target="#returnVendorModal"
                                             data-asset-id="{{ ast.id }}"
