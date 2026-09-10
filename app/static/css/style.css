@@ -47,6 +47,10 @@
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5);
 }
 
+/* =========================================================
+   BODY
+   ========================================================= */
+
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: var(--bg-body);
@@ -56,7 +60,10 @@ body {
   margin: 0;
 }
 
-/* Sidebar Styling */
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
 #sidebar-wrapper {
   width: 260px;
   background-color: var(--bg-sidebar);
@@ -131,7 +138,10 @@ body {
   text-align: center;
 }
 
-/* Header & Top Navbar */
+/* =========================================================
+   HEADER & TOP NAVBAR
+   ========================================================= */
+
 .top-navbar {
   background-color: var(--bg-card);
   border-bottom: 1px solid var(--border-color);
@@ -161,7 +171,36 @@ body {
   color: var(--text-muted);
 }
 
-/* Card Enhancements */
+/* =========================================================
+   GLOBAL SEARCH AUTOCOMPLETE FIX
+   ========================================================= */
+
+.global-search {
+  position: relative;
+}
+
+.global-search .employee-autocomplete-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  width: 100%;
+  min-width: 320px;
+  z-index: 2050;
+}
+
+.global-search .employee-autocomplete-results.show {
+  display: block;
+}
+
+.global-search .employee-autocomplete-option {
+  width: 100%;
+}
+
+/* =========================================================
+   CARD ENHANCEMENTS
+   ========================================================= */
+
 .card-stat {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -199,7 +238,10 @@ body {
   font-weight: 500;
 }
 
-/* Table Styling */
+/* =========================================================
+   TABLE STYLING
+   ========================================================= */
+
 .table-custom {
   background-color: var(--bg-card);
   border-color: var(--border-color);
@@ -228,7 +270,10 @@ body {
   background-color: rgba(37, 99, 235, 0.03);
 }
 
-/* Badges */
+/* =========================================================
+   BADGES
+   ========================================================= */
+
 .badge-status {
   padding: 0.35em 0.75em;
   font-size: 0.75rem;
@@ -279,7 +324,10 @@ body {
   color: #d97706;
 }
 
-/* Buttons */
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
 .btn-primary {
   background-color: var(--primary);
   border-color: var(--primary);
@@ -290,14 +338,17 @@ body {
   border-color: var(--primary-hover);
 }
 
-/* Toast Notifications */
+/* =========================================================
+   TOAST NOTIFICATIONS
+   ========================================================= */
+
 .toast-container {
   z-index: 1100;
 }
 
-/* ================================
-   Employee Asset Cards
-================================ */
+/* =========================================================
+   EMPLOYEE ASSET CARDS
+   ========================================================= */
 
 .asset-card {
     background: #fff;
@@ -542,12 +593,14 @@ body {
 }
 
 /* Selected state */
+
 .searchable-select-input.selected {
     font-weight: 500;
     color: #212529;
 }
 
 /* Dark mode */
+
 [data-theme="dark"] .searchable-select-input-group {
     background: #212529;
     border-color: #495057;
@@ -691,6 +744,7 @@ body {
 }
 
 /* Employee autocomplete scrollbar */
+
 .employee-autocomplete-results::-webkit-scrollbar {
     width: 7px;
 }
@@ -709,6 +763,7 @@ body {
 }
 
 /* Employee autocomplete dark mode */
+
 [data-theme="dark"] .employee-autocomplete-results {
     background: #212529;
     border-color: #495057;
@@ -737,4 +792,23 @@ body {
 [data-theme="dark"] .employee-autocomplete-department,
 [data-theme="dark"] .employee-autocomplete-no-results {
     color: #adb5bd;
+}
+
+/* =========================================================
+   GLOBAL SEARCH AUTOCOMPLETE - DARK MODE
+   ========================================================= */
+
+[data-theme="dark"] .global-search .employee-autocomplete-results {
+    background: #212529;
+    border-color: #495057;
+}
+
+[data-theme="dark"] .global-search .employee-autocomplete-option {
+    background: #212529;
+    color: #f8f9fa;
+    border-color: #343a40;
+}
+
+[data-theme="dark"] .global-search .employee-autocomplete-option:hover {
+    background: #343a40;
 }
