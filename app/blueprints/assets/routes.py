@@ -145,6 +145,17 @@ def index():
 
         if repair_start_history and repair_start_history.event_date:
             repair_start_dates[asset.id] = repair_start_history.event_date
+        else:
+            # Fallback for older repair records where the history event_date
+            # was not saved. Use the repair ticket's sent_date.
+            repair_ticket = VendorRepairTicket.query.filter_by(
+                asset_id=asset.id
+            ).order_by(
+                VendorRepairTicket.sent_date.desc()
+            ).first()
+
+            if repair_ticket and repair_ticket.sent_date:
+                repair_start_dates[asset.id] = repair_ticket.sent_date
 
         # Latest repair completion date
         repair_completion_history = AssetAssignmentHistory.query.filter_by(
