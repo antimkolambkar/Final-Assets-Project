@@ -145,17 +145,6 @@ def index():
 
         if repair_start_history and repair_start_history.event_date:
             repair_start_dates[asset.id] = repair_start_history.event_date
-        else:
-            # Fallback for older repair records where the history event_date
-            # was not saved. Use the repair ticket's sent_date.
-            repair_ticket = VendorRepairTicket.query.filter_by(
-                asset_id=asset.id
-            ).order_by(
-                VendorRepairTicket.sent_date.desc()
-            ).first()
-
-            if repair_ticket and repair_ticket.sent_date:
-                repair_start_dates[asset.id] = repair_ticket.sent_date
 
         # Latest repair completion date
         repair_completion_history = AssetAssignmentHistory.query.filter_by(
@@ -205,6 +194,65 @@ def index():
         repair_start_dates=repair_start_dates,
         repair_completion_dates=repair_completion_dates
     )
+
+
+# =========================================================
+# LIVE ASSET AUTOCOMPLETE
+# =========================================================
+
+@assets_bp.route('/autocomplete')
+@login_required
+def asset_autocomplete():
+    """Live asset search for autocomplete dropdown."""
+
+    search_q = request.args.get('q', '').strip()
+
+    # Start searching after 2 characters
+    if len(search_q) < 2:
+        return jsonify([])
+
+    search_pattern = f'%{search_q}%'
+
+    assets = Asset.query.outerjoin(
+        Employee,
+        Asset.assigned_employee_id == Employee.id
+    ).filter(
+        (Asset.asset_id.ilike(search_pattern)) |
+        (Asset.brand.ilike(search_pattern)) |
+        (Asset.model.ilike(search_pattern)) |
+        (Asset.serial_number.ilike(search_pattern)) |
+        (Employee.name.ilike(search_pattern)) |
+        (Employee.employee_id.ilike(search_pattern))
+    ).order_by(
+        Asset.asset_id.asc()
+    ).limit(10).all()
+
+    results = []
+
+    for asset in assets:
+
+        status_value = (
+            asset.status.value
+            if hasattr(asset.status, 'value')
+            else str(asset.status)
+        )
+
+        assigned_user = ''
+
+        if asset.assigned_employee:
+            assigned_user = asset.assigned_employee.name
+
+        results.append({
+            'id': asset.id,
+            'asset_id': asset.asset_id,
+            'brand': asset.brand or '',
+            'model': asset.model or '',
+            'serial_number': asset.serial_number or '',
+            'status': status_value,
+            'assigned_user': assigned_user
+        })
+
+    return jsonify(results)
 
 
 # =========================================================
