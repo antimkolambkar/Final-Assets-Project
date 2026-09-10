@@ -632,6 +632,13 @@ document.addEventListener("DOMContentLoaded", function () {
                                 {{ ast.assignment_date.strftime('%d-%m-%Y') }}
                             </span>
 
+                        {% elif status_value in ['Repair', 'Under Repair'] and repair_start_dates.get(ast.id) %}
+
+                            <span class="asset-date fw-semibold text-warning">
+                                <i class="fas fa-tools"></i>
+                                {{ repair_start_dates[ast.id].strftime('%d-%m-%Y') }}
+                            </span>
+
                         {% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] and ast.vendor_return_date %}
 
                             <span class="asset-date fw-semibold text-dark">
