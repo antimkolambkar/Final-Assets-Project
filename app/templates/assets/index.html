@@ -1193,9 +1193,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         {% if status_value in ['Repair', 'Under Repair'] %}
 
                         <div class="modal fade text-start"
-                             id="completeRepairModal"
+                             id="completeRepairModal{{ ast.id }}"
                              tabindex="-1"
-                             aria-labelledby="completeRepairModalLabel"
+                             aria-labelledby="completeRepairModalLabel{{ ast.id }}"
                              aria-hidden="true">
 
                             <div class="modal-dialog modal-dialog-centered">
@@ -4047,58 +4047,33 @@ document.addEventListener("DOMContentLoaded", function () {
 });
     /* =========================================================
        COMPLETE REPAIR MODAL
-       Each repair asset has its own modal, form and fields.
     ========================================================= */
 
     document.querySelectorAll(".btn-complete-repair").forEach(function (button) {
-
         button.addEventListener("click", function () {
+            const assetId = this.getAttribute("data-asset-id") || "";
+            const assetName = this.getAttribute("data-asset-name") || "";
 
-            const assetId =
-                this.getAttribute("data-asset-id") || "";
+            const form = document.getElementById("completeRepairForm" + assetId);
+            const nameField = document.getElementById("completeRepairAssetName" + assetId);
+            const dateField = document.getElementById("repairCompletedDate" + assetId);
+            const notesField = document.getElementById("completeRepairNotes" + assetId);
 
-            const assetName =
-                this.getAttribute("data-asset-name") || "";
-
-            if (!assetId) return;
-
-            const form =
-                document.getElementById("completeRepairForm" + assetId);
-
-            const assetNameInput =
-                document.getElementById("completeRepairAssetName" + assetId);
-
-            const completedDate =
-                document.getElementById("repairCompletedDate" + assetId);
-
-            const notes =
-                document.getElementById("completeRepairNotes" + assetId);
-
-            if (form) {
-                form.action =
-                    "/assets/repair/complete/" +
-                    encodeURIComponent(assetId);
+            if (form && assetId) {
+                form.action = "/assets/repair/complete/" + encodeURIComponent(assetId);
             }
 
-            if (assetNameInput) {
-                assetNameInput.value = assetName;
-            }
+            if (nameField) nameField.value = assetName;
 
-            if (completedDate) {
+            if (dateField) {
                 const now = new Date();
-
-                completedDate.value =
-                    now.getFullYear() + "-" +
+                dateField.value = now.getFullYear() + "-" +
                     String(now.getMonth() + 1).padStart(2, "0") + "-" +
                     String(now.getDate()).padStart(2, "0");
             }
 
-            if (notes) {
-                notes.value = "";
-            }
-
+            if (notesField) notesField.value = "";
         });
-
     });
 
 </script>
