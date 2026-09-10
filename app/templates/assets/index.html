@@ -137,6 +137,18 @@ document.addEventListener("DOMContentLoaded", function () {
             plugins: ["clear_button"],
             placeholder: select.options[0]?.text?.trim() || "Search or select...",
             dropdownParent: "body",
+            onChange: function (value) {
+                if (
+                    select.name === "status" ||
+                    select.name === "vendor_id"
+                ) {
+                    const form = select.closest('form');
+
+                    if (form && form.action.includes("/assets")) {
+                        form.submit();
+                    }
+                }
+            },
             render: {
                 option: function (data, escape) {
                     return '<div class="searchable-option">' + escape(data.text) + '</div>';
@@ -223,44 +235,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    /* =========================================================
-       AUTO APPLY ASSET FILTERS
-       Automatically submits the Asset Inventory filter form
-       when Status or Vendor is changed.
-    ========================================================= */
-    const filterForm = document.querySelector(
-        'form[action="{{ url_for("assets.index") }}"]'
-    );
-
-    if (filterForm) {
-        const statusSelect = filterForm.querySelector(
-            'select[name="status"]'
-        );
-
-        const vendorSelect = filterForm.querySelector(
-            'select[name="vendor_id"]'
-        );
-
-        function autoSubmitFilter() {
-            filterForm.submit();
-        }
-
-        if (statusSelect) {
-            if (statusSelect.tomselect) {
-                statusSelect.tomselect.on("change", autoSubmitFilter);
-            } else {
-                statusSelect.addEventListener("change", autoSubmitFilter);
-            }
-        }
-
-        if (vendorSelect) {
-            if (vendorSelect.tomselect) {
-                vendorSelect.tomselect.on("change", autoSubmitFilter);
-            } else {
-                vendorSelect.addEventListener("change", autoSubmitFilter);
-            }
-        }
-    }
 });
 </script>
 
