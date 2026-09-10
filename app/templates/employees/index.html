@@ -479,5 +479,99 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const table = document.getElementById('employeeTable');
+    if (!table) return;
 
+    const tbody = table.querySelector('tbody');
+    const headers = table.querySelectorAll('thead th.sortable');
+
+    /*
+     * AUTO APPLY EMPLOYEE FILTERS
+     * Automatically submits the filter form when
+     * Account Status or Department is changed.
+     */
+    const filterForm = document.querySelector(
+        'form[action="{{ url_for("employees.index") }}"]'
+    );
+
+    if (filterForm) {
+        const statusSelect = filterForm.querySelector(
+            'select[name="status"]'
+        );
+
+        const departmentSelect = filterForm.querySelector(
+            'select[name="department"]'
+        );
+
+        if (statusSelect) {
+            statusSelect.addEventListener('change', function () {
+                filterForm.submit();
+            });
+        }
+
+        if (departmentSelect) {
+            departmentSelect.addEventListener('change', function () {
+                filterForm.submit();
+            });
+        }
+    }
+
+    function getCellValue(row, column) {
+        const cell = row.cells[column];
+        if (!cell) return '';
+        return (cell.getAttribute('data-sort-value') || cell.textContent || '').trim();
+    }
+
+    function compareValues(a, b, direction, column) {
+        if (column === 4) {
+            const numA = parseInt(a.replace(/[^0-9-]/g, ''), 10) || 0;
+            const numB = parseInt(b.replace(/[^0-9-]/g, ''), 10) || 0;
+            return (numA - numB) * direction;
+        }
+
+        return a.localeCompare(b, undefined, {
+            numeric: true,
+            sensitivity: 'base'
+        }) * direction;
+    }
+
+    headers.forEach(function (header) {
+        header.addEventListener('click', function () {
+            const column = parseInt(header.dataset.column, 10);
+            const currentDirection = header.dataset.direction === 'asc' ? 1 : -1;
+            const direction = currentDirection === 1 ? -1 : 1;
+
+            headers.forEach(function (h) {
+                h.removeAttribute('data-direction');
+                h.classList.remove('sort-active');
+
+                const icon = h.querySelector('.sort-icon');
+                if (icon) icon.textContent = '↕';
+            });
+
+            header.dataset.direction = direction === 1 ? 'asc' : 'desc';
+            header.classList.add('sort-active');
+
+            const icon = header.querySelector('.sort-icon');
+            if (icon) icon.textContent = direction === 1 ? '↑' : '↓';
+
+            const rows = Array.from(tbody.querySelectorAll('tr')).filter(function (row) {
+                return row.cells.length > 1;
+            });
+
+            rows.sort(function (rowA, rowB) {
+                const a = getCellValue(rowA, column);
+                const b = getCellValue(rowB, column);
+                return compareValues(a, b, direction, column);
+            });
+
+            rows.forEach(function (row) {
+                tbody.appendChild(row);
+            });
+        });
+    });
+});
+</script>
 {% endblock %}
