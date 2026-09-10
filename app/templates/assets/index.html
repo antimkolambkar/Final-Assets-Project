@@ -149,6 +149,91 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     /* =========================================================
+       ASSET ACTION MENU - KEEP VISIBLE OUTSIDE TABLE SCROLLER
+       The asset table is horizontally scrollable, so Bootstrap's
+       dropdown can otherwise be clipped by .table-responsive.
+    ========================================================= */
+    document.querySelectorAll(".asset-table .asset-action-menu").forEach(function (menu) {
+        const dropdown = menu.closest(".dropdown");
+        const button = dropdown ? dropdown.querySelector("[data-bs-toggle=\"dropdown\"]") : null;
+        if (!dropdown || !button) return;
+
+        let originalParent = menu.parentElement;
+        let originalNextSibling = menu.nextSibling;
+
+        function placeMenu() {
+            if (!menu.classList.contains("show")) return;
+
+            const rect = button.getBoundingClientRect();
+            const gap = 6;
+            const viewportPadding = 8;
+
+            menu.style.visibility = "hidden";
+            menu.style.display = "block";
+            menu.style.position = "fixed";
+            menu.style.top = "0px";
+            menu.style.left = "0px";
+
+            if (menu.parentElement !== document.body) {
+                document.body.appendChild(menu);
+            }
+
+            const menuRect = menu.getBoundingClientRect();
+            let left = rect.right - menuRect.width;
+            let top = rect.bottom + gap;
+
+            if (left < viewportPadding) {
+                left = viewportPadding;
+            }
+            if (left + menuRect.width > window.innerWidth - viewportPadding) {
+                left = window.innerWidth - menuRect.width - viewportPadding;
+            }
+
+            if (top + menuRect.height > window.innerHeight - viewportPadding) {
+                top = rect.top - menuRect.height - gap;
+            }
+            if (top < viewportPadding) {
+                top = viewportPadding;
+            }
+
+            menu.style.left = Math.round(left) + "px";
+            menu.style.top = Math.round(top) + "px";
+            menu.style.right = "auto";
+            menu.style.bottom = "auto";
+            menu.style.visibility = "visible";
+        }
+
+        button.addEventListener("shown.bs.dropdown", function () {
+            requestAnimationFrame(placeMenu);
+        });
+
+        button.addEventListener("hide.bs.dropdown", function () {
+            menu.style.visibility = "hidden";
+        });
+
+        button.addEventListener("hidden.bs.dropdown", function () {
+            menu.style.position = "";
+            menu.style.top = "";
+            menu.style.left = "";
+            menu.style.right = "";
+            menu.style.bottom = "";
+            menu.style.display = "";
+            menu.style.visibility = "";
+
+            if (menu.parentElement === document.body) {
+                if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+                    originalParent.insertBefore(menu, originalNextSibling);
+                } else {
+                    originalParent.appendChild(menu);
+                }
+            }
+        });
+
+        window.addEventListener("resize", placeMenu);
+        window.addEventListener("scroll", placeMenu, true);
+    });
+
+    /* =========================================================
        EMPLOYEE NAME-ONLY SEARCH POPUP
     ========================================================= */
     document.querySelectorAll(".employee-picker").forEach(function (picker) {
@@ -535,13 +620,53 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         
 /* Modern visible asset action menu */
-.asset-table td:last-child { overflow: visible !important; position: relative; }
-.table-responsive { overflow-x: auto !important; overflow-y: visible !important; }
-.asset-table .dropdown { position: relative; }
-.asset-table .dropdown-menu { min-width: 240px !important; padding: 8px !important; border: 1px solid #e5e7eb !important; border-radius: 12px !important; background: #fff !important; box-shadow: 0 10px 30px rgba(0,0,0,.15) !important; z-index: 99999 !important; }
-.asset-table .dropdown-item { padding: 11px 14px !important; border-radius: 8px !important; font-size: 14px !important; font-weight: 500; }
-.asset-table .dropdown-item:hover { background: #f1f5f9 !important; }
-.asset-table .dropdown-item i { width: 22px; text-align: center; }
+.asset-table td:last-child {
+    position: relative;
+    overflow: visible !important;
+}
+
+.asset-table .dropdown-menu.asset-action-menu {
+    min-width: 250px !important;
+    max-width: 320px !important;
+    max-height: calc(100vh - 24px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 8px !important;
+    margin: 0 !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+    box-shadow: 0 12px 35px rgba(0,0,0,.18) !important;
+    z-index: 999999 !important;
+}
+
+.asset-table .dropdown-menu.asset-action-menu.show {
+    display: block !important;
+}
+
+.asset-table .dropdown-item {
+    padding: 11px 14px !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.asset-table .dropdown-item:hover,
+.asset-table .dropdown-item:focus {
+    background: #f1f5f9 !important;
+}
+
+.asset-table .dropdown-item i {
+    width: 22px;
+    text-align: center;
+}
+
+/* When the menu is temporarily moved to <body>, keep the same look. */
+body > .asset-action-menu {
+    position: fixed !important;
+    z-index: 999999 !important;
+}
 </style>
 
         <style>
@@ -786,8 +911,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             <button class="btn btn-light btn-sm rounded-circle p-2"
                                     type="button"
                                     data-bs-toggle="dropdown"
-                                    data-bs-display="static"
-                                    aria-expanded="false"
+                                                                        aria-expanded="false"
                                     title="Asset Actions">
 
                                 <i class="fas fa-ellipsis-v text-secondary"></i>
