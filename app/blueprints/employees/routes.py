@@ -1,29 +1,65 @@
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
+
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    jsonify,
+    flash,
+    redirect,
+    url_for
+)
+
 from flask_login import login_required, current_user
+
 from app.extensions import db
+
 from app.models.employee import Employee, AccountStatus
-from app.models.asset import Asset, AssetStatus, AssetAssignmentHistory
+
+from app.models.asset import (
+    Asset,
+    AssetStatus,
+    AssetAssignmentHistory
+)
+
 from app.services.graph_service import MicrosoftGraphService
 from app.services.audit_service import AuditService
 
-employees_bp = Blueprint('employees', __name__, url_prefix='/employees')
 
+employees_bp = Blueprint(
+    'employees',
+    __name__,
+    url_prefix='/employees'
+)
+
+
+# =========================================================
+# EMPLOYEE ID GENERATOR
+# =========================================================
 
 def generate_employee_id():
     count = Employee.query.count() + 1001
     return f"EMP-{count}"
 
 
+# =========================================================
+# EMPLOYEE INDEX
+# =========================================================
+
 @employees_bp.route('/')
 @login_required
 def index():
+
     search_q = request.args.get('q', '').strip()
     status_filter = request.args.get('status', '').strip()
     dept_filter = request.args.get('department', '').strip()
     page = request.args.get('page', 1, type=int)
 
     query = Employee.query
+
+    # -----------------------------------------------------
+    # Search
+    # -----------------------------------------------------
 
     if search_q:
         query = query.filter(
@@ -33,51 +69,88 @@ def index():
             (Employee.designation.ilike(f'%{search_q}%'))
         )
 
+    # -----------------------------------------------------
+    # Status Filter
+    # -----------------------------------------------------
+
     if status_filter:
-        status_values = [
-            s.strip()
-            for s in status_filter.split(',')
-            if s.strip()
-        ]
-        query = query.filter(
-            Employee.account_status.in_(status_values)
+        query = query.filter_by(
+            account_status=status_filter
         )
 
-    if dept_filter:
-        query = query.filter_by(department=dept_filter)
+    # -----------------------------------------------------
+    # Department Filter
+    # -----------------------------------------------------
 
-    pagination = query.order_by(
-        Employee.created_at.desc(),
-        Employee.name.asc()
-    ).paginate(
-        page=page,
-        per_page=10,
-        error_out=False
+    if dept_filter:
+        query = query.filter_by(
+            department=dept_filter
+        )
+
+    # -----------------------------------------------------
+    # Pagination
+    # -----------------------------------------------------
+
+    pagination = (
+        query
+        .order_by(
+            Employee.created_at.desc(),
+            Employee.name.asc()
+        )
+        .paginate(
+            page=page,
+            per_page=10,
+            error_out=False
+        )
     )
 
     employees = pagination.items
 
+    # -----------------------------------------------------
+    # Department Dropdown
+    # -----------------------------------------------------
+
     departments = [
         d[0]
-        for d in db.session.query(Employee.department).distinct().all()
+        for d in db.session
+        .query(Employee.department)
+        .distinct()
+        .all()
         if d[0]
     ]
 
-    available_assets = Asset.query.filter_by(
-        status=AssetStatus.AVAILABLE
-    ).order_by(
-        Asset.brand.asc()
-    ).all()
+    # -----------------------------------------------------
+    # Available Assets
+    # -----------------------------------------------------
+
+    available_assets = (
+        Asset.query
+        .filter_by(status=AssetStatus.AVAILABLE)
+        .order_by(Asset.brand.asc())
+        .all()
+    )
+
+    # -----------------------------------------------------
+    # Render
+    # -----------------------------------------------------
 
     return render_template(
         'employees/index.html',
+
         employees=employees,
+
         pagination=pagination,
+
         search_q=search_q,
+
         status_filter=status_filter,
+
         dept_filter=dept_filter,
+
         departments=departments,
+
         available_assets=available_assets,
+
         account_statuses=[
             AccountStatus.ONBOARDED,
             AccountStatus.ACTIVE,
@@ -88,125 +161,209 @@ def index():
     )
 
 
-# ============================================================
-# LIVE EMPLOYEE AUTOCOMPLETE
-# ============================================================
-
-@employees_bp.route('/autocomplete')
-@login_required
-def employee_autocomplete():
-    """Live employee search for autocomplete dropdown."""
-
-    search_q = request.args.get('q', '').strip()
-
-    # Start searching after 2 characters
-    if len(search_q) < 2:
-        return jsonify([])
-
-    # Search ONLY by employee name or employee ID
-    employees = Employee.query.filter(
-        (Employee.name.ilike(f'%{search_q}%')) |
-        (Employee.employee_id.ilike(f'%{search_q}%'))
-    ).order_by(
-        Employee.name.asc()
-    ).limit(10).all()
-
-    return jsonify([
-        {
-            'id': emp.id,
-            'name': emp.name,
-            'employee_id': emp.employee_id,
-            'email': emp.email,
-            'department': emp.department or '',
-            'designation': emp.designation or '',
-            'account_status': emp.account_status
-        }
-        for emp in employees
-    ])
-
+# =========================================================
+# DIRECT EMPLOYEE ONBOARDING
+# =========================================================
 
 @employees_bp.route('/onboard', methods=['POST'])
 @login_required
 def onboard_employee():
+
     """Direct Employee Onboarding & Laptop Allocation"""
 
     if not current_user.is_it_admin:
+
         flash(
             'Permission denied. Only IT Admins can onboard new employees.',
             'danger'
         )
-        return redirect(url_for('employees.index'))
 
-    name = request.form.get('name', '').strip()
-    email = request.form.get('email', '').strip()
-    emp_code = request.form.get('employee_id', '').strip()
-    department = request.form.get('department', '').strip()
-    designation = request.form.get('designation', '').strip()
-    office_location = request.form.get('office_location', '').strip()
-    manager = request.form.get('manager', '').strip()
+        return redirect(
+            url_for('employees.index')
+        )
+
+    # -----------------------------------------------------
+    # Form Data
+    # -----------------------------------------------------
+
+    name = request.form.get(
+        'name',
+        ''
+    ).strip()
+
+    email = request.form.get(
+        'email',
+        ''
+    ).strip()
+
+    emp_code = request.form.get(
+        'employee_id',
+        ''
+    ).strip()
+
+    department = request.form.get(
+        'department',
+        ''
+    ).strip()
+
+    designation = request.form.get(
+        'designation',
+        ''
+    ).strip()
+
+    office_location = request.form.get(
+        'office_location',
+        ''
+    ).strip()
+
+    manager = request.form.get(
+        'manager',
+        ''
+    ).strip()
+
     status = request.form.get(
         'status',
         AccountStatus.ONBOARDED
     )
-    asset_id = request.form.get('asset_id', type=int)
+
+    asset_id = request.form.get(
+        'asset_id',
+        type=int
+    )
+
+    # -----------------------------------------------------
+    # Required Fields
+    # -----------------------------------------------------
 
     if not name or not email:
+
         flash(
             'Employee Name and Email Address are required for onboarding.',
             'danger'
         )
-        return redirect(url_for('employees.index'))
+
+        return redirect(
+            url_for('employees.index')
+        )
+
+    # -----------------------------------------------------
+    # Uniqueness Check
+    # -----------------------------------------------------
 
     existing = Employee.query.filter(
         (Employee.email == email) |
-        (Employee.employee_id == emp_code if emp_code else False)
+        (
+            Employee.employee_id == emp_code
+            if emp_code
+            else False
+        )
     ).first()
 
     if existing:
+
         flash(
-            f'An employee with email "{email}" or ID "{emp_code}" '
-            f'already exists in the system.',
+            f'An employee with email "{email}" or ID '
+            f'"{emp_code}" already exists in the system.',
             'danger'
         )
-        return redirect(url_for('employees.index'))
+
+        return redirect(
+            url_for('employees.index')
+        )
+
+    # -----------------------------------------------------
+    # Generate Employee ID
+    # -----------------------------------------------------
 
     if not emp_code:
         emp_code = generate_employee_id()
 
+    # -----------------------------------------------------
+    # Status Dates For New Employee
+    # -----------------------------------------------------
+
+    disabled_date = None
+    offboarded_date = None
+
+    today = datetime.utcnow().date()
+
+    if status == AccountStatus.DISABLED:
+        disabled_date = today
+
+    elif status == AccountStatus.OFFBOARDED:
+        offboarded_date = today
+
+    # -----------------------------------------------------
+    # Create Employee
+    # -----------------------------------------------------
+
     new_emp = Employee(
         employee_id=emp_code,
+
         name=name,
+
         email=email,
+
         department=department,
+
         designation=designation,
+
         office_location=office_location,
+
         manager=manager,
+
         account_status=status,
+
+        disabled_date=disabled_date,
+
+        offboarded_date=offboarded_date,
+
         created_at=datetime.utcnow()
     )
 
     db.session.add(new_emp)
+
     db.session.flush()
+
+    # -----------------------------------------------------
+    # Laptop Allocation
+    # -----------------------------------------------------
 
     assigned_asset_msg = ""
 
     if asset_id:
+
         asset = Asset.query.get(asset_id)
 
-        if asset and asset.status == AssetStatus.AVAILABLE:
+        if (
+            asset
+            and asset.status == AssetStatus.AVAILABLE
+        ):
+
             asset.status = AssetStatus.ASSIGNED
+
             asset.assigned_employee_id = new_emp.id
+
             asset.assignment_date = datetime.utcnow()
+
+            # -------------------------------------------------
+            # Assignment History
+            # -------------------------------------------------
 
             hist = AssetAssignmentHistory(
                 asset_id=asset.id,
+
                 employee_id=new_emp.id,
+
                 employee_name=new_emp.name,
+
                 action='Assigned Onboarding',
+
                 notes=(
-                    f'Direct laptop assignment during employee '
+                    'Direct laptop assignment during employee '
                     f'onboarding ({new_emp.employee_id})'
                 ),
+
                 performed_by=current_user.full_name
             )
 
@@ -217,37 +374,62 @@ def onboard_employee():
                 f"({asset.brand} {asset.model})."
             )
 
+    # -----------------------------------------------------
+    # Save Employee
+    # -----------------------------------------------------
+
     db.session.commit()
+
+    # -----------------------------------------------------
+    # Audit
+    # -----------------------------------------------------
 
     AuditService.log(
         action='Employee Onboarded',
+
         entity_type='Employee',
+
         entity_id=new_emp.employee_id,
+
         details=(
             f'Onboarded new employee {new_emp.name} '
-            f'({new_emp.department} - {new_emp.account_status}).'
+            f'({new_emp.department} - '
+            f'{new_emp.account_status}).'
             f'{assigned_asset_msg}'
         )
     )
 
+    # -----------------------------------------------------
+    # Success Message
+    # -----------------------------------------------------
+
     flash(
-        f'Employee {new_emp.name} ({new_emp.employee_id}) '
-        f'onboarded successfully!{assigned_asset_msg}',
+        f'Employee {new_emp.name} '
+        f'({new_emp.employee_id}) onboarded successfully!'
+        f'{assigned_asset_msg}',
         'success'
     )
 
-    return redirect(url_for('employees.index'))
+    return redirect(
+        url_for('employees.index')
+    )
 
+
+# =========================================================
+# ENTRA ID SYNC
+# =========================================================
 
 @employees_bp.route('/sync', methods=['POST'])
 @login_required
 def sync_employees():
+
     """Trigger manual Entra ID employee synchronization"""
 
     res = MicrosoftGraphService.sync_entra_employees()
 
     flash(
-        f"Entra ID Sync Complete! Synced {res['total']} employees. "
+        f"Entra ID Sync Complete! "
+        f"Synced {res['total']} employees. "
         f"(Auto-Onboarded: {res.get('onboarded', 0)}, "
         f"Updated: {res['updated']}, "
         f"Auto-Offboarded: {res['offboarded']}, "
@@ -255,32 +437,59 @@ def sync_employees():
         'success'
     )
 
-    return redirect(url_for('employees.index'))
+    return redirect(
+        url_for('employees.index')
+    )
 
+
+# =========================================================
+# EMPLOYEE JSON / PROFILE
+# =========================================================
 
 @employees_bp.route('/<int:emp_id>/json')
 @login_required
 def get_employee_json(emp_id):
+
     emp = Employee.query.get_or_404(emp_id)
 
-    assigned_assets = Asset.query.filter_by(
-        assigned_employee_id=emp.id
-    ).all()
+    assigned_assets = (
+        Asset.query
+        .filter_by(
+            assigned_employee_id=emp.id
+        )
+        .all()
+    )
 
     assets_data = []
 
     for a in assigned_assets:
+
         assets_data.append({
+
             'id': a.id,
+
             'asset_id': a.asset_id,
+
             'brand': a.brand,
+
             'model': a.model,
+
             'serial_number': a.serial_number,
+
             'processor': a.processor,
+
             'ram': a.ram,
+
             'ssd': a.ssd,
-            'vendor_name': a.vendor.name if a.vendor else '-',
+
+            'vendor_name': (
+                a.vendor.name
+                if a.vendor
+                else '-'
+            ),
+
             'status': a.status,
+
             'assignment_date': (
                 a.assignment_date.strftime('%Y-%m-%d')
                 if a.assignment_date
@@ -288,97 +497,222 @@ def get_employee_json(emp_id):
             )
         })
 
+    # -----------------------------------------------------
+    # Employee JSON
+    # -----------------------------------------------------
+
     return jsonify({
+
         'id': emp.id,
+
         'employee_id': emp.employee_id,
+
         'name': emp.name,
+
         'email': emp.email,
-        'department': emp.department or '-',
-        'designation': emp.designation or '-',
-        'manager': emp.manager or '-',
-        'office_location': emp.office_location or '-',
+
+        'department': (
+            emp.department
+            or '-'
+        ),
+
+        'designation': (
+            emp.designation
+            or '-'
+        ),
+
+        'manager': (
+            emp.manager
+            or '-'
+        ),
+
+        'office_location': (
+            emp.office_location
+            or '-'
+        ),
+
         'account_status': emp.account_status,
+
+        # -------------------------------------------------
+        # NEW STATUS DATES
+        # -------------------------------------------------
+
+        'disabled_date': (
+            emp.disabled_date.strftime('%Y-%m-%d')
+            if emp.disabled_date
+            else None
+        ),
+
+        'offboarded_date': (
+            emp.offboarded_date.strftime('%Y-%m-%d')
+            if emp.offboarded_date
+            else None
+        ),
+
         'assigned_assets': assets_data
     })
 
 
+# =========================================================
+# EDIT EMPLOYEE
+# =========================================================
+
 @employees_bp.route('/<int:emp_id>/edit', methods=['POST'])
 @login_required
 def edit_employee(emp_id):
+
+    # -----------------------------------------------------
+    # Permission Check
+    # -----------------------------------------------------
+
     if not current_user.is_it_admin:
+
         return jsonify({
             "success": False,
             "message": "Permission denied"
         }), 403
 
+    # -----------------------------------------------------
+    # Get Employee
+    # -----------------------------------------------------
+
     emp = Employee.query.get_or_404(emp_id)
 
+    # -----------------------------------------------------
+    # Existing Status
+    # -----------------------------------------------------
+
     old_status = emp.account_status
+
+    # -----------------------------------------------------
+    # Update Basic Employee Information
+    # -----------------------------------------------------
+
+    emp.name = request.form.get(
+        "name",
+        emp.name
+    )
+
+    emp.department = request.form.get(
+        "department",
+        emp.department
+    )
+
+    emp.designation = request.form.get(
+        "designation",
+        emp.designation
+    )
+
+    emp.manager = request.form.get(
+        "manager",
+        emp.manager
+    )
+
+    emp.office_location = request.form.get(
+        "office_location",
+        emp.office_location
+    )
+
+    # -----------------------------------------------------
+    # New Account Status
+    # -----------------------------------------------------
+
     new_status = request.form.get(
         "account_status",
         emp.account_status
     )
 
-    emp.name = request.form.get("name", emp.name)
-    emp.department = request.form.get(
-        "department",
-        emp.department
-    )
-    emp.designation = request.form.get(
-        "designation",
-        emp.designation
-    )
-    emp.manager = request.form.get(
-        "manager",
-        emp.manager
-    )
-    emp.office_location = request.form.get(
-        "office_location",
-        emp.office_location
-    )
     emp.account_status = new_status
 
+    # -----------------------------------------------------
+    # AUTOMATIC STATUS DATE
+    # -----------------------------------------------------
+
+    today = datetime.utcnow().date()
+
+    # =====================================================
+    # ACTIVE / ONBOARDED / BLOCKED
+    #             ↓
+    #          DISABLED
+    # =====================================================
+
     if (
-        old_status != AccountStatus.OFFBOARDED
-        and new_status == AccountStatus.OFFBOARDED
+        new_status == AccountStatus.DISABLED
+        and old_status != AccountStatus.DISABLED
     ):
-        assigned_assets = Asset.query.filter_by(
-            assigned_employee_id=emp.id,
-            status=AssetStatus.ASSIGNED
-        ).all()
 
-        for asset in assigned_assets:
-            asset.status = AssetStatus.AVAILABLE
-            asset.assigned_employee_id = None
-            asset.assignment_date = None
+        emp.disabled_date = today
 
-            history = AssetAssignmentHistory(
-                asset_id=asset.id,
-                employee_id=emp.id,
-                employee_name=emp.name,
-                action="Returned (Offboarding)",
-                notes=(
-                    f"Automatically returned because "
-                    f"{emp.name} was offboarded."
-                ),
-                performed_by=current_user.full_name
-            )
+    # =====================================================
+    # ACTIVE / ONBOARDED / BLOCKED / DISABLED
+    #             ↓
+    #          OFFBOARDED
+    # =====================================================
 
-            db.session.add(history)
+    if (
+        new_status == AccountStatus.OFFBOARDED
+        and old_status != AccountStatus.OFFBOARDED
+    ):
+
+        emp.offboarded_date = today
+
+    # -----------------------------------------------------
+    # Do NOT overwrite existing dates
+    # -----------------------------------------------------
+
+    # If status is changed from Offboarded back to Active,
+    # the original offboarded_date remains stored.
+    #
+    # If status is changed from Disabled back to Active,
+    # the original disabled_date remains stored.
+    #
+    # This gives you historical information.
+
+    # -----------------------------------------------------
+    # Save
+    # -----------------------------------------------------
 
     db.session.commit()
 
-    AuditService.log(
-        action="Employee Updated",
-        entity_type="Employee",
-        entity_id=emp.employee_id,
-        details=(
-            f"Employee status changed from "
-            f"{old_status} to {new_status}"
+    # -----------------------------------------------------
+    # Audit Status Change
+    # -----------------------------------------------------
+
+    if old_status != new_status:
+
+        AuditService.log(
+            action='Employee Status Changed',
+
+            entity_type='Employee',
+
+            entity_id=emp.employee_id,
+
+            details=(
+                f'Employee {emp.name} '
+                f'({emp.employee_id}) status changed '
+                f'from {old_status} to {new_status}.'
+            )
         )
-    )
+
+    # -----------------------------------------------------
+    # Response
+    # -----------------------------------------------------
 
     return jsonify({
         "success": True,
-        "message": "Employee updated successfully"
+        "message": "Employee updated successfully",
+
+        "account_status": emp.account_status,
+
+        "disabled_date": (
+            emp.disabled_date.strftime('%Y-%m-%d')
+            if emp.disabled_date
+            else None
+        ),
+
+        "offboarded_date": (
+            emp.offboarded_date.strftime('%Y-%m-%d')
+            if emp.offboarded_date
+            else None
+        )
     })
