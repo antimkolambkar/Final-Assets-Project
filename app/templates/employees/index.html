@@ -1,577 +1,775 @@
-{% extends "base.html" %}
-
-{% block title %}Employee Directory (Entra ID) | ITAM{% endblock %}
-
-{% block content %}
-<div class="d-flex align-items-center justify-content-between mb-4">
-    <div>
-        <h3 class="fw-bold mb-1"><i class="fas fa-users-gear text-primary me-2"></i>Microsoft Entra ID Employee Directory</h3>
-        <p class="text-muted small mb-0">Synchronized employee identity directory from Microsoft 365 Admin Center with automated onboarding & offboarding triggers.</p>
-    </div>
-    <div class="d-flex gap-2">
-        {% if current_user.is_it_admin %}
-        <button class="btn btn-success rounded-pill px-4 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#onboardEmployeeModal">
-            <i class="fas fa-user-plus me-2"></i>Onboard New Employee
-        </button>
-        {% endif %}
-        <form action="{{ url_for('employees.sync_employees') }}" method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm fw-semibold">
-                <i class="fas fa-arrows-rotate me-2"></i>Sync Entra ID
-            </button>
-        </form>
-    </div>
-</div>
-
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body p-3">
-        <form action="{{ url_for('employees.index') }}" method="GET" class="row g-2">
-            <div class="col-12 col-md-5">
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
-
-                    <!-- LIVE EMPLOYEE AUTOCOMPLETE -->
-                    <input type="text"
-                           name="q"
-                           value="{{ search_q }}"
-                           class="form-control border-start-0 bg-light employee-autocomplete"
-                           data-autocomplete-url="{{ url_for('employees.employee_autocomplete') }}"
-                           placeholder="Search employee name, ID, email, designation..."
-                           autocomplete="off">
-                </div>
-            </div>
-
-            <div class="col-6 col-md-3">
-                <select name="status" class="form-select bg-light">
-                    <option value="">All Account Statuses</option>
-                    {% for st in account_statuses %}
-                    <option value="{{ st }}" {% if status_filter == st %}selected{% endif %}>{{ st }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="col-6 col-md-2">
-                <select name="department" class="form-select bg-light">
-                    <option value="">All Departments</option>
-                    {% for d in departments %}
-                    <option value="{{ d }}" {% if dept_filter == d %}selected{% endif %}>{{ d }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="col-12 col-md-2 d-flex gap-2">
-                <button type="submit" class="btn btn-dark flex-grow-1"><i class="fas fa-filter me-1"></i>Filter</button>
-                <a href="{{ url_for('employees.index') }}" class="btn btn-outline-secondary" title="Reset Filters"><i class="fas fa-undo"></i></a>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="card border-0 shadow-sm">
-    <div class="table-responsive">
-        <table class="table table-custom mb-0" id="employeeTable">
-            <thead>
-            <tr>
-                <th style="width:110px;" class="sortable" data-column="0">Employee ID <span class="sort-icon">↕</span></th>
-                <th style="width:240px;" class="sortable" data-column="1">Employee Name <span class="sort-icon">↕</span></th>
-                <th style="width:140px;" class="sortable" data-column="2">Department <span class="sort-icon">↕</span></th>
-                <th style="width:160px;" class="sortable" data-column="3">Designation <span class="sort-icon">↕</span></th>
-                <th style="width:80px;" class="text-center sortable" data-column="4">Assets <span class="sort-icon">↕</span></th>
-                <th style="width:180px;" class="sortable" data-column="5">Serial Numbers <span class="sort-icon">↕</span></th>
-                <th style="width:140px;" class="sortable" data-column="6">Office Location <span class="sort-icon">↕</span></th>
-                <th style="width:140px;" class="sortable" data-column="7">Account Status <span class="sort-icon">↕</span></th>
-                <th style="width:170px;" class="text-end">Actions</th>
-            </tr>
-            </thead>
-
-            <tbody>
-                {% for emp in employees %}
-                <tr>
-                    <td data-sort-value="{{ emp.employee_id or '' }}"><strong class="text-primary">{{ emp.employee_id }}</strong></td>
-
-                    <td data-sort-value="{{ emp.name or '' }}">
-                        <div class="fw-bold">{{ emp.name }}</div>
-                        <small class="text-muted d-block">
-                            <i class="fas fa-user-tie me-1"></i>
-                            Manager: {{ emp.manager or 'N/A' }}
-                        </small>
-                    </td>
-
-                    <td data-sort-value="{{ emp.department or '' }}">
-                        <span class="badge bg-light text-dark border">{{ emp.department or 'N/A' }}</span>
-                    </td>
-
-                    <td data-sort-value="{{ emp.designation or '' }}">{{ emp.designation or 'N/A' }}</td>
-
-                    <td data-sort-value="{{ emp.assigned_assets.count() }}" class="text-center">
-                        <span class="badge bg-primary">{{ emp.assigned_assets.count() }}</span>
-                    </td>
-
-                    <td data-sort-value="{% for asset in emp.assigned_assets.all() %}{{ asset.serial_number }} {% endfor %}">
-                        {% if emp.assigned_assets %}
-                            {% for asset in emp.assigned_assets.all() %}
-                                <div><small class="text-dark fw-semibold">{{ asset.serial_number }}</small></div>
-                            {% endfor %}
-                        {% else %}
-                            <span class="text-muted">—</span>
-                        {% endif %}
-                    </td>
-
-                    <td data-sort-value="{{ emp.office_location or '' }}">
-                        <small class="text-muted">
-                            <i class="fas fa-building me-1"></i>{{ emp.office_location or 'N/A' }}
-                        </small>
-                    </td>
-
-                    <td data-sort-value="{{ emp.account_status or '' }}">
-                        <span class="badge badge-status badge-{{ emp.account_status.lower() }}">
-                            <i class="fas {% if emp.account_status == 'Onboarded' %}fa-user-check text-info{% elif emp.account_status == 'Active' %}fa-circle-check{% elif emp.account_status == 'Offboarded' %}fa-user-xmark{% else %}fa-circle-exclamation{% endif %}"></i>
-                            {{ emp.account_status }}
-                        </span>
-                    </td>
-
-                    <td class="text-end">
-                        <button class="btn btn-outline-primary btn-sm rounded-pill btn-view-employee" data-emp-id="{{ emp.id }}">
-                            <i class="fas fa-eye me-1"></i>View Profile & Laptops
-                        </button>
-                    </td>
-                </tr>
-
-                {% else %}
-                <tr>
-                    <td colspan="9" class="text-center text-muted py-4">
-                        <i class="fas fa-folder-open fa-2x mb-2 d-block text-secondary"></i>
-                        No employees found matching criteria.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    {% if pagination.pages > 1 %}
-    <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
-        <small class="text-muted">Showing page {{ pagination.page }} of {{ pagination.pages }}</small>
-
-        <ul class="pagination pagination-sm mb-0">
-            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('employees.index', page=pagination.prev_num, q=search_q, status=status_filter, department=dept_filter) }}">Previous</a>
-            </li>
-
-            {% for p in pagination.iter_pages() %}
-                {% if p %}
-                <li class="page-item {% if p == pagination.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for('employees.index', page=p, q=search_q, status=status_filter, department=dept_filter) }}">{{ p }}</a>
-                </li>
-                {% else %}
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-                {% endif %}
-            {% endfor %}
-
-            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('employees.index', page=pagination.next_num, q=search_q, status=status_filter, department=dept_filter) }}">Next</a>
-            </li>
-        </ul>
-    </div>
-    {% endif %}
-</div>
-
-<!-- Existing modals -->
-<div class="modal fade" id="onboardEmployeeModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i>Onboard New Employee</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-
-            <form action="{{ url_for('employees.onboard_employee') }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                <div class="modal-body p-4">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Employee Full Name *</label>
-                            <input type="text" name="name" class="form-control" placeholder="e.g. Vikramaditya Singh" required>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Corporate Email Address *</label>
-                            <input type="email" name="email" class="form-control" placeholder="vikram@company.com" required>
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Employee ID (Optional - Auto generated if blank)</label>
-                            <input type="text" name="employee_id" class="form-control" placeholder="e.g. EMP-1010">
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Department</label>
-                            <input type="text" name="department" class="form-control" placeholder="e.g. Software Engineering, Finance">
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Designation / Job Title</label>
-                            <input type="text" name="designation" class="form-control" placeholder="e.g. Senior Software Engineer">
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Office Location</label>
-                            <input type="text" name="office_location" class="form-control" placeholder="e.g. Bangalore, Dubai, Mumbai">
-                        </div>
-                    </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Reporting Manager Name</label>
-                            <input type="text" name="manager" class="form-control" placeholder="e.g. Suresh Rao">
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Initial Account Status</label>
-                            <select name="status" class="form-select" required>
-                                <option value="Onboarded" selected>Onboarded</option>
-                                <option value="Active">Active</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <hr class="my-3">
-
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold text-dark">
-                            <i class="fas fa-laptop text-primary me-2"></i>
-                            Assign Available Laptop Immediately (Optional)
-                        </label>
-
-                        <select name="asset_id" class="form-select">
-                            <option value="">-- No Laptop Allocation at Onboarding --</option>
-
-                            {% for ast in available_assets %}
-                            <option value="{{ ast.id }}">
-                                {{ ast.asset_id }} - {{ ast.brand }} {{ ast.model }}
-                                (SN: {{ ast.serial_number }} &bull; {{ ast.ram }}/{{ ast.ssd }})
-                            </option>
-                            {% endfor %}
-                        </select>
-
-                        <small class="text-muted">
-                            Selecting an available laptop automatically assigns it to this new employee upon creation.
-                        </small>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success px-4 fw-bold">Complete Onboarding</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="employeeDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
-
-            <div class="modal-header bg-dark text-white border-0 py-3">
-                <h5 class="modal-title fw-bold d-flex align-items-center mb-0">
-                    <i class="fas fa-id-card me-2 text-primary"></i>
-                    Employee Profile & Assigned Laptops
-                </h5>
-
-                <div class="ms-auto d-flex align-items-center">
-                    {% if current_user.is_it_admin %}
-                    <button type="button" class="btn btn-warning btn-sm me-2" id="editProfileBtn">
-                        <i class="fas fa-edit me-1"></i>Edit Profile
-                    </button>
-                    {% endif %}
-
-                    <button type="button" class="btn-close btn-close-white m-0" data-bs-dismiss="modal"></button>
-                </div>
-            </div>
-
-            <div class="modal-body p-4">
-                <div class="row g-3 mb-4 p-3 bg-light rounded-3 border">
-                    <div class="col-md-6">
-                        <h4 class="fw-bold text-dark mb-1" id="modal-emp-name">-</h4>
-                        <div class="text-primary fw-bold mb-1" id="modal-emp-id">-</div>
-                        <div class="small text-muted" id="modal-emp-email">-</div>
-                    </div>
-
-                    <div class="col-md-6 text-md-end">
-                        <div class="mb-2">
-                            <span id="modal-emp-status" class="badge">Active</span>
-                        </div>
-                        <div class="small text-muted"><strong class="text-dark">Dept:</strong> <span id="modal-emp-dept">-</span></div>
-                        <div class="small text-muted"><strong class="text-dark">Designation:</strong> <span id="modal-emp-desig">-</span></div>
-                        <div class="small text-muted"><strong class="text-dark">Manager:</strong> <span id="modal-emp-manager">-</span></div>
-                        <div class="small text-muted"><strong class="text-dark">Office:</strong> <span id="modal-emp-office">-</span></div>
-                    </div>
-                </div>
-
-                <h6 class="fw-bold text-dark mb-3">
-                    <i class="fas fa-boxes text-primary me-2"></i>
-                    Assigned Company Assets
-                </h6>
-
-                <div id="modal-emp-assets-body"></div>
-            </div>
-
-            <div class="modal-footer bg-light border-0">
-                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="editEmployeeModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-
-            <form id="editEmployeeForm" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                <div class="modal-header bg-warning">
-                    <h5 class="modal-title">
-                        <i class="fas fa-edit me-2"></i>Edit Employee
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label>Name</label>
-                        <input class="form-control" id="editName" name="name">
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Department</label>
-                        <input class="form-control" id="editDepartment" name="department">
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Designation</label>
-                        <input class="form-control" id="editDesignation" name="designation">
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Manager</label>
-                        <input class="form-control" id="editManager" name="manager">
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Office</label>
-                        <input class="form-control" id="editOffice" name="office_location">
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Status</label>
-                        <select class="form-select" id="editStatus" name="account_status">
-                            <option>Onboarded</option>
-                            <option>Active</option>
-                            <option>Blocked</option>
-                            <option>Disabled</option>
-                            <option>Offboarded</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
-                    <button class="btn btn-success" type="submit">Save Changes</button>
-                </div>
-            </form>
-
-        </div>
-    </div>
-</div>
-
-<style>
-    #employeeTable thead th.sortable {
-        cursor: pointer;
-        user-select: none;
-        white-space: nowrap;
-    }
-
-    #employeeTable thead th.sortable:hover {
-        background-color: rgba(13, 110, 253, 0.06);
-    }
-
-    .sort-icon {
-        display: inline-block;
-        margin-left: 5px;
-        font-size: 12px;
-        color: #6c757d;
-    }
-
-    #employeeTable thead th.sort-active .sort-icon {
-        color: #0d6efd;
-        font-weight: 700;
-    }
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const table = document.getElementById('employeeTable');
-    if (!table) return;
-
-    const tbody = table.querySelector('tbody');
-    const headers = table.querySelectorAll('thead th.sortable');
-
-    function getCellValue(row, column) {
-        const cell = row.cells[column];
-        if (!cell) return '';
-        return (cell.getAttribute('data-sort-value') || cell.textContent || '').trim();
-    }
-
-    function compareValues(a, b, direction, column) {
-        if (column === 4) {
-            const numA = parseInt(a.replace(/[^0-9-]/g, ''), 10) || 0;
-            const numB = parseInt(b.replace(/[^0-9-]/g, ''), 10) || 0;
-            return (numA - numB) * direction;
-        }
-
-        return a.localeCompare(b, undefined, {
-            numeric: true,
-            sensitivity: 'base'
-        }) * direction;
-    }
-
-    headers.forEach(function (header) {
-        header.addEventListener('click', function () {
-            const column = parseInt(header.dataset.column, 10);
-            const currentDirection = header.dataset.direction === 'asc' ? 1 : -1;
-            const direction = currentDirection === 1 ? -1 : 1;
-
-            headers.forEach(function (h) {
-                h.removeAttribute('data-direction');
-                h.classList.remove('sort-active');
-
-                const icon = h.querySelector('.sort-icon');
-                if (icon) icon.textContent = '↕';
-            });
-
-            header.dataset.direction = direction === 1 ? 'asc' : 'desc';
-            header.classList.add('sort-active');
-
-            const icon = header.querySelector('.sort-icon');
-            if (icon) icon.textContent = direction === 1 ? '↑' : '↓';
-
-            const rows = Array.from(tbody.querySelectorAll('tr')).filter(function (row) {
-                return row.cells.length > 1;
-            });
-
-            rows.sort(function (rowA, rowB) {
-                const a = getCellValue(rowA, column);
-                const b = getCellValue(rowB, column);
-                return compareValues(a, b, direction, column);
-            });
-
-            rows.forEach(function (row) {
-                tbody.appendChild(row);
-            });
-        });
-    });
-});
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const table = document.getElementById('employeeTable');
-    if (!table) return;
-
-    const tbody = table.querySelector('tbody');
-    const headers = table.querySelectorAll('thead th.sortable');
-
-    /*
-     * AUTO APPLY EMPLOYEE FILTERS
-     * Automatically submits the filter form when
-     * Account Status or Department is changed.
-     */
-    const filterForm = document.querySelector(
-        'form[action="{{ url_for("employees.index") }}"]'
-    );
-
-    if (filterForm) {
-        const statusSelect = filterForm.querySelector(
-            'select[name="status"]'
-        );
-
-        const departmentSelect = filterForm.querySelector(
-            'select[name="department"]'
-        );
-
-        if (statusSelect) {
-            statusSelect.addEventListener('change', function () {
-                filterForm.submit();
-            });
-        }
-
-        if (departmentSelect) {
-            departmentSelect.addEventListener('change', function () {
-                filterForm.submit();
-            });
-        }
-    }
-
-    function getCellValue(row, column) {
-        const cell = row.cells[column];
-        if (!cell) return '';
-        return (cell.getAttribute('data-sort-value') || cell.textContent || '').trim();
-    }
-
-    function compareValues(a, b, direction, column) {
-        if (column === 4) {
-            const numA = parseInt(a.replace(/[^0-9-]/g, ''), 10) || 0;
-            const numB = parseInt(b.replace(/[^0-9-]/g, ''), 10) || 0;
-            return (numA - numB) * direction;
-        }
-
-        return a.localeCompare(b, undefined, {
-            numeric: true,
-            sensitivity: 'base'
-        }) * direction;
-    }
-
-    headers.forEach(function (header) {
-        header.addEventListener('click', function () {
-            const column = parseInt(header.dataset.column, 10);
-            const currentDirection = header.dataset.direction === 'asc' ? 1 : -1;
-            const direction = currentDirection === 1 ? -1 : 1;
-
-            headers.forEach(function (h) {
-                h.removeAttribute('data-direction');
-                h.classList.remove('sort-active');
-
-                const icon = h.querySelector('.sort-icon');
-                if (icon) icon.textContent = '↕';
-            });
-
-            header.dataset.direction = direction === 1 ? 'asc' : 'desc';
-            header.classList.add('sort-active');
-
-            const icon = header.querySelector('.sort-icon');
-            if (icon) icon.textContent = direction === 1 ? '↑' : '↓';
-
-            const rows = Array.from(tbody.querySelectorAll('tr')).filter(function (row) {
-                return row.cells.length > 1;
-            });
-
-            rows.sort(function (rowA, rowB) {
-                const a = getCellValue(rowA, column);
-                const b = getCellValue(rowB, column);
-                return compareValues(a, b, direction, column);
-            });
-
-            rows.forEach(function (row) {
-                tbody.appendChild(row);
-            });
-        });
-    });
-});
-</script>
-{% endblock %}
+from datetime import datetime
+
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    jsonify,
+    flash,
+    redirect,
+    url_for
+)
+
+from flask_login import login_required, current_user
+
+from app.extensions import db
+
+from app.models.employee import Employee, AccountStatus
+
+from app.models.asset import (
+    Asset,
+    AssetStatus,
+    AssetAssignmentHistory
+)
+
+from app.services.graph_service import MicrosoftGraphService
+from app.services.audit_service import AuditService
+
+
+employees_bp = Blueprint(
+    'employees',
+    __name__,
+    url_prefix='/employees'
+)
+
+
+# =========================================================
+# EMPLOYEE ID GENERATOR
+# =========================================================
+
+def generate_employee_id():
+    count = Employee.query.count() + 1001
+    return f"EMP-{count}"
+
+
+# =========================================================
+# EMPLOYEE INDEX
+# =========================================================
+
+@employees_bp.route('/')
+@login_required
+def index():
+
+    search_q = request.args.get('q', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    dept_filter = request.args.get('department', '').strip()
+    page = request.args.get('page', 1, type=int)
+
+    query = Employee.query
+
+    # -----------------------------------------------------
+    # Search
+    # -----------------------------------------------------
+
+    if search_q:
+        query = query.filter(
+            (Employee.name.ilike(f'%{search_q}%')) |
+            (Employee.employee_id.ilike(f'%{search_q}%')) |
+            (Employee.email.ilike(f'%{search_q}%')) |
+            (Employee.designation.ilike(f'%{search_q}%'))
+        )
+
+    # -----------------------------------------------------
+    # Status Filter
+    # -----------------------------------------------------
+
+    if status_filter:
+        query = query.filter_by(
+            account_status=status_filter
+        )
+
+    # -----------------------------------------------------
+    # Department Filter
+    # -----------------------------------------------------
+
+    if dept_filter:
+        query = query.filter_by(
+            department=dept_filter
+        )
+
+    # -----------------------------------------------------
+    # Pagination
+    # -----------------------------------------------------
+
+    pagination = (
+        query
+        .order_by(
+            Employee.created_at.desc(),
+            Employee.name.asc()
+        )
+        .paginate(
+            page=page,
+            per_page=10,
+            error_out=False
+        )
+    )
+
+    employees = pagination.items
+
+    # -----------------------------------------------------
+    # Department Dropdown
+    # -----------------------------------------------------
+
+    departments = [
+        d[0]
+        for d in db.session
+        .query(Employee.department)
+        .distinct()
+        .all()
+        if d[0]
+    ]
+
+    # -----------------------------------------------------
+    # Available Assets
+    # -----------------------------------------------------
+
+    available_assets = (
+        Asset.query
+        .filter_by(status=AssetStatus.AVAILABLE)
+        .order_by(Asset.brand.asc())
+        .all()
+    )
+
+    # -----------------------------------------------------
+    # Render
+    # -----------------------------------------------------
+
+    return render_template(
+        'employees/index.html',
+
+        employees=employees,
+
+        pagination=pagination,
+
+        search_q=search_q,
+
+        status_filter=status_filter,
+
+        dept_filter=dept_filter,
+
+        departments=departments,
+
+        available_assets=available_assets,
+
+        account_statuses=[
+            AccountStatus.ONBOARDED,
+            AccountStatus.ACTIVE,
+            AccountStatus.BLOCKED,
+            AccountStatus.DISABLED,
+            AccountStatus.OFFBOARDED
+        ]
+    )
+
+
+# =========================================================
+# DIRECT EMPLOYEE ONBOARDING
+# =========================================================
+
+@employees_bp.route('/onboard', methods=['POST'])
+@login_required
+def onboard_employee():
+
+    """Direct Employee Onboarding & Laptop Allocation"""
+
+    if not current_user.is_it_admin:
+
+        flash(
+            'Permission denied. Only IT Admins can onboard new employees.',
+            'danger'
+        )
+
+        return redirect(
+            url_for('employees.index')
+        )
+
+    # -----------------------------------------------------
+    # Form Data
+    # -----------------------------------------------------
+
+    name = request.form.get(
+        'name',
+        ''
+    ).strip()
+
+    email = request.form.get(
+        'email',
+        ''
+    ).strip()
+
+    emp_code = request.form.get(
+        'employee_id',
+        ''
+    ).strip()
+
+    department = request.form.get(
+        'department',
+        ''
+    ).strip()
+
+    designation = request.form.get(
+        'designation',
+        ''
+    ).strip()
+
+    office_location = request.form.get(
+        'office_location',
+        ''
+    ).strip()
+
+    manager = request.form.get(
+        'manager',
+        ''
+    ).strip()
+
+    status = request.form.get(
+        'status',
+        AccountStatus.ONBOARDED
+    )
+
+    asset_id = request.form.get(
+        'asset_id',
+        type=int
+    )
+
+    # -----------------------------------------------------
+    # Required Fields
+    # -----------------------------------------------------
+
+    if not name or not email:
+
+        flash(
+            'Employee Name and Email Address are required for onboarding.',
+            'danger'
+        )
+
+        return redirect(
+            url_for('employees.index')
+        )
+
+    # -----------------------------------------------------
+    # Uniqueness Check
+    # -----------------------------------------------------
+
+    existing = Employee.query.filter(
+        (Employee.email == email) |
+        (
+            Employee.employee_id == emp_code
+            if emp_code
+            else False
+        )
+    ).first()
+
+    if existing:
+
+        flash(
+            f'An employee with email "{email}" or ID '
+            f'"{emp_code}" already exists in the system.',
+            'danger'
+        )
+
+        return redirect(
+            url_for('employees.index')
+        )
+
+    # -----------------------------------------------------
+    # Generate Employee ID
+    # -----------------------------------------------------
+
+    if not emp_code:
+        emp_code = generate_employee_id()
+
+    # -----------------------------------------------------
+    # Status Dates For New Employee
+    # -----------------------------------------------------
+
+    disabled_date = None
+    offboarded_date = None
+
+    today = datetime.utcnow().date()
+
+    if status == AccountStatus.DISABLED:
+        disabled_date = today
+
+    elif status == AccountStatus.OFFBOARDED:
+        offboarded_date = today
+
+    # -----------------------------------------------------
+    # Create Employee
+    # -----------------------------------------------------
+
+    new_emp = Employee(
+        employee_id=emp_code,
+
+        name=name,
+
+        email=email,
+
+        department=department,
+
+        designation=designation,
+
+        office_location=office_location,
+
+        manager=manager,
+
+        account_status=status,
+
+        disabled_date=disabled_date,
+
+        offboarded_date=offboarded_date,
+
+        created_at=datetime.utcnow()
+    )
+
+    db.session.add(new_emp)
+
+    db.session.flush()
+
+    # -----------------------------------------------------
+    # Laptop Allocation
+    # -----------------------------------------------------
+
+    assigned_asset_msg = ""
+
+    if asset_id:
+
+        asset = Asset.query.get(asset_id)
+
+        if (
+            asset
+            and asset.status == AssetStatus.AVAILABLE
+        ):
+
+            asset.status = AssetStatus.ASSIGNED
+
+            asset.assigned_employee_id = new_emp.id
+
+            asset.assignment_date = datetime.utcnow()
+
+            # -------------------------------------------------
+            # Assignment History
+            # -------------------------------------------------
+
+            hist = AssetAssignmentHistory(
+                asset_id=asset.id,
+
+                employee_id=new_emp.id,
+
+                employee_name=new_emp.name,
+
+                action='Assigned Onboarding',
+
+                notes=(
+                    'Direct laptop assignment during employee '
+                    f'onboarding ({new_emp.employee_id})'
+                ),
+
+                performed_by=current_user.full_name
+            )
+
+            db.session.add(hist)
+
+            assigned_asset_msg = (
+                f" Assigned laptop {asset.asset_id} "
+                f"({asset.brand} {asset.model})."
+            )
+
+    # -----------------------------------------------------
+    # Save Employee
+    # -----------------------------------------------------
+
+    db.session.commit()
+
+    # -----------------------------------------------------
+    # Audit
+    # -----------------------------------------------------
+
+    AuditService.log(
+        action='Employee Onboarded',
+
+        entity_type='Employee',
+
+        entity_id=new_emp.employee_id,
+
+        details=(
+            f'Onboarded new employee {new_emp.name} '
+            f'({new_emp.department} - '
+            f'{new_emp.account_status}).'
+            f'{assigned_asset_msg}'
+        )
+    )
+
+    # -----------------------------------------------------
+    # Success Message
+    # -----------------------------------------------------
+
+    flash(
+        f'Employee {new_emp.name} '
+        f'({new_emp.employee_id}) onboarded successfully!'
+        f'{assigned_asset_msg}',
+        'success'
+    )
+
+    return redirect(
+        url_for('employees.index')
+    )
+
+
+# =========================================================
+# ENTRA ID SYNC
+# =========================================================
+
+@employees_bp.route('/sync', methods=['POST'])
+@login_required
+def sync_employees():
+
+    """Trigger manual Entra ID employee synchronization"""
+
+    res = MicrosoftGraphService.sync_entra_employees()
+
+    flash(
+        f"Entra ID Sync Complete! "
+        f"Synced {res['total']} employees. "
+        f"(Auto-Onboarded: {res.get('onboarded', 0)}, "
+        f"Updated: {res['updated']}, "
+        f"Auto-Offboarded: {res['offboarded']}, "
+        f"Laptops Returned: {res['returned_assets']})",
+        'success'
+    )
+
+    return redirect(
+        url_for('employees.index')
+    )
+
+
+# =========================================================
+# EMPLOYEE JSON / PROFILE
+# =========================================================
+
+@employees_bp.route('/<int:emp_id>/json')
+@login_required
+def get_employee_json(emp_id):
+
+    emp = Employee.query.get_or_404(emp_id)
+
+    assigned_assets = (
+        Asset.query
+        .filter_by(
+            assigned_employee_id=emp.id
+        )
+        .all()
+    )
+
+    assets_data = []
+
+    for a in assigned_assets:
+
+        assets_data.append({
+
+            'id': a.id,
+
+            'asset_id': a.asset_id,
+
+            'brand': a.brand,
+
+            'model': a.model,
+
+            'serial_number': a.serial_number,
+
+            'processor': a.processor,
+
+            'ram': a.ram,
+
+            'ssd': a.ssd,
+
+            'vendor_name': (
+                a.vendor.name
+                if a.vendor
+                else '-'
+            ),
+
+            'status': a.status,
+
+            'assignment_date': (
+                a.assignment_date.strftime('%Y-%m-%d')
+                if a.assignment_date
+                else '-'
+            )
+        })
+
+    # -----------------------------------------------------
+    # Employee JSON
+    # -----------------------------------------------------
+
+    return jsonify({
+
+        'id': emp.id,
+
+        'employee_id': emp.employee_id,
+
+        'name': emp.name,
+
+        'email': emp.email,
+
+        'department': (
+            emp.department
+            or '-'
+        ),
+
+        'designation': (
+            emp.designation
+            or '-'
+        ),
+
+        'manager': (
+            emp.manager
+            or '-'
+        ),
+
+        'office_location': (
+            emp.office_location
+            or '-'
+        ),
+
+        'account_status': emp.account_status,
+
+        # -------------------------------------------------
+        # NEW STATUS DATES
+        # -------------------------------------------------
+
+        'disabled_date': (
+            emp.disabled_date.strftime('%Y-%m-%d')
+            if emp.disabled_date
+            else None
+        ),
+
+        'offboarded_date': (
+            emp.offboarded_date.strftime('%Y-%m-%d')
+            if emp.offboarded_date
+            else None
+        ),
+
+        'assigned_assets': assets_data
+    })
+
+
+# =========================================================
+# EDIT EMPLOYEE
+# =========================================================
+
+@employees_bp.route('/<int:emp_id>/edit', methods=['POST'])
+@login_required
+def edit_employee(emp_id):
+
+    # -----------------------------------------------------
+    # Permission Check
+    # -----------------------------------------------------
+
+    if not current_user.is_it_admin:
+
+        return jsonify({
+            "success": False,
+            "message": "Permission denied"
+        }), 403
+
+    # -----------------------------------------------------
+    # Get Employee
+    # -----------------------------------------------------
+
+    emp = Employee.query.get_or_404(emp_id)
+
+    # -----------------------------------------------------
+    # Existing Status
+    # -----------------------------------------------------
+
+    old_status = emp.account_status
+
+    # -----------------------------------------------------
+    # Update Basic Employee Information
+    # -----------------------------------------------------
+
+    emp.name = request.form.get(
+        "name",
+        emp.name
+    ).strip()
+
+    emp.department = request.form.get(
+        "department",
+        emp.department
+    )
+
+    emp.designation = request.form.get(
+        "designation",
+        emp.designation
+    )
+
+    emp.manager = request.form.get(
+        "manager",
+        emp.manager
+    )
+
+    emp.office_location = request.form.get(
+        "office_location",
+        emp.office_location
+    )
+
+    # -----------------------------------------------------
+    # New Account Status
+    # -----------------------------------------------------
+
+    new_status = request.form.get(
+        "account_status",
+        emp.account_status
+    )
+
+    # -----------------------------------------------------
+    # Date Picker Values
+    # -----------------------------------------------------
+
+    disabled_date_value = request.form.get(
+        "disabled_date",
+        ""
+    ).strip()
+
+    offboarded_date_value = request.form.get(
+        "offboarded_date",
+        ""
+    ).strip()
+
+    # -----------------------------------------------------
+    # Disabled Date
+    # -----------------------------------------------------
+    #
+    # When Disabled is selected, the user must select a date
+    # from the date picker.
+    #
+    # Existing disabled_date is replaced with the date
+    # explicitly selected by the user.
+    # -----------------------------------------------------
+
+    if new_status == AccountStatus.DISABLED:
+
+        if not disabled_date_value:
+
+            return jsonify({
+                "success": False,
+                "message": "Please select the Disabled Date."
+            }), 400
+
+        try:
+
+            emp.disabled_date = datetime.strptime(
+                disabled_date_value,
+                "%Y-%m-%d"
+            ).date()
+
+        except ValueError:
+
+            return jsonify({
+                "success": False,
+                "message": "Invalid Disabled Date."
+            }), 400
+
+    # -----------------------------------------------------
+    # Offboarded Date
+    # -----------------------------------------------------
+    #
+    # When Offboarded is selected, the user must select a date
+    # from the date picker.
+    #
+    # Existing offboarded_date is replaced with the date
+    # explicitly selected by the user.
+    # -----------------------------------------------------
+
+    elif new_status == AccountStatus.OFFBOARDED:
+
+        if not offboarded_date_value:
+
+            return jsonify({
+                "success": False,
+                "message": "Please select the Offboarded Date."
+            }), 400
+
+        try:
+
+            emp.offboarded_date = datetime.strptime(
+                offboarded_date_value,
+                "%Y-%m-%d"
+            ).date()
+
+        except ValueError:
+
+            return jsonify({
+                "success": False,
+                "message": "Invalid Offboarded Date."
+            }), 400
+
+    # -----------------------------------------------------
+    # Update Status
+    # -----------------------------------------------------
+
+    emp.account_status = new_status
+
+    # -----------------------------------------------------
+    # Save Changes
+    # -----------------------------------------------------
+
+    try:
+
+        db.session.commit()
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        return jsonify({
+            "success": False,
+            "message": f"Failed to update employee: {str(e)}"
+        }), 500
+
+    # -----------------------------------------------------
+    # Audit Status Change
+    # -----------------------------------------------------
+
+    if old_status != new_status:
+
+        AuditService.log(
+            action='Employee Status Changed',
+
+            entity_type='Employee',
+
+            entity_id=emp.employee_id,
+
+            details=(
+                f'Employee {emp.name} '
+                f'({emp.employee_id}) status changed '
+                f'from {old_status} to {new_status}. '
+                f'Disabled Date: '
+                f'{emp.disabled_date.strftime("%Y-%m-%d") if emp.disabled_date else "-"}, '
+                f'Offboarded Date: '
+                f'{emp.offboarded_date.strftime("%Y-%m-%d") if emp.offboarded_date else "-"}'
+            )
+        )
+
+    # -----------------------------------------------------
+    # Response
+    # -----------------------------------------------------
+
+    return jsonify({
+        "success": True,
+        "message": "Employee updated successfully",
+
+        "account_status": emp.account_status,
+
+        "disabled_date": (
+            emp.disabled_date.strftime('%Y-%m-%d')
+            if emp.disabled_date
+            else None
+        ),
+
+        "offboarded_date": (
+            emp.offboarded_date.strftime('%Y-%m-%d')
+            if emp.offboarded_date
+            else None
+        )
+    })
