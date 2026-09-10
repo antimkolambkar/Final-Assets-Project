@@ -9,9 +9,11 @@ from app.services.audit_service import AuditService
 
 employees_bp = Blueprint('employees', __name__, url_prefix='/employees')
 
+
 def generate_employee_id():
     count = Employee.query.count() + 1001
     return f"EMP-{count}"
+
 
 @employees_bp.route('/')
 @login_required
@@ -31,7 +33,6 @@ def index():
             (Employee.designation.ilike(f'%{search_q}%'))
         )
 
-    # Support one or multiple employee statuses
     if status_filter:
         status_values = [
             s.strip()
@@ -85,12 +86,56 @@ def index():
             AccountStatus.OFFBOARDED
         ]
     )
+
+
+# ============================================================
+# LIVE EMPLOYEE AUTOCOMPLETE
+# ============================================================
+
+@employees_bp.route('/autocomplete')
+@login_required
+def employee_autocomplete():
+    """Live employee search for autocomplete dropdown."""
+
+    search_q = request.args.get('q', '').strip()
+
+    # Start searching after 2 characters
+    if len(search_q) < 2:
+        return jsonify([])
+
+    employees = Employee.query.filter(
+        (Employee.name.ilike(f'%{search_q}%')) |
+        (Employee.employee_id.ilike(f'%{search_q}%')) |
+        (Employee.email.ilike(f'%{search_q}%')) |
+        (Employee.designation.ilike(f'%{search_q}%'))
+    ).order_by(
+        Employee.name.asc()
+    ).limit(10).all()
+
+    return jsonify([
+        {
+            'id': emp.id,
+            'name': emp.name,
+            'employee_id': emp.employee_id,
+            'email': emp.email,
+            'department': emp.department or '',
+            'designation': emp.designation or '',
+            'account_status': emp.account_status
+        }
+        for emp in employees
+    ])
+
+
 @employees_bp.route('/onboard', methods=['POST'])
 @login_required
 def onboard_employee():
     """Direct Employee Onboarding & Laptop Allocation"""
+
     if not current_user.is_it_admin:
-        flash('Permission denied. Only IT Admins can onboard new employees.', 'danger')
+        flash(
+            'Permission denied. Only IT Admins can onboard new employees.',
+            'danger'
+        )
         return redirect(url_for('employees.index'))
 
     name = request.form.get('name', '').strip()
@@ -100,17 +145,30 @@ def onboard_employee():
     designation = request.form.get('designation', '').strip()
     office_location = request.form.get('office_location', '').strip()
     manager = request.form.get('manager', '').strip()
-    status = request.form.get('status', AccountStatus.ONBOARDED)
+    status = request.form.get(
+        'status',
+        AccountStatus.ONBOARDED
+    )
     asset_id = request.form.get('asset_id', type=int)
 
     if not name or not email:
-        flash('Employee Name and Email Address are required for onboarding.', 'danger')
+        flash(
+            'Employee Name and Email Address are required for onboarding.',
+            'danger'
+        )
         return redirect(url_for('employees.index'))
 
-    # Uniqueness check
-    existing = Employee.query.filter((Employee.email == email) | (Employee.employee_id == emp_code if emp_code else False)).first()
+    existing = Employee.query.filter(
+        (Employee.email == email) |
+        (Employee.employee_id == emp_code if emp_code else False)
+    ).first()
+
     if existing:
-        flash(f'An employee with email "{email}" or ID "{emp_code}" already exists in the system.', 'danger')
+        flash(
+            f'An employee with email "{email}" or ID "{emp_code}" '
+            f'already exists in the system.',
+            'danger'
+        )
         return redirect(url_for('employees.index'))
 
     if not emp_code:
@@ -127,12 +185,15 @@ def onboard_employee():
         account_status=status,
         created_at=datetime.utcnow()
     )
+
     db.session.add(new_emp)
     db.session.flush()
 
     assigned_asset_msg = ""
+
     if asset_id:
         asset = Asset.query.get(asset_id)
+
         if asset and asset.status == AssetStatus.AVAILABLE:
             asset.status = AssetStatus.ASSIGNED
             asset.assigned_employee_id = new_emp.id
@@ -143,11 +204,19 @@ def onboard_employee():
                 employee_id=new_emp.id,
                 employee_name=new_emp.name,
                 action='Assigned Onboarding',
-                notes=f'Direct laptop assignment during employee onboarding ({new_emp.employee_id})',
+                notes=(
+                    f'Direct laptop assignment during employee '
+                    f'onboarding ({new_emp.employee_id})'
+                ),
                 performed_by=current_user.full_name
             )
+
             db.session.add(hist)
-            assigned_asset_msg = f" Assigned laptop {asset.asset_id} ({asset.brand} {asset.model})."
+
+            assigned_asset_msg = (
+                f" Assigned laptop {asset.asset_id} "
+                f"({asset.brand} {asset.model})."
+            )
 
     db.session.commit()
 
@@ -155,10 +224,19 @@ def onboard_employee():
         action='Employee Onboarded',
         entity_type='Employee',
         entity_id=new_emp.employee_id,
-        details=f'Onboarded new employee {new_emp.name} ({new_emp.department} - {new_emp.account_status}).{assigned_asset_msg}'
+        details=(
+            f'Onboarded new employee {new_emp.name} '
+            f'({new_emp.department} - {new_emp.account_status}).'
+            f'{assigned_asset_msg}'
+        )
     )
 
-    flash(f'Employee {new_emp.name} ({new_emp.employee_id}) onboarded successfully!{assigned_asset_msg}', 'success')
+    flash(
+        f'Employee {new_emp.name} ({new_emp.employee_id}) '
+        f'onboarded successfully!{assigned_asset_msg}',
+        'success'
+    )
+
     return redirect(url_for('employees.index'))
 
 
@@ -166,13 +244,18 @@ def onboard_employee():
 @login_required
 def sync_employees():
     """Trigger manual Entra ID employee synchronization"""
+
     res = MicrosoftGraphService.sync_entra_employees()
+
     flash(
         f"Entra ID Sync Complete! Synced {res['total']} employees. "
-        f"(Auto-Onboarded: {res.get('onboarded', 0)}, Updated: {res['updated']}, "
-        f"Auto-Offboarded: {res['offboarded']}, Laptops Returned: {res['returned_assets']})",
+        f"(Auto-Onboarded: {res.get('onboarded', 0)}, "
+        f"Updated: {res['updated']}, "
+        f"Auto-Offboarded: {res['offboarded']}, "
+        f"Laptops Returned: {res['returned_assets']})",
         'success'
     )
+
     return redirect(url_for('employees.index'))
 
 
@@ -180,9 +263,13 @@ def sync_employees():
 @login_required
 def get_employee_json(emp_id):
     emp = Employee.query.get_or_404(emp_id)
-    assigned_assets = Asset.query.filter_by(assigned_employee_id=emp.id).all()
+
+    assigned_assets = Asset.query.filter_by(
+        assigned_employee_id=emp.id
+    ).all()
 
     assets_data = []
+
     for a in assigned_assets:
         assets_data.append({
             'id': a.id,
@@ -195,7 +282,11 @@ def get_employee_json(emp_id):
             'ssd': a.ssd,
             'vendor_name': a.vendor.name if a.vendor else '-',
             'status': a.status,
-            'assignment_date': a.assignment_date.strftime('%Y-%m-%d') if a.assignment_date else '-'
+            'assignment_date': (
+                a.assignment_date.strftime('%Y-%m-%d')
+                if a.assignment_date
+                else '-'
+            )
         })
 
     return jsonify({
@@ -211,6 +302,7 @@ def get_employee_json(emp_id):
         'assigned_assets': assets_data
     })
 
+
 @employees_bp.route('/<int:emp_id>/edit', methods=['POST'])
 @login_required
 def edit_employee(emp_id):
@@ -223,18 +315,34 @@ def edit_employee(emp_id):
     emp = Employee.query.get_or_404(emp_id)
 
     old_status = emp.account_status
-    new_status = request.form.get("account_status", emp.account_status)
+    new_status = request.form.get(
+        "account_status",
+        emp.account_status
+    )
 
     emp.name = request.form.get("name", emp.name)
-    emp.department = request.form.get("department", emp.department)
-    emp.designation = request.form.get("designation", emp.designation)
-    emp.manager = request.form.get("manager", emp.manager)
-    emp.office_location = request.form.get("office_location", emp.office_location)
+    emp.department = request.form.get(
+        "department",
+        emp.department
+    )
+    emp.designation = request.form.get(
+        "designation",
+        emp.designation
+    )
+    emp.manager = request.form.get(
+        "manager",
+        emp.manager
+    )
+    emp.office_location = request.form.get(
+        "office_location",
+        emp.office_location
+    )
     emp.account_status = new_status
 
-    # Auto return all assigned assets when employee is offboarded
-    if old_status != AccountStatus.OFFBOARDED and new_status == AccountStatus.OFFBOARDED:
-
+    if (
+        old_status != AccountStatus.OFFBOARDED
+        and new_status == AccountStatus.OFFBOARDED
+    ):
         assigned_assets = Asset.query.filter_by(
             assigned_employee_id=emp.id,
             status=AssetStatus.ASSIGNED
@@ -250,7 +358,10 @@ def edit_employee(emp_id):
                 employee_id=emp.id,
                 employee_name=emp.name,
                 action="Returned (Offboarding)",
-                notes=f"Automatically returned because {emp.name} was offboarded.",
+                notes=(
+                    f"Automatically returned because "
+                    f"{emp.name} was offboarded."
+                ),
                 performed_by=current_user.full_name
             )
 
@@ -262,7 +373,10 @@ def edit_employee(emp_id):
         action="Employee Updated",
         entity_type="Employee",
         entity_id=emp.employee_id,
-        details=f"Employee status changed from {old_status} to {new_status}"
+        details=(
+            f"Employee status changed from "
+            f"{old_status} to {new_status}"
+        )
     )
 
     return jsonify({
