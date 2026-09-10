@@ -103,7 +103,12 @@
                     <div class="global-search d-none d-md-block">
                         <i class="fas fa-search"></i>
                         <form action="{{ url_for('assets.index') }}" method="GET">
-                            <input type="text" name="q" class="form-control" placeholder="Global search assets, tickets, employees...">
+                            <input type="text"
+       name="q"
+       class="form-control employee-autocomplete"
+       data-autocomplete-url="{{ url_for('employees.employee_autocomplete') }}"
+       placeholder="Global search assets, tickets, employees..."
+       autocomplete="off">
                         </form>
                     </div>
                 </div>
