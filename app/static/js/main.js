@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function setTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('itam_theme', theme);
+
         if (themeIcon) {
             if (theme === 'dark') {
                 themeIcon.className = 'fas fa-sun text-warning';
@@ -29,251 +30,403 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 2. Initialize Bootstrap Tooltips & Toasts
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipTriggerList = [].slice.call(
+        document.querySelectorAll('[data-bs-toggle="tooltip"]')
+    );
+
     tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
-    var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    var toastElList = [].slice.call(
+        document.querySelectorAll('.toast')
+    );
+
     toastElList.map(function (toastEl) {
-        var toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+        var toast = new bootstrap.Toast(toastEl, {
+            delay: 5000
+        });
+
         toast.show();
     });
 
     // 3. Employee Detail Modal Handler
     const viewEmpButtons = document.querySelectorAll('.btn-view-employee');
+
     viewEmpButtons.forEach(btn => {
         btn.addEventListener('click', function() {
+
             const empId = this.getAttribute('data-emp-id');
+
             fetch(`/employees/${empId}/json`)
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById("editProfileBtn").dataset.empId = data.id;
-                    document.getElementById('modal-emp-name').textContent = data.name;
-                    document.getElementById('modal-emp-id').textContent = data.employee_id;
-                    document.getElementById('modal-emp-email').textContent = data.email;
-                    document.getElementById('modal-emp-dept').textContent = data.department;
-                    document.getElementById('modal-emp-desig').textContent = data.designation;
-                    document.getElementById('modal-emp-manager').textContent = data.manager;
-                    document.getElementById('modal-emp-office').textContent = data.office_location;
-                    
-                    const statusBadge = document.getElementById('modal-emp-status');
-                    statusBadge.textContent = data.account_status;
-                    statusBadge.className = `badge badge-status badge-${data.account_status.toLowerCase()}`;
 
-                    const assetsTableBody = document.getElementById("modal-emp-assets-body");
-assetsTableBody.innerHTML = "";
+                    const editProfileBtn =
+                        document.getElementById("editProfileBtn");
 
-if (data.assigned_assets.length === 0) {
+                    if (editProfileBtn) {
+                        editProfileBtn.dataset.empId = data.id;
+                    }
 
-    assetsTableBody.innerHTML = `
-        <div class="alert alert-secondary text-center">
-            No company assets assigned.
-        </div>
-    `;
+                    document.getElementById('modal-emp-name').textContent =
+                        data.name;
 
-} else {
+                    document.getElementById('modal-emp-id').textContent =
+                        data.employee_id;
 
-    data.assigned_assets.forEach(ast => {
+                    document.getElementById('modal-emp-email').textContent =
+                        data.email;
 
-        const row = `
-            <div class="card border shadow-sm mb-3">
+                    document.getElementById('modal-emp-dept').textContent =
+                        data.department;
 
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    document.getElementById('modal-emp-desig').textContent =
+                        data.designation;
 
-                    <strong>
-                        💻 ${ast.asset_type || "Laptop"}
-                    </strong>
+                    document.getElementById('modal-emp-manager').textContent =
+                        data.manager;
 
-                    <span class="badge bg-success">
-                        Assigned
-                    </span>
+                    document.getElementById('modal-emp-office').textContent =
+                        data.office_location;
 
-                </div>
+                    const statusBadge =
+                        document.getElementById('modal-emp-status');
 
-                <div class="card-body">
+                    statusBadge.textContent =
+                        data.account_status;
 
-                    <h5 class="fw-bold mb-3">
-                        ${ast.brand} ${ast.model}
-                    </h5>
+                    statusBadge.className =
+                        `badge badge-status badge-${data.account_status.toLowerCase()}`;
 
-                    <div class="row">
+                    const assetsTableBody =
+                        document.getElementById("modal-emp-assets-body");
 
-                        <div class="col-md-6 mb-2">
-                            <strong>Asset ID</strong><br>
-                            ${ast.asset_id}
-                        </div>
+                    assetsTableBody.innerHTML = "";
 
-                        <div class="col-md-6 mb-2">
-                            <strong>Serial Number</strong><br>
-                            ${ast.serial_number}
-                        </div>
+                    if (data.assigned_assets.length === 0) {
 
-                        <div class="col-md-6 mb-2">
-                            <strong>Processor</strong><br>
-                            ${ast.processor}
-                        </div>
+                        assetsTableBody.innerHTML = `
+                            <div class="alert alert-secondary text-center">
+                                No company assets assigned.
+                            </div>
+                        `;
 
-                        <div class="col-md-6 mb-2">
-                            <strong>RAM / SSD</strong><br>
-                            ${ast.ram} / ${ast.ssd}
-                        </div>
+                    } else {
 
-                        <div class="col-md-6 mb-2">
-                            <strong>Vendor</strong><br>
-                            ${ast.vendor_name}
-                        </div>
+                        data.assigned_assets.forEach(ast => {
 
-                        <div class="col-md-6 mb-2">
-                            <strong>Assigned Date</strong><br>
-                            ${ast.assignment_date}
-                        </div>
+                            const row = `
+                                <div class="card border shadow-sm mb-3">
 
-                    </div>
+                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
 
-                </div>
+                                        <strong>
+                                            💻 ${ast.asset_type || "Laptop"}
+                                        </strong>
 
-            </div>
-        `;
+                                        <span class="badge bg-success">
+                                            Assigned
+                                        </span>
 
-        assetsTableBody.innerHTML += row;
+                                    </div>
 
-    });
+                                    <div class="card-body">
 
-}
+                                        <h5 class="fw-bold mb-3">
+                                            ${ast.brand} ${ast.model}
+                                        </h5>
 
-const empModal = new bootstrap.Modal(
-    document.getElementById("employeeDetailModal")
-);
+                                        <div class="row">
 
-empModal.show();
+                                            <div class="col-md-6 mb-2">
+                                                <strong>Asset ID</strong><br>
+                                                ${ast.asset_id}
+                                            </div>
+
+                                            <div class="col-md-6 mb-2">
+                                                <strong>Serial Number</strong><br>
+                                                ${ast.serial_number}
+                                            </div>
+
+                                            <div class="col-md-6 mb-2">
+                                                <strong>Processor</strong><br>
+                                                ${ast.processor}
+                                            </div>
+
+                                            <div class="col-md-6 mb-2">
+                                                <strong>RAM / SSD</strong><br>
+                                                ${ast.ram} / ${ast.ssd}
+                                            </div>
+
+                                            <div class="col-md-6 mb-2">
+                                                <strong>Vendor</strong><br>
+                                                ${ast.vendor_name}
+                                            </div>
+
+                                            <div class="col-md-6 mb-2">
+                                                <strong>Assigned Date</strong><br>
+                                                ${ast.assignment_date}
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            `;
+
+                            assetsTableBody.innerHTML += row;
+
+                        });
+                    }
+
+                    const empModal = new bootstrap.Modal(
+                        document.getElementById("employeeDetailModal")
+                    );
+
+                    empModal.show();
+
                 })
-                .catch(err => console.error('Error fetching employee details:', err));
+                .catch(err =>
+                    console.error(
+                        'Error fetching employee details:',
+                        err
+                    )
+                );
         });
     });
 
     // 4. Asset History Modal Handler
-    const viewAssetHistButtons = document.querySelectorAll('.btn-view-asset-history');
+    const viewAssetHistButtons =
+        document.querySelectorAll('.btn-view-asset-history');
+
     viewAssetHistButtons.forEach(btn => {
+
         btn.addEventListener('click', function() {
-            const assetId = this.getAttribute('data-asset-id');
+
+            const assetId =
+                this.getAttribute('data-asset-id');
+
             fetch(`/assets/${assetId}/history`)
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById('modal-hist-asset-id').textContent = data.asset_id;
-                    document.getElementById('modal-hist-brand-model').textContent = data.brand_model;
-                    document.getElementById('modal-hist-serial').textContent = data.serial_number;
-                    document.getElementById('modal-hist-user').textContent = data.assigned_user;
 
-                    const histTableBody = document.getElementById('modal-asset-hist-body');
+                    document.getElementById(
+                        'modal-hist-asset-id'
+                    ).textContent = data.asset_id;
+
+                    document.getElementById(
+                        'modal-hist-brand-model'
+                    ).textContent = data.brand_model;
+
+                    document.getElementById(
+                        'modal-hist-serial'
+                    ).textContent = data.serial_number;
+
+                    document.getElementById(
+                        'modal-hist-user'
+                    ).textContent = data.assigned_user;
+
+                    const histTableBody =
+                        document.getElementById(
+                            'modal-asset-hist-body'
+                        );
+
                     histTableBody.innerHTML = '';
 
                     if (data.history.length === 0) {
-                        histTableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No history logs recorded for this asset yet.</td></tr>';
+
+                        histTableBody.innerHTML =
+                            '<tr><td colspan="6" class="text-center text-muted py-3">No history logs recorded for this asset yet.</td></tr>';
+
                     } else {
+
                         data.history.forEach(h => {
-                            let actionBadge = `<span class="badge bg-secondary">${h.action}</span>`;
-                            if (h.action === 'Assigned') actionBadge = `<span class="badge bg-primary">Assigned</span>`;
-                            if (h.action === 'Returned') actionBadge = `<span class="badge bg-success">Returned</span>`;
-                            if (h.action === 'Replaced') actionBadge = `<span class="badge bg-warning text-dark"><i class="fas fa-sync me-1"></i>Replaced</span>`;
 
-                            const oldNewInfo = (h.old_asset && h.new_asset) ? 
-                                `<small class="text-muted">Old: ${h.old_asset} &rarr; New: ${h.new_asset}</small>` : '';
+                            let actionBadge =
+                                `<span class="badge bg-secondary">${h.action}</span>`;
 
-                          const row = `
-    <tr>
-        <td><small class="text-muted">${h.timestamp}</small></td>
-        <td>${actionBadge}</td>
-        <td><strong>${h.employee_name}</strong></td>
-        <td>${h.notes} ${oldNewInfo}</td>
-        <td><small class="text-secondary">${h.performed_by}</small></td>
-    </tr>
-`;
+                            if (h.action === 'Assigned') {
+                                actionBadge =
+                                    `<span class="badge bg-primary">Assigned</span>`;
+                            }
 
-histTableBody.innerHTML += row;
+                            if (h.action === 'Returned') {
+                                actionBadge =
+                                    `<span class="badge bg-success">Returned</span>`;
+                            }
+
+                            if (h.action === 'Replaced') {
+                                actionBadge =
+                                    `<span class="badge bg-warning text-dark">
+                                        <i class="fas fa-sync me-1"></i>Replaced
+                                    </span>`;
+                            }
+
+                            const oldNewInfo =
+                                (h.old_asset && h.new_asset)
+                                    ? `<small class="text-muted">
+                                        Old: ${h.old_asset}
+                                        &rarr;
+                                        New: ${h.new_asset}
+                                       </small>`
+                                    : '';
+
+                            const row = `
+                                <tr>
+                                    <td>
+                                        <small class="text-muted">
+                                            ${h.timestamp}
+                                        </small>
+                                    </td>
+
+                                    <td>${actionBadge}</td>
+
+                                    <td>
+                                        <strong>
+                                            ${h.employee_name}
+                                        </strong>
+                                    </td>
+
+                                    <td>
+                                        ${h.notes}
+                                        ${oldNewInfo}
+                                    </td>
+
+                                    <td>
+                                        <small class="text-secondary">
+                                            ${h.performed_by}
+                                        </small>
+                                    </td>
+                                </tr>
+                            `;
+
+                            histTableBody.innerHTML += row;
+
                         });
                     }
 
-                    var histModal = new bootstrap.Modal(document.getElementById('assetHistoryModal'));
+                    var histModal = new bootstrap.Modal(
+                        document.getElementById(
+                            'assetHistoryModal'
+                        )
+                    );
+
                     histModal.show();
+
                 })
-                .catch(err => console.error('Error fetching asset history:', err));
+                .catch(err =>
+                    console.error(
+                        'Error fetching asset history:',
+                        err
+                    )
+                );
         });
     });
-    const editBtn = document.getElementById("editProfileBtn");
 
-if (editBtn) {
+    // 5. Edit Employee Handler
+    const editBtn =
+        document.getElementById("editProfileBtn");
 
-    editBtn.addEventListener("click", function () {
+    if (editBtn) {
 
-        const empId = this.dataset.empId;
+        editBtn.addEventListener("click", function() {
 
-        if (!empId) {
-            alert("Open an employee first.");
-            return;
-        }
+            const empId = this.dataset.empId;
 
-        fetch(`/employees/${empId}/json`)
-            .then(r => r.json())
-            .then(emp => {
+            if (!empId) {
+                alert("Open an employee first.");
+                return;
+            }
 
-                document.getElementById("editName").value = emp.name;
-                document.getElementById("editDepartment").value = emp.department;
-                document.getElementById("editDesignation").value = emp.designation;
-                document.getElementById("editManager").value = emp.manager;
-                document.getElementById("editOffice").value = emp.office_location;
-                document.getElementById("editStatus").value = emp.account_status;
+            fetch(`/employees/${empId}/json`)
+                .then(r => r.json())
+                .then(emp => {
 
-                document.getElementById("editEmployeeForm").action =
-                    `/employees/${empId}/edit`;
+                    document.getElementById("editName").value =
+                        emp.name;
 
-                new bootstrap.Modal(
-                    document.getElementById("editEmployeeModal")
-                ).show();
+                    document.getElementById("editDepartment").value =
+                        emp.department;
+
+                    document.getElementById("editDesignation").value =
+                        emp.designation;
+
+                    document.getElementById("editManager").value =
+                        emp.manager;
+
+                    document.getElementById("editOffice").value =
+                        emp.office_location;
+
+                    document.getElementById("editStatus").value =
+                        emp.account_status;
+
+                    document.getElementById(
+                        "editEmployeeForm"
+                    ).action =
+                        `/employees/${empId}/edit`;
+
+                    new bootstrap.Modal(
+                        document.getElementById(
+                            "editEmployeeModal"
+                        )
+                    ).show();
+
+                });
+
+        });
+    }
+
+    // 6. Save Employee Edit Form
+    const editForm =
+        document.getElementById("editEmployeeForm");
+
+    if (editForm) {
+
+        editForm.addEventListener("submit", function(e) {
+
+            e.preventDefault();
+
+            fetch(this.action, {
+                method: "POST",
+                body: new FormData(this)
+            })
+            .then(response => response.json())
+            .then(data => {
+
+                if (data.success) {
+
+                    alert(data.message);
+
+                    bootstrap.Modal.getInstance(
+                        document.getElementById(
+                            "editEmployeeModal"
+                        )
+                    ).hide();
+
+                    location.reload();
+
+                } else {
+
+                    alert(data.message);
+
+                }
+
+            })
+            .catch(error => {
+
+                console.error(error);
+
+                alert("Error updating employee.");
 
             });
 
-    });
-
-}
-  // =======================
-// Save Employee Edit Form
-// =======================
-const editForm = document.getElementById("editEmployeeForm");
-
-if (editForm) {
-    editForm.addEventListener("submit", function (e) {
-        e.preventDefault();
-
-        fetch(this.action, {
-            method: "POST",
-            body: new FormData(this)
-        })
-        .then(response => response.json())
-        .then(data => {
-
-            if (data.success) {
-
-                alert(data.message);
-
-                bootstrap.Modal.getInstance(
-                    document.getElementById("editEmployeeModal")
-                ).hide();
-
-                location.reload();
-
-            } else {
-                alert(data.message);
-            }
-
-        })
-        .catch(error => {
-            console.error(error);
-            alert("Error updating employee.");
         });
-    });
-}
+    }
 });
+
+
 // =========================================================
 // UNIVERSAL SEARCHABLE SELECT
 // =========================================================
@@ -284,45 +437,69 @@ function initializeSearchableSelects() {
         'select.searchable-select:not([data-searchable-initialized])'
     ).forEach(function(select) {
 
-        select.setAttribute('data-searchable-initialized', 'true');
+        select.setAttribute(
+            'data-searchable-initialized',
+            'true'
+        );
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'searchable-select-wrapper';
+        const wrapper =
+            document.createElement('div');
 
-        const inputGroup = document.createElement('div');
-        inputGroup.className = 'searchable-select-input-group';
+        wrapper.className =
+            'searchable-select-wrapper';
 
-        const icon = document.createElement('span');
-        icon.className = 'searchable-select-icon';
+        const inputGroup =
+            document.createElement('div');
+
+        inputGroup.className =
+            'searchable-select-input-group';
+
+        const icon =
+            document.createElement('span');
+
+        icon.className =
+            'searchable-select-icon';
 
         icon.innerHTML = `
             <i class="fas fa-search"></i>
         `;
 
-        const input = document.createElement('input');
+        const input =
+            document.createElement('input');
 
         input.type = 'text';
-        input.className = 'searchable-select-input';
-        input.autocomplete = 'off';
+
+        input.className =
+            'searchable-select-input';
+
+        input.autocomplete =
+            'off';
 
         input.placeholder =
             select.dataset.placeholder ||
             'Type to search...';
 
-        const arrow = document.createElement('span');
+        const arrow =
+            document.createElement('span');
 
-        arrow.className = 'searchable-select-arrow';
+        arrow.className =
+            'searchable-select-arrow';
 
         arrow.innerHTML = `
             <i class="fas fa-chevron-down"></i>
         `;
 
-        const results = document.createElement('div');
+        const results =
+            document.createElement('div');
 
-        results.className = 'searchable-select-results';
+        results.className =
+            'searchable-select-results';
 
         // Move original select into wrapper
-        select.parentNode.insertBefore(wrapper, select);
+        select.parentNode.insertBefore(
+            wrapper,
+            select
+        );
 
         wrapper.appendChild(select);
 
@@ -337,21 +514,26 @@ function initializeSearchableSelects() {
 
         wrapper.appendChild(results);
 
-        const options = Array.from(select.options);
+        const options =
+            Array.from(select.options);
 
         function renderOptions(searchText = '') {
 
             results.innerHTML = '';
 
-            const search = searchText
-                .trim()
-                .toLowerCase();
+            const search =
+                searchText
+                    .trim()
+                    .toLowerCase();
 
             let found = 0;
 
             options.forEach(function(option) {
 
-                if (!option.value && !option.textContent.trim()) {
+                if (
+                    !option.value &&
+                    !option.textContent.trim()
+                ) {
                     return;
                 }
 
@@ -469,6 +651,7 @@ function initializeSearchableSelects() {
             function() {
 
                 openResults();
+
             }
         );
 
@@ -484,6 +667,7 @@ function initializeSearchableSelects() {
                 );
 
                 openResults();
+
             }
         );
 
@@ -505,6 +689,7 @@ function initializeSearchableSelects() {
 
                     openResults();
                     input.focus();
+
                 }
             }
         );
@@ -548,11 +733,294 @@ function initializeSearchableSelects() {
         );
 
         renderOptions();
+
     });
 }
 
 
-// Escape HTML safely
+// =========================================================
+// LIVE EMPLOYEE AUTOCOMPLETE
+// =========================================================
+
+function initializeEmployeeAutocomplete() {
+
+    const inputs = document.querySelectorAll(
+        'input.employee-autocomplete:not([data-employee-autocomplete-initialized])'
+    );
+
+    inputs.forEach(function(input) {
+
+        input.setAttribute(
+            'data-employee-autocomplete-initialized',
+            'true'
+        );
+
+        const wrapper =
+            document.createElement('div');
+
+        wrapper.className =
+            'employee-autocomplete-wrapper';
+
+        input.parentNode.insertBefore(
+            wrapper,
+            input
+        );
+
+        wrapper.appendChild(input);
+
+        const results =
+            document.createElement('div');
+
+        results.className =
+            'employee-autocomplete-results';
+
+        wrapper.appendChild(results);
+
+        let debounceTimer = null;
+
+        function hideResults() {
+
+            results.classList.remove(
+                'show'
+            );
+
+            results.innerHTML = '';
+
+        }
+
+        function showResults(employees) {
+
+            results.innerHTML = '';
+
+            if (!employees.length) {
+
+                results.innerHTML = `
+                    <div class="employee-autocomplete-no-results">
+                        <i class="fas fa-user-slash me-2"></i>
+                        No employees found
+                    </div>
+                `;
+
+                results.classList.add(
+                    'show'
+                );
+
+                return;
+            }
+
+            employees.forEach(function(employee) {
+
+                const option =
+                    document.createElement('button');
+
+                option.type = 'button';
+
+                option.className =
+                    'employee-autocomplete-option';
+
+                option.innerHTML = `
+                    <div class="employee-autocomplete-icon">
+                        <i class="fas fa-user"></i>
+                    </div>
+
+                    <div class="employee-autocomplete-content">
+
+                        <div class="employee-autocomplete-name">
+                            ${escapeHtml(employee.name)}
+                        </div>
+
+                        <div class="employee-autocomplete-details">
+                            ${escapeHtml(employee.employee_id)}
+                            ${employee.email
+                                ? ' • ' + escapeHtml(employee.email)
+                                : ''}
+                        </div>
+
+                        ${
+                            employee.department
+                                ? `
+                                <div class="employee-autocomplete-department">
+                                    ${escapeHtml(employee.department)}
+                                    ${
+                                        employee.designation
+                                            ? ' • ' +
+                                              escapeHtml(employee.designation)
+                                            : ''
+                                    }
+                                </div>
+                                `
+                                : ''
+                        }
+
+                    </div>
+                `;
+
+                option.addEventListener(
+                    'click',
+                    function() {
+
+                        input.value =
+                            employee.name;
+
+                        hideResults();
+
+                        input.dispatchEvent(
+                            new Event(
+                                'change',
+                                {
+                                    bubbles: true
+                                }
+                            )
+                        );
+
+                    }
+                );
+
+                results.appendChild(
+                    option
+                );
+
+            });
+
+            results.classList.add(
+                'show'
+            );
+        }
+
+        async function searchEmployees(query) {
+
+            const url =
+                input.dataset.autocompleteUrl;
+
+            if (
+                !url ||
+                query.length < 2
+            ) {
+
+                hideResults();
+
+                return;
+            }
+
+            try {
+
+                const response =
+                    await fetch(
+                        `${url}?q=${encodeURIComponent(query)}`
+                    );
+
+                if (!response.ok) {
+
+                    hideResults();
+
+                    return;
+                }
+
+                const employees =
+                    await response.json();
+
+                showResults(
+                    employees
+                );
+
+            } catch (error) {
+
+                console.error(
+                    'Employee autocomplete error:',
+                    error
+                );
+
+                hideResults();
+
+            }
+        }
+
+        input.addEventListener(
+            'input',
+            function() {
+
+                const query =
+                    this.value.trim();
+
+                clearTimeout(
+                    debounceTimer
+                );
+
+                if (
+                    query.length < 2
+                ) {
+
+                    hideResults();
+
+                    return;
+                }
+
+                debounceTimer =
+                    setTimeout(
+                        function() {
+
+                            searchEmployees(
+                                query
+                            );
+
+                        },
+                        200
+                    );
+            }
+        );
+
+        input.addEventListener(
+            'focus',
+            function() {
+
+                const query =
+                    this.value.trim();
+
+                if (
+                    query.length >= 2
+                ) {
+
+                    searchEmployees(
+                        query
+                    );
+
+                }
+            }
+        );
+    });
+
+    // Close employee autocomplete when clicking outside
+    document.addEventListener(
+        'click',
+        function(event) {
+
+            if (
+                !event.target.closest(
+                    '.employee-autocomplete-wrapper'
+                )
+            ) {
+
+                document
+                    .querySelectorAll(
+                        '.employee-autocomplete-results.show'
+                    )
+                    .forEach(function(results) {
+
+                        results.classList.remove(
+                            'show'
+                        );
+
+                    });
+            }
+        }
+    );
+}
+
+
+// =========================================================
+// ESCAPE HTML SAFELY
+// =========================================================
+
 function escapeHtml(value) {
 
     const div =
@@ -565,5 +1033,10 @@ function escapeHtml(value) {
 }
 
 
-// Initialize
+// =========================================================
+// INITIALIZE
+// =========================================================
+
 initializeSearchableSelects();
+
+initializeEmployeeAutocomplete();
