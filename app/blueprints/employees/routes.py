@@ -491,16 +491,13 @@ def get_employee_json(emp_id):
 
     assigned_assets = (
         Asset.query
-        .filter_by(
-            assigned_employee_id=emp.id
-        )
+        .filter_by(assigned_employee_id=emp.id)
         .all()
     )
 
     assets_data = []
 
     for a in assigned_assets:
-
         assets_data.append({
             'id': a.id,
             'asset_id': a.asset_id,
@@ -523,10 +520,6 @@ def get_employee_json(emp_id):
             )
         })
 
-    # -----------------------------------------------------
-    # Employee JSON
-    # -----------------------------------------------------
-
     return jsonify({
         'id': emp.id,
         'employee_id': emp.employee_id,
@@ -537,10 +530,6 @@ def get_employee_json(emp_id):
         'manager': emp.manager or '-',
         'office_location': emp.office_location or '-',
         'account_status': emp.account_status,
-
-        # -------------------------------------------------
-        # STATUS DATES
-        # -------------------------------------------------
 
         'disabled_date': (
             emp.disabled_date.strftime('%Y-%m-%d')
@@ -571,7 +560,6 @@ def edit_employee(emp_id):
     # -----------------------------------------------------
 
     if not current_user.is_it_admin:
-
         return jsonify({
             "success": False,
             "message": "Permission denied"
@@ -582,10 +570,6 @@ def edit_employee(emp_id):
     # -----------------------------------------------------
 
     emp = Employee.query.get_or_404(emp_id)
-
-    # -----------------------------------------------------
-    # Existing Status
-    # -----------------------------------------------------
 
     old_status = emp.account_status
 
@@ -600,23 +584,23 @@ def edit_employee(emp_id):
 
     emp.department = request.form.get(
         "department",
-        emp.department or ""
-    ).strip()
+        emp.department
+    )
 
     emp.designation = request.form.get(
         "designation",
-        emp.designation or ""
-    ).strip()
+        emp.designation
+    )
 
     emp.manager = request.form.get(
         "manager",
-        emp.manager or ""
-    ).strip()
+        emp.manager
+    )
 
     emp.office_location = request.form.get(
         "office_location",
-        emp.office_location or ""
-    ).strip()
+        emp.office_location
+    )
 
     # -----------------------------------------------------
     # New Account Status
@@ -625,7 +609,7 @@ def edit_employee(emp_id):
     new_status = request.form.get(
         "account_status",
         emp.account_status
-    ).strip()
+    )
 
     # -----------------------------------------------------
     # Date Picker Values
@@ -642,72 +626,65 @@ def edit_employee(emp_id):
     ).strip()
 
     # -----------------------------------------------------
-    # DISABLED STATUS
+    # DISABLED
     # -----------------------------------------------------
 
     if new_status == AccountStatus.DISABLED:
 
         if not disabled_date_value:
-
             return jsonify({
                 "success": False,
                 "message": "Please select the Disabled Date."
             }), 400
 
         try:
-
             emp.disabled_date = datetime.strptime(
                 disabled_date_value,
                 "%Y-%m-%d"
             ).date()
 
         except ValueError:
-
             return jsonify({
                 "success": False,
                 "message": "Invalid Disabled Date."
             }), 400
 
-        # Clear the other status date
+        # Clear Offboarded date
         emp.offboarded_date = None
 
     # -----------------------------------------------------
-    # OFFBOARDED STATUS
+    # OFFBOARDED
     # -----------------------------------------------------
 
     elif new_status == AccountStatus.OFFBOARDED:
 
         if not offboarded_date_value:
-
             return jsonify({
                 "success": False,
                 "message": "Please select the Offboarded Date."
             }), 400
 
         try:
-
             emp.offboarded_date = datetime.strptime(
                 offboarded_date_value,
                 "%Y-%m-%d"
             ).date()
 
         except ValueError:
-
             return jsonify({
                 "success": False,
                 "message": "Invalid Offboarded Date."
             }), 400
 
-        # Clear the other status date
+        # Clear Disabled date
         emp.disabled_date = None
 
     # -----------------------------------------------------
-    # OTHER STATUSES
+    # OTHER STATUS
     # -----------------------------------------------------
 
     else:
 
-        # Onboarded / Active / Blocked
         emp.disabled_date = None
         emp.offboarded_date = None
 
@@ -735,22 +712,26 @@ def edit_employee(emp_id):
         }), 500
 
     # -----------------------------------------------------
+    # Prepare Dates For Audit
+    # -----------------------------------------------------
+
+    disabled_date_text = (
+        emp.disabled_date.strftime("%Y-%m-%d")
+        if emp.disabled_date
+        else "-"
+    )
+
+    offboarded_date_text = (
+        emp.offboarded_date.strftime("%Y-%m-%d")
+        if emp.offboarded_date
+        else "-"
+    )
+
+    # -----------------------------------------------------
     # Audit Status Change
     # -----------------------------------------------------
 
     if old_status != new_status:
-
-        disabled_date_text = (
-            emp.disabled_date.strftime("%Y-%m-%d")
-            if emp.disabled_date
-            else "-"
-        )
-
-        offboarded_date_text = (
-            emp.offboarded_date.strftime("%Y-%m-%d")
-            if emp.offboarded_date
-            else "-"
-        )
 
         AuditService.log(
             action='Employee Status Changed',
@@ -775,13 +756,13 @@ def edit_employee(emp_id):
         "account_status": emp.account_status,
 
         "disabled_date": (
-            emp.disabled_date.strftime("%Y-%m-%d")
+            emp.disabled_date.strftime('%Y-%m-%d')
             if emp.disabled_date
             else None
         ),
 
         "offboarded_date": (
-            emp.offboarded_date.strftime("%Y-%m-%d")
+            emp.offboarded_date.strftime('%Y-%m-%d')
             if emp.offboarded_date
             else None
         )
