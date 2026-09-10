@@ -125,10 +125,29 @@ def index():
 
     assets = pagination.items
 
-    # Latest repair completion date for each asset
+    # =====================================================
+    # REPAIR DATES
+    # =====================================================
+
+    repair_start_dates = {}
     repair_completion_dates = {}
+
     for asset in assets:
-        repair_history = AssetAssignmentHistory.query.filter_by(
+
+        # Latest repair start date
+        repair_start_history = AssetAssignmentHistory.query.filter_by(
+            asset_id=asset.id,
+            action='Sent to Repair'
+        ).order_by(
+            AssetAssignmentHistory.event_date.desc(),
+            AssetAssignmentHistory.timestamp.desc()
+        ).first()
+
+        if repair_start_history and repair_start_history.event_date:
+            repair_start_dates[asset.id] = repair_start_history.event_date
+
+        # Latest repair completion date
+        repair_completion_history = AssetAssignmentHistory.query.filter_by(
             asset_id=asset.id,
             action='Repair Completed'
         ).order_by(
@@ -136,8 +155,8 @@ def index():
             AssetAssignmentHistory.timestamp.desc()
         ).first()
 
-        if repair_history and repair_history.event_date:
-            repair_completion_dates[asset.id] = repair_history.event_date
+        if repair_completion_history and repair_completion_history.event_date:
+            repair_completion_dates[asset.id] = repair_completion_history.event_date
 
     vendors = Vendor.query.order_by(
         Vendor.name.asc()
@@ -172,6 +191,7 @@ def index():
         active_employees=active_employees,
         available_assets=available_assets,
         assigned_assets=assigned_assets,
+        repair_start_dates=repair_start_dates,
         repair_completion_dates=repair_completion_dates
     )
 
