@@ -321,14 +321,11 @@ def onboard_employee():
         emp_code = generate_employee_id()
 
     # -----------------------------------------------------
-    # Status Dates
+    # Status Dates For New Employee
     # -----------------------------------------------------
 
     disabled_date = None
     offboarded_date = None
-
-    # Keep onboarding behavior.
-    # Manual status changes use the date picker below.
 
     today = datetime.utcnow().date()
 
@@ -645,12 +642,10 @@ def edit_employee(emp_id):
     ).strip()
 
     # -----------------------------------------------------
-    # STATUS DATE LOGIC
+    # DISABLED STATUS
     # -----------------------------------------------------
 
     if new_status == AccountStatus.DISABLED:
-
-        # Disabled requires a manually selected date
 
         if not disabled_date_value:
 
@@ -673,12 +668,14 @@ def edit_employee(emp_id):
                 "message": "Invalid Disabled Date."
             }), 400
 
-        # Only one status date should exist
+        # Clear the other status date
         emp.offboarded_date = None
 
-    elif new_status == AccountStatus.OFFBOARDED:
+    # -----------------------------------------------------
+    # OFFBOARDED STATUS
+    # -----------------------------------------------------
 
-        # Offboarded requires a manually selected date
+    elif new_status == AccountStatus.OFFBOARDED:
 
         if not offboarded_date_value:
 
@@ -701,8 +698,12 @@ def edit_employee(emp_id):
                 "message": "Invalid Offboarded Date."
             }), 400
 
-        # Only one status date should exist
+        # Clear the other status date
         emp.disabled_date = None
+
+    # -----------------------------------------------------
+    # OTHER STATUSES
+    # -----------------------------------------------------
 
     else:
 
