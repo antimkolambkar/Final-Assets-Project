@@ -38,7 +38,6 @@
 
         {% endif %}
 
-
         <form
             action="{{ url_for('employees.sync_employees') }}"
             method="POST">
@@ -76,7 +75,6 @@
             method="GET"
             class="row g-2">
 
-            <!-- Search -->
             <div class="col-12 col-md-5">
 
                 <div class="input-group">
@@ -97,7 +95,6 @@
             </div>
 
 
-            <!-- Status -->
             <div class="col-6 col-md-3">
 
                 <select
@@ -125,7 +122,6 @@
             </div>
 
 
-            <!-- Department -->
             <div class="col-6 col-md-2">
 
                 <select
@@ -153,7 +149,6 @@
             </div>
 
 
-            <!-- Filter -->
             <div class="col-12 col-md-2 d-flex gap-2">
 
                 <button
@@ -243,7 +238,6 @@
 
                 <tr>
 
-                    <!-- Employee ID -->
                     <td>
                         <strong class="text-primary">
                             {{ emp.employee_id }}
@@ -251,7 +245,6 @@
                     </td>
 
 
-                    <!-- Employee Name -->
                     <td>
 
                         <div class="fw-bold">
@@ -270,7 +263,6 @@
                     </td>
 
 
-                    <!-- Department -->
                     <td>
 
                         <span class="badge bg-light text-dark border">
@@ -280,25 +272,20 @@
                     </td>
 
 
-                    <!-- Designation -->
                     <td>
                         {{ emp.designation or 'N/A' }}
                     </td>
 
 
-                    <!-- Assets -->
                     <td class="text-center">
 
                         <span class="badge bg-primary">
-
                             {{ emp.assigned_assets.count() }}
-
                         </span>
 
                     </td>
 
 
-                    <!-- Serial Numbers -->
                     <td>
 
                         {% if emp.assigned_assets %}
@@ -323,16 +310,15 @@
 
                         {% else %}
 
-                            <span class="text-muted">
-                                —
-                            </span>
+                        <span class="text-muted">
+                            —
+                        </span>
 
                         {% endif %}
 
                     </td>
 
 
-                    <!-- Office -->
                     <td>
 
                         <small class="text-muted">
@@ -346,7 +332,6 @@
                     </td>
 
 
-                    <!-- Status -->
                     <td>
 
                         <span
@@ -375,7 +360,6 @@
                     </td>
 
 
-                    <!-- Actions -->
                     <td class="text-end">
 
                         <button
@@ -392,7 +376,6 @@
                     </td>
 
                 </tr>
-
 
                 {% else %}
 
@@ -439,7 +422,6 @@
 
         <ul class="pagination pagination-sm mb-0">
 
-            <!-- Previous -->
             <li
                 class="page-item
                 {% if not pagination.has_prev %}disabled{% endif %}">
@@ -500,7 +482,6 @@
             {% endfor %}
 
 
-            <!-- Next -->
             <li
                 class="page-item
                 {% if not pagination.has_next %}disabled{% endif %}">
@@ -573,7 +554,6 @@
 
                 <div class="modal-body p-4">
 
-                    <!-- Name / Email -->
                     <div class="row g-3 mb-3">
 
                         <div class="col-md-6">
@@ -610,18 +590,15 @@
                     </div>
 
 
-                    <!-- Employee ID / Department -->
                     <div class="row g-3 mb-3">
 
                         <div class="col-md-6">
 
                             <label class="form-label fw-semibold">
-
                                 Employee ID
                                 <span class="text-muted">
                                     (Optional)
                                 </span>
-
                             </label>
 
                             <input
@@ -650,7 +627,6 @@
                     </div>
 
 
-                    <!-- Designation / Office -->
                     <div class="row g-3 mb-3">
 
                         <div class="col-md-6">
@@ -709,6 +685,7 @@
                                 Initial Account Status
                             </label>
 
+                            <!-- ALL 5 STATUSES -->
                             <select
                                 name="status"
                                 class="form-select"
@@ -717,13 +694,23 @@
                                 <option
                                     value="Onboarded"
                                     selected>
-
                                     Onboarded
-
                                 </option>
 
                                 <option value="Active">
                                     Active
+                                </option>
+
+                                <option value="Blocked">
+                                    Blocked
+                                </option>
+
+                                <option value="Disabled">
+                                    Disabled
+                                </option>
+
+                                <option value="Offboarded">
+                                    Offboarded
                                 </option>
 
                             </select>
@@ -839,7 +826,6 @@
             class="modal-content border-0 shadow-lg"
             style="border-radius:12px;">
 
-            <!-- Header -->
             <div
                 class="modal-header bg-dark text-white border-0 py-3">
 
@@ -882,10 +868,8 @@
             </div>
 
 
-            <!-- Body -->
             <div class="modal-body p-4">
 
-                <!-- Employee Summary -->
                 <div
                     class="row g-3 mb-4 p-3 bg-light rounded-3 border">
 
@@ -894,27 +878,19 @@
                         <h4
                             class="fw-bold text-dark mb-1"
                             id="modal-emp-name">
-
                             -
-
                         </h4>
-
 
                         <div
                             class="text-primary fw-bold mb-1"
                             id="modal-emp-id">
-
                             -
-
                         </div>
-
 
                         <div
                             class="small text-muted"
                             id="modal-emp-email">
-
                             -
-
                         </div>
 
                     </div>
@@ -927,9 +903,7 @@
                             <span
                                 id="modal-emp-status"
                                 class="badge bg-secondary">
-
                                 -
-
                             </span>
 
                         </div>
@@ -997,7 +971,6 @@
                 </div>
 
 
-                <!-- Assigned Assets -->
                 <h6 class="fw-bold text-dark mb-3">
 
                     <i class="fas fa-boxes text-primary me-2"></i>
@@ -1018,7 +991,6 @@
             </div>
 
 
-            <!-- Footer -->
             <div class="modal-footer bg-light border-0">
 
                 <button
@@ -1052,7 +1024,6 @@
 
         <div class="modal-content border-0 shadow-lg">
 
-            <!-- Header -->
             <div class="modal-header bg-warning">
 
                 <h5 class="modal-title fw-bold">
@@ -1073,7 +1044,6 @@
             </div>
 
 
-            <!-- Form -->
             <form
                 id="editEmployeeForm"
                 method="POST">
@@ -1086,7 +1056,6 @@
 
                 <div class="modal-body p-4">
 
-                    <!-- Error -->
                     <div
                         id="editEmployeeError"
                         class="alert alert-danger d-none"
@@ -1094,7 +1063,6 @@
                     </div>
 
 
-                    <!-- Success -->
                     <div
                         id="editEmployeeSuccess"
                         class="alert alert-success d-none"
@@ -1102,7 +1070,6 @@
                     </div>
 
 
-                    <!-- Employee ID / Email -->
                     <div class="row g-3 mb-3">
 
                         <div class="col-md-6">
@@ -1137,7 +1104,6 @@
                     </div>
 
 
-                    <!-- Name / Department -->
                     <div class="row g-3 mb-3">
 
                         <div class="col-md-6">
@@ -1145,9 +1111,7 @@
                             <label
                                 for="editName"
                                 class="form-label fw-semibold">
-
                                 Employee Name
-
                             </label>
 
                             <input
@@ -1165,9 +1129,7 @@
                             <label
                                 for="editDepartment"
                                 class="form-label fw-semibold">
-
                                 Department
-
                             </label>
 
                             <input
@@ -1181,7 +1143,6 @@
                     </div>
 
 
-                    <!-- Designation / Manager -->
                     <div class="row g-3 mb-3">
 
                         <div class="col-md-6">
@@ -1189,9 +1150,7 @@
                             <label
                                 for="editDesignation"
                                 class="form-label fw-semibold">
-
                                 Designation
-
                             </label>
 
                             <input
@@ -1208,9 +1167,7 @@
                             <label
                                 for="editManager"
                                 class="form-label fw-semibold">
-
                                 Reporting Manager
-
                             </label>
 
                             <input
@@ -1224,7 +1181,6 @@
                     </div>
 
 
-                    <!-- Office / Status -->
                     <div class="row g-3 mb-3">
 
                         <div class="col-md-6">
@@ -1232,9 +1188,7 @@
                             <label
                                 for="editOffice"
                                 class="form-label fw-semibold">
-
                                 Office Location
-
                             </label>
 
                             <input
@@ -1251,11 +1205,10 @@
                             <label
                                 for="editStatus"
                                 class="form-label fw-semibold">
-
                                 Account Status
-
                             </label>
 
+                            <!-- ALL 5 STATUSES -->
                             <select
                                 id="editStatus"
                                 name="account_status"
@@ -1361,7 +1314,6 @@
                 </div>
 
 
-                <!-- Footer -->
                 <div class="modal-footer bg-light">
 
                     <button
@@ -1403,10 +1355,6 @@
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    /* ========================================================
-       ELEMENTS
-    ======================================================== */
-
     const detailModalElement =
         document.getElementById('employeeDetailModal');
 
@@ -1444,28 +1392,16 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('editProfileBtn');
 
 
-    /* ========================================================
-       BOOTSTRAP MODALS
-    ======================================================== */
-
     const detailModal =
         detailModalElement
-            ? bootstrap.Modal.getOrCreateInstance(
-                detailModalElement
-            )
+            ? bootstrap.Modal.getOrCreateInstance(detailModalElement)
             : null;
 
     const editModal =
         editModalElement
-            ? bootstrap.Modal.getOrCreateInstance(
-                editModalElement
-            )
+            ? bootstrap.Modal.getOrCreateInstance(editModalElement)
             : null;
 
-
-    /* ========================================================
-       CURRENT EMPLOYEE
-    ======================================================== */
 
     let currentEmployeeId = null;
 
@@ -1494,14 +1430,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let status = cleanValue(value);
 
-        /*
-         * Handles possible Python Enum JSON values
-         */
         if (status.includes('.')) {
-
-            status =
-                status.split('.').pop();
-
+            status = status.split('.').pop();
         }
 
         return status;
@@ -1535,25 +1465,16 @@ document.addEventListener('DOMContentLoaded', function () {
             normalizeStatus(editStatus.value);
 
 
-        /*
-         * Hide both date fields first
-         */
         disabledDateContainer.classList.add('d-none');
 
         offboardedDateContainer.classList.add('d-none');
 
-
-        /*
-         * Remove required first
-         */
         disabledDate.required = false;
 
         offboardedDate.required = false;
 
 
-        /* ====================================================
-           DISABLED
-        ==================================================== */
+        /* DISABLED */
 
         if (status === 'Disabled') {
 
@@ -1561,19 +1482,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             disabledDate.required = true;
 
-
-            /*
-             * Disabled employee cannot have
-             * an offboarded date.
-             */
             offboardedDate.value = '';
 
         }
 
 
-        /* ====================================================
-           OFFBOARDED
-        ==================================================== */
+        /* OFFBOARDED */
 
         else if (status === 'Offboarded') {
 
@@ -1581,40 +1495,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             offboardedDate.required = true;
 
-
-            /*
-             * Offboarded employee cannot have
-             * a disabled date.
-             */
             disabledDate.value = '';
 
         }
 
 
-        /* ====================================================
-           ACTIVE / ONBOARDED / BLOCKED
-        ==================================================== */
+        /* ACTIVE / ONBOARDED / BLOCKED */
 
         else if (
             status === 'Active' ||
             status === 'Onboarded' ||
             status === 'Blocked'
         ) {
-
-            /*
-             * These statuses do not use dates.
-             */
-            disabledDate.value = '';
-
-            offboardedDate.value = '';
-
-        }
-
-
-        /*
-         * Fallback
-         */
-        else {
 
             disabledDate.value = '';
 
@@ -1624,10 +1516,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     }
 
-
-    /* ========================================================
-       STATUS CHANGE EVENT
-    ======================================================== */
 
     if (editStatus) {
 
@@ -1640,7 +1528,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     /* ========================================================
-       VIEW EMPLOYEE PROFILE
+       VIEW EMPLOYEE
     ======================================================== */
 
     document
@@ -1654,26 +1542,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     const empId =
                         this.dataset.empId;
 
-
-                    /*
-                     * Store employee ID
-                     */
-                    currentEmployeeId =
-                        empId;
+                    currentEmployeeId = empId;
 
 
-                    /*
-                     * Assets container
-                     */
                     const assetsBody =
                         document.getElementById(
                             'modal-emp-assets-body'
                         );
 
 
-                    /*
-                     * Loading
-                     */
                     assetsBody.innerHTML = `
 
                         <div class="text-center text-muted py-4">
@@ -1691,9 +1568,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     try {
 
-                        /*
-                         * Get employee JSON
-                         */
                         const response =
                             await fetch(
                                 `/employees/${empId}/json`,
@@ -1718,12 +1592,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         const data =
                             await response.json();
 
-
-                        /*
-                         * =================================================
-                         * BASIC DETAILS
-                         * =================================================
-                         */
 
                         document
                             .getElementById('modal-emp-name')
@@ -1767,12 +1635,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             cleanValue(data.office_location) || '-';
 
 
-                        /*
-                         * =================================================
-                         * STATUS
-                         * =================================================
-                         */
-
                         const status =
                             normalizeStatus(
                                 data.account_status
@@ -1787,7 +1649,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         statusElement.textContent =
                             status || '-';
-
 
                         statusElement.className =
                             'badge';
@@ -1844,12 +1705,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
 
 
-                        /*
-                         * =================================================
-                         * STATUS DATE
-                         * =================================================
-                         */
-
                         const statusDateInfo =
                             document.getElementById(
                                 'modal-status-date-info'
@@ -1898,12 +1753,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
 
 
-                        /*
-                         * =================================================
-                         * ASSETS
-                         * =================================================
-                         */
-
                         assetsBody.innerHTML = '';
 
 
@@ -1916,9 +1765,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 function (asset) {
 
                                     const card =
-                                        document.createElement(
-                                            'div'
-                                        );
+                                        document.createElement('div');
 
 
                                     card.className =
@@ -1963,9 +1810,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                                                 </small>
 
-
                                                 <br>
-
 
                                                 <small class="text-muted">
 
@@ -2063,9 +1908,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     `;
 
 
-                                    assetsBody.appendChild(
-                                        card
-                                    );
+                                    assetsBody.appendChild(card);
 
                                 }
                             );
@@ -2094,13 +1937,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
 
 
-                        /*
-                         * Show modal
-                         */
                         if (detailModal) {
-
                             detailModal.show();
-
                         }
 
                     }
@@ -2143,9 +1981,6 @@ document.addEventListener('DOMContentLoaded', function () {
             'click',
             async function () {
 
-                /*
-                 * Employee must be selected
-                 */
                 if (!currentEmployeeId) {
 
                     alert(
@@ -2157,9 +1992,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
 
-                /*
-                 * Reset messages
-                 */
                 errorBox.classList.add('d-none');
 
                 successBox.classList.add('d-none');
@@ -2171,9 +2003,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 try {
 
-                    /*
-                     * Fetch employee
-                     */
                     const response =
                         await fetch(
                             `/employees/${currentEmployeeId}/json`,
@@ -2198,12 +2027,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     const data =
                         await response.json();
 
-
-                    /*
-                     * =================================================
-                     * FILL FORM
-                     * =================================================
-                     */
 
                     document
                         .getElementById('editEmployeeId')
@@ -2262,16 +2085,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                     /*
-                     * Status
+                     * IMPORTANT:
+                     * Preserve the employee's current status.
                      */
                     editStatus.value =
                         normalizeStatus(
                             data.account_status
-                        ) || 'Active';
+                        );
 
 
                     /*
-                     * Dates
+                     * Existing Disabled / Offboarded dates
                      */
                     disabledDate.value =
                         cleanValue(
@@ -2285,39 +2109,23 @@ document.addEventListener('DOMContentLoaded', function () {
                         );
 
 
-                    /*
-                     * POST URL
-                     */
                     editForm.action =
                         `/employees/${currentEmployeeId}/edit`;
 
 
-                    /*
-                     * Update date visibility
-                     */
                     updateDateFields();
 
 
-                    /*
-                     * Hide profile modal
-                     */
                     if (detailModal) {
-
                         detailModal.hide();
-
                     }
 
 
-                    /*
-                     * Open edit modal
-                     */
                     setTimeout(
                         function () {
 
                             if (editModal) {
-
                                 editModal.show();
-
                             }
 
                         },
@@ -2357,15 +2165,9 @@ document.addEventListener('DOMContentLoaded', function () {
             'submit',
             async function (event) {
 
-                /*
-                 * Prevent normal form submission
-                 */
                 event.preventDefault();
 
 
-                /*
-                 * Reset messages
-                 */
                 errorBox.classList.add('d-none');
 
                 successBox.classList.add('d-none');
@@ -2375,28 +2177,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 successBox.textContent = '';
 
 
-                /*
-                 * Employee ID
-                 */
                 if (!currentEmployeeId) {
 
                     errorBox.textContent =
                         'Employee ID is missing.';
 
-                    errorBox.classList.remove(
-                        'd-none'
-                    );
+                    errorBox.classList.remove('d-none');
 
                     return;
 
                 }
 
-
-                /*
-                 * =================================================
-                 * VALIDATE NAME
-                 * =================================================
-                 */
 
                 const employeeName =
                     document
@@ -2410,20 +2201,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     errorBox.textContent =
                         'Employee Name is required.';
 
-                    errorBox.classList.remove(
-                        'd-none'
-                    );
+                    errorBox.classList.remove('d-none');
 
                     return;
 
                 }
 
-
-                /*
-                 * =================================================
-                 * VALIDATE STATUS
-                 * =================================================
-                 */
 
                 const selectedStatus =
                     normalizeStatus(
@@ -2432,9 +2215,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                 /*
-                 * =================================================
-                 * DISABLED DATE
-                 * =================================================
+                 * ACTIVE / ONBOARDED / BLOCKED
+                 *
+                 * No date required.
+                 */
+
+                if (
+                    selectedStatus === 'Active' ||
+                    selectedStatus === 'Onboarded' ||
+                    selectedStatus === 'Blocked'
+                ) {
+
+                    disabledDate.value = '';
+
+                    offboardedDate.value = '';
+
+                }
+
+
+                /*
+                 * DISABLED
                  */
 
                 if (
@@ -2445,9 +2245,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     errorBox.textContent =
                         'Please select the Disabled Date.';
 
-                    errorBox.classList.remove(
-                        'd-none'
-                    );
+                    errorBox.classList.remove('d-none');
 
                     disabledDate.focus();
 
@@ -2457,9 +2255,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                 /*
-                 * =================================================
-                 * OFFBOARDED DATE
-                 * =================================================
+                 * OFFBOARDED
                  */
 
                 if (
@@ -2470,9 +2266,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     errorBox.textContent =
                         'Please select the Offboarded Date.';
 
-                    errorBox.classList.remove(
-                        'd-none'
-                    );
+                    errorBox.classList.remove('d-none');
 
                     offboardedDate.focus();
 
@@ -2482,32 +2276,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                 /*
-                 * =================================================
-                 * ACTIVE / ONBOARDED / BLOCKED
-                 * =================================================
+                 * Make sure the selected status is valid.
                  */
 
+                const validStatuses = [
+                    'Onboarded',
+                    'Active',
+                    'Blocked',
+                    'Disabled',
+                    'Offboarded'
+                ];
+
+
                 if (
-                    selectedStatus === 'Active' ||
-                    selectedStatus === 'Onboarded' ||
-                    selectedStatus === 'Blocked'
+                    !validStatuses.includes(
+                        selectedStatus
+                    )
                 ) {
 
-                    /*
-                     * Make sure no date is submitted
-                     */
-                    disabledDate.value = '';
+                    errorBox.textContent =
+                        'Please select a valid account status.';
 
-                    offboardedDate.value = '';
+                    errorBox.classList.remove('d-none');
+
+                    return;
 
                 }
 
-
-                /*
-                 * =================================================
-                 * DISABLE BUTTON
-                 * =================================================
-                 */
 
                 saveButton.disabled = true;
 
@@ -2524,17 +2319,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 try {
 
-                    /*
-                     * FormData automatically includes
-                     * CSRF token and all form fields.
-                     */
                     const formData =
                         new FormData(editForm);
 
 
-                    /*
-                     * POST
-                     */
                     const response =
                         await fetch(
                             editForm.action ||
@@ -2549,9 +2337,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         );
 
 
-                    /*
-                     * Parse JSON
-                     */
                     let data;
 
 
@@ -2571,12 +2356,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
 
-                    /*
-                     * =================================================
-                     * ERROR
-                     * =================================================
-                     */
-
                     if (
                         !response.ok ||
                         !data.success
@@ -2590,12 +2369,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
 
-                    /*
-                     * =================================================
-                     * SUCCESS
-                     * =================================================
-                     */
-
                     successBox.textContent =
                         data.message ||
                         'Employee updated successfully.';
@@ -2606,9 +2379,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     );
 
 
-                    /*
-                     * Reload after successful save
-                     */
                     setTimeout(
                         function () {
 
@@ -2641,11 +2411,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 finally {
 
-                    /*
-                     * Restore button
-                     */
                     saveButton.disabled = false;
-
 
                     saveButton.innerHTML = `
 
@@ -2664,7 +2430,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     /* ========================================================
-       INITIAL DATE FIELD STATE
+       INITIAL DATE STATE
     ======================================================== */
 
     updateDateFields();
