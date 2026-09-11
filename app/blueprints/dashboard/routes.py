@@ -28,7 +28,7 @@ def index():
          ])
     ).count()
     blocked_employees = Employee.query.filter_by(account_status=AccountStatus.BLOCKED).count()
-    disabled_employees = Employee.query.filter_by(account_status=AccountStatus.DISABLED).count()
+    disabled_employees = 0
     offboarded_employees = Employee.query.filter_by(account_status=AccountStatus.OFFBOARDED).count()
 
     open_tickets = Ticket.query.filter(Ticket.status.in_([TicketStatus.OPEN])).count()
