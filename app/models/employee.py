@@ -24,8 +24,6 @@ from app.models.asset import (
 
 from app.services.graph_service import MicrosoftGraphService
 from app.services.audit_service import AuditService
-
-
 employees_bp = Blueprint(
     'employees',
     __name__,
