@@ -40,7 +40,6 @@ VALID_ACCOUNT_STATUSES = [
     AccountStatus.ONBOARDED,
     AccountStatus.ACTIVE,
     AccountStatus.BLOCKED,
-    AccountStatus.DISABLED,
     AccountStatus.OFFBOARDED
 ]
 
@@ -54,7 +53,6 @@ def status_date_field(status):
         AccountStatus.ONBOARDED: 'onboarded_date',
         AccountStatus.ACTIVE: 'active_date',
         AccountStatus.BLOCKED: 'blocked_date',
-        AccountStatus.DISABLED: 'disabled_date',
         AccountStatus.OFFBOARDED: 'offboarded_date'
     }
 
@@ -225,21 +223,21 @@ def index():
     # ?status=Active,Onboarded
     # -----------------------------------------------------
 
-   if status_filter:
-    statuses = [
-        status.strip()
-        for status in status_filter.split(',')
-        if status.strip()
-    ]
+    if status_filter:
+        statuses = [
+            status.strip()
+            for status in status_filter.split(',')
+            if status.strip()
+        ]
 
-    if len(statuses) == 1:
-        query = query.filter(
-            Employee.account_status == statuses[0]
-        )
-    elif statuses:
-        query = query.filter(
-            Employee.account_status.in_(statuses)
-        )
+        if len(statuses) == 1:
+            query = query.filter(
+                Employee.account_status == statuses[0]
+            )
+        elif statuses:
+            query = query.filter(
+                Employee.account_status.in_(statuses)
+            )
     # -----------------------------------------------------
     # Department Filter
     # -----------------------------------------------------
@@ -377,23 +375,14 @@ def onboard_employee():
         ''
     ).strip()
 
-    status = request.form.get(
-        'status',
-        AccountStatus.ONBOARDED
-    ).strip()
+    # Status is controlled by Microsoft Entra ID.
+    status = AccountStatus.ONBOARDED
 
     asset_id = request.form.get(
         'asset_id',
         type=int
     )
 
-    # -----------------------------------------------------
-    # Validate Status
-    # -----------------------------------------------------
-
-    if status not in VALID_ACCOUNT_STATUSES:
-
-        status = AccountStatus.ONBOARDED
 
     # -----------------------------------------------------
     # Required Fields
@@ -665,9 +654,6 @@ def get_employee_json(emp_id):
             emp.blocked_date
         ),
 
-        'disabled_date': date_to_string(
-            emp.disabled_date
-        ),
 
         'offboarded_date': date_to_string(
             emp.offboarded_date
@@ -709,7 +695,7 @@ def edit_employee(emp_id):
 
     emp = Employee.query.get_or_404(emp_id)
 
-    old_status = emp.account_status
+    returned_assets = []
 
     # -----------------------------------------------------
     # Basic Information
@@ -741,164 +727,13 @@ def edit_employee(emp_id):
     ).strip()
 
     # -----------------------------------------------------
-    # New Status
+    # STATUS / STATUS DATES
+    # -----------------------------------------------------
+    # Status and status dates are read-only in ITAM and are
+    # controlled exclusively by Microsoft Entra ID sync.
     # -----------------------------------------------------
 
-    new_status = request.form.get(
-        "account_status",
-        emp.account_status
-    ).strip()
-
-    if new_status not in VALID_ACCOUNT_STATUSES:
-
-        return jsonify({
-            "success": False,
-            "message": "Invalid account status."
-        }), 400
-
-    # -----------------------------------------------------
-    # Status Date Values
-    # -----------------------------------------------------
-
-    onboarded_date_value = request.form.get(
-        "onboarded_date",
-        ""
-    ).strip()
-
-    active_date_value = request.form.get(
-        "active_date",
-        ""
-    ).strip()
-
-    blocked_date_value = request.form.get(
-        "blocked_date",
-        ""
-    ).strip()
-
-    disabled_date_value = request.form.get(
-        "disabled_date",
-        ""
-    ).strip()
-
-    offboarded_date_value = request.form.get(
-        "offboarded_date",
-        ""
-    ).strip()
-
-    # -----------------------------------------------------
-    # Parse Supplied Date
-    # -----------------------------------------------------
-
-    date_values = {
-        AccountStatus.ONBOARDED: onboarded_date_value,
-        AccountStatus.ACTIVE: active_date_value,
-        AccountStatus.BLOCKED: blocked_date_value,
-        AccountStatus.DISABLED: disabled_date_value,
-        AccountStatus.OFFBOARDED: offboarded_date_value
-    }
-
-    selected_date_value = date_values.get(
-        new_status,
-        ''
-    )
-
-    # -----------------------------------------------------
-    # If Status Changed
-    # -----------------------------------------------------
-
-    if old_status != new_status:
-
-        set_status_date(
-            emp,
-            new_status,
-            selected_date_value
-        )
-
-    else:
-
-        # -------------------------------------------------
-        # Same Status - Update Date If Supplied
-        # -------------------------------------------------
-
-        field = status_date_field(new_status)
-
-        if field and selected_date_value:
-
-            parsed = parse_date(
-                selected_date_value
-            )
-
-            if not parsed:
-
-                return jsonify({
-                    "success": False,
-                    "message": f"Invalid {new_status} Date."
-                }), 400
-
-            setattr(
-                emp,
-                field,
-                parsed
-            )
-
-        elif field and not getattr(emp, field):
-
-            setattr(
-                emp,
-                field,
-                datetime.utcnow().date()
-            )
-
-    # -----------------------------------------------------
-    # Update Status
-    # -----------------------------------------------------
-
-    emp.account_status = new_status
-
-    # -----------------------------------------------------
-    # Automatic Laptop Return On Offboarding
-    # -----------------------------------------------------
-
-    returned_assets = []
-
-    if (
-        new_status == AccountStatus.OFFBOARDED
-        and old_status != AccountStatus.OFFBOARDED
-    ):
-
-        assigned_assets = (
-            Asset.query
-            .filter_by(
-                assigned_employee_id=emp.id
-            )
-            .all()
-        )
-
-        for asset in assigned_assets:
-
-            asset.status = AssetStatus.AVAILABLE
-
-            asset.assigned_employee_id = None
-
-            asset.assignment_date = None
-
-            returned_assets.append(
-                asset.asset_id
-            )
-
-            history = AssetAssignmentHistory(
-                asset_id=asset.id,
-                employee_id=emp.id,
-                employee_name=emp.name,
-                action='Returned On Offboarding',
-                notes=(
-                    f'Laptop automatically returned because '
-                    f'employee {emp.employee_id} was offboarded.'
-                ),
-                performed_by=current_user.full_name
-            )
-
-            db.session.add(history)
+    # Status changes and offboarding actions are handled by Entra sync.
 
     # -----------------------------------------------------
     # Save Changes
@@ -916,33 +751,6 @@ def edit_employee(emp_id):
             "success": False,
             "message": f"Failed to update employee: {str(e)}"
         }), 500
-
-    # -----------------------------------------------------
-    # Audit Status Change
-    # -----------------------------------------------------
-
-    if old_status != new_status:
-
-        AuditService.log(
-            action='Employee Status Changed',
-            entity_type='Employee',
-            entity_id=emp.employee_id,
-            details=(
-                f'Employee {emp.name} '
-                f'({emp.employee_id}) status changed '
-                f'from {old_status} to {new_status}. '
-                f'Onboarded Date: '
-                f'{date_to_string(emp.onboarded_date) or "-"}, '
-                f'Active Date: '
-                f'{date_to_string(emp.active_date) or "-"}, '
-                f'Blocked Date: '
-                f'{date_to_string(emp.blocked_date) or "-"}, '
-                f'Disabled Date: '
-                f'{date_to_string(emp.disabled_date) or "-"}, '
-                f'Offboarded Date: '
-                f'{date_to_string(emp.offboarded_date) or "-"}'
-            )
-        )
 
     # -----------------------------------------------------
     # Response
@@ -975,9 +783,6 @@ def edit_employee(emp_id):
             emp.blocked_date
         ),
 
-        "disabled_date": date_to_string(
-            emp.disabled_date
-        ),
 
         "offboarded_date": date_to_string(
             emp.offboarded_date
