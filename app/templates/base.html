@@ -154,7 +154,7 @@
                             <input type="text"
                                    name="q"
                                    class="form-control employee-autocomplete"
-                                   data-autocomplete-url="{{ url_for('employees.employee_autocomplete') }}"
+                                   data-autocomplete-url="{{ url_for('employees.get_employee_json', emp_id=0) }}"
                                    placeholder="Global search assets, tickets, employees..."
                                    autocomplete="off">
 
