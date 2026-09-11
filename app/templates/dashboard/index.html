@@ -132,23 +132,33 @@
 <div class="row g-3 mb-4">
 
 <!-- Active Employees -->
-<div class="col-6 col-md-3">
-    <a href="{{ url_for('employees.index', status='Active,Onboarded') }}"
-       class="text-decoration-none text-reset">
-        <div class="card-stat border-start border-4 border-success dashboard-clickable h-100">
-            <div class="stat-label">Active Employees</div>
+<a href="{{ url_for('employees.index', status='Active') }}"
+   class="text-decoration-none d-block"
+   style="cursor: pointer;">
+
+    <div class="stat-card border-success"
+         style="cursor: pointer;">
+
+        <div class="stat-content">
+
+            <div class="stat-label">
+                Active Employees
+            </div>
 
             <div class="stat-value text-success" id="card-active-emp">
                 {{ active_employees }}
             </div>
 
-            <div class="small text-muted">
-                <i class="fas fa-users me-1"></i>
+            <div class="stat-subtext">
+                <i class="fas fa-users me-2"></i>
                 Entra Directory
             </div>
+
         </div>
-    </a>
-</div>
+
+    </div>
+
+</a>
 
 <!-- Blocked / Disabled -->
 <div class="col-6 col-md-3">
