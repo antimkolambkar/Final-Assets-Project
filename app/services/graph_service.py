@@ -48,7 +48,6 @@ class MicrosoftGraphService:
             AccountStatus.ONBOARDED: 'onboarded_date',
             AccountStatus.ACTIVE: 'active_date',
             AccountStatus.BLOCKED: 'blocked_date',
-            AccountStatus.DISABLED: 'disabled_date',
             AccountStatus.OFFBOARDED: 'offboarded_date'
         }.get(status)
 
@@ -63,7 +62,6 @@ class MicrosoftGraphService:
             AccountStatus.ONBOARDED,
             AccountStatus.ACTIVE,
             AccountStatus.BLOCKED,
-            AccountStatus.DISABLED,
             AccountStatus.OFFBOARDED
         }:
             return False
@@ -277,7 +275,7 @@ class MicrosoftGraphService:
                 '?$select='
                 'id,employeeId,displayName,mail,'
                 'department,jobTitle,officeLocation,'
-                'accountEnabled'
+                'accountEnabled,employeeLeaveDateTime'
                 '&$top=999'
             )
 
@@ -324,19 +322,38 @@ class MicrosoftGraphService:
                         continue
 
                     # -------------------------------------------------
-                    # Graph currently exposes accountEnabled reliably.
+                    # Microsoft Entra -> ITAM status mapping
                     #
-                    # True  = Active
-                    # False = Disabled
+                    # Leave date reached -> Offboarded
+                    # accountEnabled=True -> Active
+                    # accountEnabled=False -> Blocked
                     #
-                    # Onboarded is used only for NEW users.
+                    # Graph accountEnabled does not distinguish separate
+                    # Blocked and Disabled values. This ITAM uses only
+                    # four statuses, so the non-enabled state is Blocked.
                     # -------------------------------------------------
-
-                    status = (
-                        AccountStatus.ACTIVE
-                        if user.get('accountEnabled')
-                        else AccountStatus.DISABLED
+                    leave_date_raw = user.get(
+                        'employeeLeaveDateTime'
                     )
+
+                    offboarded = False
+                    if leave_date_raw:
+                        try:
+                            leave_date = datetime.fromisoformat(
+                                leave_date_raw.replace('Z', '+00:00')
+                            ).date()
+                            offboarded = (
+                                leave_date <= datetime.utcnow().date()
+                            )
+                        except (TypeError, ValueError):
+                            offboarded = False
+
+                    if offboarded:
+                        status = AccountStatus.OFFBOARDED
+                    elif user.get('accountEnabled') is True:
+                        status = AccountStatus.ACTIVE
+                    else:
+                        status = AccountStatus.BLOCKED
 
                     entra_directory.append({
 
@@ -381,7 +398,8 @@ class MicrosoftGraphService:
                             or ''
                         ),
 
-                        'account_status': status
+                        'account_status': status,
+                        'employee_leave_date_time': leave_date_raw
                     })
 
                 # -------------------------------------------------
@@ -444,7 +462,6 @@ class MicrosoftGraphService:
         onboarded_count = 0
         active_count = 0
         blocked_count = 0
-        disabled_count = 0
         offboarded_count = 0
 
         returned_assets_count = 0
@@ -604,9 +621,6 @@ class MicrosoftGraphService:
                     elif microsoft_status == AccountStatus.BLOCKED:
                         blocked_count += 1
 
-                    elif microsoft_status == AccountStatus.DISABLED:
-                        disabled_count += 1
-
                     elif microsoft_status == AccountStatus.OFFBOARDED:
                         offboarded_count += 1
 
@@ -691,7 +705,6 @@ class MicrosoftGraphService:
                     f'Onboarded: {onboarded_count}, '
                     f'Active: {active_count}, '
                     f'Blocked: {blocked_count}, '
-                    f'Disabled: {disabled_count}, '
                     f'Offboarded: {offboarded_count}, '
                     f'Laptops Returned: '
                     f'{returned_assets_count}.'
@@ -718,7 +731,6 @@ class MicrosoftGraphService:
 
             'blocked': blocked_count,
 
-            'disabled': disabled_count,
 
             'offboarded': offboarded_count,
 
@@ -923,45 +935,6 @@ class MicrosoftGraphService:
             }
 
         # =================================================
-        # DISABLED
-        # =================================================
-
-        elif event_type == 'disabled':
-
-            if not emp:
-
-                return {
-                    'status': 'employee_not_found',
-                    'employee_id': employee_id
-                }
-
-            old_status = emp.account_status
-
-            changed = (
-                MicrosoftGraphService
-                ._apply_status(
-                    emp,
-                    AccountStatus.DISABLED
-                )
-            )
-
-            emp.last_synced_at = (
-                datetime.utcnow()
-            )
-
-            db.session.commit()
-
-            return {
-                'status': (
-                    'disabled'
-                    if changed
-                    else 'already_disabled'
-                ),
-                'employee_id': employee_id,
-                'old_status': old_status
-            }
-
-        # =================================================
         # OFFBOARDED
         # =================================================
 
@@ -1072,8 +1045,7 @@ class MicrosoftGraphService:
                     AccountStatus.ONBOARDED,
                     AccountStatus.ACTIVE,
                     AccountStatus.BLOCKED,
-                    AccountStatus.DISABLED,
-                    AccountStatus.OFFBOARDED
+                            AccountStatus.OFFBOARDED
                 }:
 
                     old_status = (
