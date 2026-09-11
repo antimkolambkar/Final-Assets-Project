@@ -289,6 +289,12 @@ def onboard_employee():
     # -----------------------------------------------------
     # Status Dates
     # -----------------------------------------------------
+    #
+    # Disabled and Offboarded keep their existing date
+    # functionality.
+    #
+    # Active / Onboarded / Blocked do NOT use dates.
+    # -----------------------------------------------------
 
     disabled_date = None
     offboarded_date = None
@@ -296,9 +302,11 @@ def onboard_employee():
     today = datetime.utcnow().date()
 
     if status == AccountStatus.DISABLED:
+
         disabled_date = today
 
     elif status == AccountStatus.OFFBOARDED:
+
         offboarded_date = today
 
     # -----------------------------------------------------
@@ -528,7 +536,7 @@ def get_employee_json(emp_id):
         'account_status': emp.account_status,
 
         # -------------------------------------------------
-        # Disabled Date
+        # Existing Disabled Date
         # -------------------------------------------------
 
         'disabled_date': (
@@ -538,7 +546,7 @@ def get_employee_json(emp_id):
         ),
 
         # -------------------------------------------------
-        # Offboarded Date
+        # Existing Offboarded Date
         # -------------------------------------------------
 
         'offboarded_date': (
@@ -621,7 +629,7 @@ def edit_employee(emp_id):
     )
 
     # -----------------------------------------------------
-    # Date Picker Values
+    # Existing Date Picker Values
     # -----------------------------------------------------
 
     disabled_date_value = request.form.get(
@@ -635,10 +643,29 @@ def edit_employee(emp_id):
     ).strip()
 
     # =====================================================
+    # ACTIVE / ONBOARDED / BLOCKED
+    # =====================================================
+    #
+    # These three statuses do not require any date.
+    #
+    # Existing laptop assignment is NOT changed here.
+    # =====================================================
+
+    if new_status in (
+        AccountStatus.ACTIVE,
+        AccountStatus.ONBOARDED,
+        AccountStatus.BLOCKED
+    ):
+
+        emp.disabled_date = None
+
+        emp.offboarded_date = None
+
+    # =====================================================
     # DISABLED
     # =====================================================
 
-    if new_status == AccountStatus.DISABLED:
+    elif new_status == AccountStatus.DISABLED:
 
         if not disabled_date_value:
 
@@ -662,6 +689,7 @@ def edit_employee(emp_id):
             }), 400
 
         # Clear Offboarded Date
+
         emp.offboarded_date = None
 
     # =====================================================
@@ -692,17 +720,19 @@ def edit_employee(emp_id):
             }), 400
 
         # Clear Disabled Date
+
         emp.disabled_date = None
 
     # =====================================================
-    # ACTIVE / ONBOARDED / BLOCKED
+    # INVALID STATUS
     # =====================================================
 
     else:
 
-        emp.disabled_date = None
-
-        emp.offboarded_date = None
+        return jsonify({
+            "success": False,
+            "message": "Invalid employee account status."
+        }), 400
 
     # -----------------------------------------------------
     # Update Status
