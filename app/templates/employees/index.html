@@ -8,6 +8,7 @@
      PAGE HEADER
 ========================================================= -->
 <div class="d-flex align-items-center justify-content-between mb-4">
+
     <div>
         <h3 class="fw-bold mb-1">
             <i class="fas fa-users-gear text-primary me-2"></i>
@@ -23,6 +24,7 @@
     <div class="d-flex gap-2">
 
         {% if current_user.is_it_admin %}
+
         <button
             type="button"
             class="btn btn-success rounded-pill px-4 shadow-sm fw-semibold"
@@ -33,7 +35,9 @@
             Onboard New Employee
 
         </button>
+
         {% endif %}
+
 
         <form
             action="{{ url_for('employees.sync_employees') }}"
@@ -56,6 +60,7 @@
         </form>
 
     </div>
+
 </div>
 
 
@@ -254,9 +259,12 @@
                         </div>
 
                         <small class="text-muted d-block">
+
                             <i class="fas fa-user-tie me-1"></i>
+
                             Manager:
                             {{ emp.manager or 'N/A' }}
+
                         </small>
 
                     </td>
@@ -305,6 +313,12 @@
 
                             </div>
 
+                            {% else %}
+
+                            <span class="text-muted">
+                                —
+                            </span>
+
                             {% endfor %}
 
                         {% else %}
@@ -340,9 +354,13 @@
 
                             <i class="fas
                                 {% if emp.account_status == 'Onboarded' %}
-                                    fa-user-check text-info
+                                    fa-user-check
                                 {% elif emp.account_status == 'Active' %}
                                     fa-circle-check
+                                {% elif emp.account_status == 'Blocked' %}
+                                    fa-user-lock
+                                {% elif emp.account_status == 'Disabled' %}
+                                    fa-user-slash
                                 {% elif emp.account_status == 'Offboarded' %}
                                     fa-user-xmark
                                 {% else %}
@@ -404,6 +422,7 @@
     <!-- =====================================================
          PAGINATION
     ====================================================== -->
+
     {% if pagination.pages > 1 %}
 
     <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
@@ -597,10 +616,12 @@
                         <div class="col-md-6">
 
                             <label class="form-label fw-semibold">
+
                                 Employee ID
                                 <span class="text-muted">
                                     (Optional)
                                 </span>
+
                             </label>
 
                             <input
@@ -723,6 +744,7 @@
                             <i class="fas fa-laptop text-primary me-2"></i>
 
                             Assign Available Laptop Immediately
+
                             <span class="text-muted">
                                 (Optional)
                             </span>
@@ -966,7 +988,7 @@
 
 
                         <div
-                            class="small text-muted"
+                            class="small text-muted mt-1"
                             id="modal-status-date-info">
                         </div>
 
@@ -988,9 +1010,7 @@
                 <div id="modal-emp-assets-body">
 
                     <div class="text-center text-muted py-4">
-
                         Loading...
-
                     </div>
 
                 </div>
@@ -1031,7 +1051,6 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
 
         <div class="modal-content border-0 shadow-lg">
-
 
             <!-- Header -->
             <div class="modal-header bg-warning">
@@ -1297,8 +1316,8 @@
 
                         <small class="text-muted">
 
-                            Select the date when the employee account
-                            was disabled.
+                            Required when account status is
+                            <strong>Disabled</strong>.
 
                         </small>
 
@@ -1332,7 +1351,8 @@
 
                         <small class="text-muted">
 
-                            Select the employee's official offboarding date.
+                            Required when account status is
+                            <strong>Offboarded</strong>.
 
                         </small>
 
@@ -1383,11 +1403,9 @@
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    /*
-     * ========================================================
-     * ELEMENTS
-     * ========================================================
-     */
+    /* ========================================================
+       ELEMENTS
+    ======================================================== */
 
     const detailModalElement =
         document.getElementById('employeeDetailModal');
@@ -1426,97 +1444,180 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('editProfileBtn');
 
 
-    /*
-     * ========================================================
-     * BOOTSTRAP MODALS
-     * ========================================================
-     */
+    /* ========================================================
+       BOOTSTRAP MODALS
+    ======================================================== */
 
     const detailModal =
         detailModalElement
-            ? new bootstrap.Modal(detailModalElement)
+            ? bootstrap.Modal.getOrCreateInstance(
+                detailModalElement
+            )
             : null;
 
     const editModal =
         editModalElement
-            ? new bootstrap.Modal(editModalElement)
+            ? bootstrap.Modal.getOrCreateInstance(
+                editModalElement
+            )
             : null;
 
 
-    /*
-     * ========================================================
-     * CURRENT EMPLOYEE
-     * ========================================================
-     */
+    /* ========================================================
+       CURRENT EMPLOYEE
+    ======================================================== */
 
     let currentEmployeeId = null;
 
 
-    /*
-     * ========================================================
-     * SHOW / HIDE DATE FIELDS
-     * ========================================================
-     */
+    /* ========================================================
+       HELPERS
+    ======================================================== */
+
+    function cleanValue(value) {
+
+        if (
+            value === null ||
+            value === undefined ||
+            value === '-' ||
+            value === 'None'
+        ) {
+            return '';
+        }
+
+        return String(value);
+
+    }
+
+
+    function normalizeStatus(value) {
+
+        let status = cleanValue(value);
+
+        /*
+         * Handles possible Python Enum JSON values
+         */
+        if (status.includes('.')) {
+
+            status =
+                status.split('.').pop();
+
+        }
+
+        return status;
+
+    }
+
+
+    function escapeHtml(value) {
+
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
+    }
+
+
+    /* ========================================================
+       DATE FIELD CONTROL
+    ======================================================== */
 
     function updateDateFields() {
 
-        const status = editStatus.value;
+        if (!editStatus) {
+            return;
+        }
+
+        const status =
+            normalizeStatus(editStatus.value);
 
 
         /*
-         * Hide both first
+         * Hide both date fields first
          */
         disabledDateContainer.classList.add('d-none');
+
         offboardedDateContainer.classList.add('d-none');
 
 
         /*
-         * Remove required
+         * Remove required first
          */
         disabledDate.required = false;
+
         offboardedDate.required = false;
 
 
-        /*
-         * Disabled
-         */
+        /* ====================================================
+           DISABLED
+        ==================================================== */
+
         if (status === 'Disabled') {
 
             disabledDateContainer.classList.remove('d-none');
 
             disabledDate.required = true;
 
+
             /*
-             * Clear opposite date
+             * Disabled employee cannot have
+             * an offboarded date.
              */
             offboardedDate.value = '';
 
         }
 
 
-        /*
-         * Offboarded
-         */
+        /* ====================================================
+           OFFBOARDED
+        ==================================================== */
+
         else if (status === 'Offboarded') {
 
             offboardedDateContainer.classList.remove('d-none');
 
             offboardedDate.required = true;
 
+
             /*
-             * Clear opposite date
+             * Offboarded employee cannot have
+             * a disabled date.
              */
             disabledDate.value = '';
 
         }
 
 
+        /* ====================================================
+           ACTIVE / ONBOARDED / BLOCKED
+        ==================================================== */
+
+        else if (
+            status === 'Active' ||
+            status === 'Onboarded' ||
+            status === 'Blocked'
+        ) {
+
+            /*
+             * These statuses do not use dates.
+             */
+            disabledDate.value = '';
+
+            offboardedDate.value = '';
+
+        }
+
+
         /*
-         * Active / Onboarded / Blocked
+         * Fallback
          */
         else {
 
             disabledDate.value = '';
+
             offboardedDate.value = '';
 
         }
@@ -1524,11 +1625,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    /*
-     * ========================================================
-     * STATUS CHANGE
-     * ========================================================
-     */
+    /* ========================================================
+       STATUS CHANGE EVENT
+    ======================================================== */
 
     if (editStatus) {
 
@@ -1540,11 +1639,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    /*
-     * ========================================================
-     * VIEW EMPLOYEE PROFILE
-     * ========================================================
-     */
+    /* ========================================================
+       VIEW EMPLOYEE PROFILE
+    ======================================================== */
 
     document
         .querySelectorAll('.btn-view-employee')
@@ -1561,22 +1658,29 @@ document.addEventListener('DOMContentLoaded', function () {
                     /*
                      * Store employee ID
                      */
-                    currentEmployeeId = empId;
+                    currentEmployeeId =
+                        empId;
 
 
                     /*
-                     * Reset assets
+                     * Assets container
                      */
                     const assetsBody =
                         document.getElementById(
                             'modal-emp-assets-body'
                         );
 
+
+                    /*
+                     * Loading
+                     */
                     assetsBody.innerHTML = `
 
                         <div class="text-center text-muted py-4">
 
-                            <span class="spinner-border spinner-border-sm me-2"></span>
+                            <span
+                                class="spinner-border spinner-border-sm me-2">
+                            </span>
 
                             Loading employee information...
 
@@ -1588,11 +1692,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     try {
 
                         /*
-                         * Get employee
+                         * Get employee JSON
                          */
                         const response =
                             await fetch(
-                                `/employees/${empId}/json`
+                                `/employees/${empId}/json`,
+                                {
+                                    method: 'GET',
+                                    headers: {
+                                        'Accept': 'application/json'
+                                    }
+                                }
                             );
 
 
@@ -1610,58 +1720,64 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                         /*
-                         * ================================================
+                         * =================================================
                          * BASIC DETAILS
-                         * ================================================
+                         * =================================================
                          */
 
                         document
                             .getElementById('modal-emp-name')
                             .textContent =
-                            data.name || '-';
+                            cleanValue(data.name) || '-';
 
 
                         document
                             .getElementById('modal-emp-id')
                             .textContent =
-                            data.employee_id || '-';
+                            cleanValue(data.employee_id) || '-';
 
 
                         document
                             .getElementById('modal-emp-email')
                             .textContent =
-                            data.email || '-';
+                            cleanValue(data.email) || '-';
 
 
                         document
                             .getElementById('modal-emp-dept')
                             .textContent =
-                            data.department || '-';
+                            cleanValue(data.department) || '-';
 
 
                         document
                             .getElementById('modal-emp-desig')
                             .textContent =
-                            data.designation || '-';
+                            cleanValue(data.designation) || '-';
 
 
                         document
                             .getElementById('modal-emp-manager')
                             .textContent =
-                            data.manager || '-';
+                            cleanValue(data.manager) || '-';
 
 
                         document
                             .getElementById('modal-emp-office')
                             .textContent =
-                            data.office_location || '-';
+                            cleanValue(data.office_location) || '-';
 
 
                         /*
-                         * ================================================
+                         * =================================================
                          * STATUS
-                         * ================================================
+                         * =================================================
                          */
+
+                        const status =
+                            normalizeStatus(
+                                data.account_status
+                            );
+
 
                         const statusElement =
                             document.getElementById(
@@ -1670,16 +1786,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                         statusElement.textContent =
-                            data.account_status || '-';
+                            status || '-';
 
 
                         statusElement.className =
                             'badge';
 
 
-                        if (
-                            data.account_status === 'Active'
-                        ) {
+                        if (status === 'Active') {
 
                             statusElement.classList.add(
                                 'bg-success'
@@ -1687,9 +1801,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         }
 
-                        else if (
-                            data.account_status === 'Onboarded'
-                        ) {
+                        else if (status === 'Onboarded') {
 
                             statusElement.classList.add(
                                 'bg-info',
@@ -1698,9 +1810,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         }
 
-                        else if (
-                            data.account_status === 'Blocked'
-                        ) {
+                        else if (status === 'Blocked') {
 
                             statusElement.classList.add(
                                 'bg-danger'
@@ -1708,9 +1818,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         }
 
-                        else if (
-                            data.account_status === 'Disabled'
-                        ) {
+                        else if (status === 'Disabled') {
 
                             statusElement.classList.add(
                                 'bg-warning',
@@ -1719,9 +1827,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                         }
 
-                        else if (
-                            data.account_status === 'Offboarded'
-                        ) {
+                        else if (status === 'Offboarded') {
 
                             statusElement.classList.add(
                                 'bg-dark'
@@ -1739,9 +1845,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                         /*
-                         * ================================================
+                         * =================================================
                          * STATUS DATE
-                         * ================================================
+                         * =================================================
                          */
 
                         const statusDateInfo =
@@ -1750,8 +1856,11 @@ document.addEventListener('DOMContentLoaded', function () {
                             );
 
 
+                        statusDateInfo.innerHTML = '';
+
+
                         if (
-                            data.account_status === 'Disabled' &&
+                            status === 'Disabled' &&
                             data.disabled_date
                         ) {
 
@@ -1761,14 +1870,16 @@ document.addEventListener('DOMContentLoaded', function () {
                                     Disabled Date:
                                 </strong>
 
-                                ${data.disabled_date}
+                                ${escapeHtml(
+                                    data.disabled_date
+                                )}
 
                             `;
 
                         }
 
                         else if (
-                            data.account_status === 'Offboarded' &&
+                            status === 'Offboarded' &&
                             data.offboarded_date
                         ) {
 
@@ -1778,23 +1889,19 @@ document.addEventListener('DOMContentLoaded', function () {
                                     Offboarded Date:
                                 </strong>
 
-                                ${data.offboarded_date}
+                                ${escapeHtml(
+                                    data.offboarded_date
+                                )}
 
                             `;
 
                         }
 
-                        else {
-
-                            statusDateInfo.innerHTML = '';
-
-                        }
-
 
                         /*
-                         * ================================================
+                         * =================================================
                          * ASSETS
-                         * ================================================
+                         * =================================================
                          */
 
                         assetsBody.innerHTML = '';
@@ -1820,16 +1927,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
                                     card.innerHTML = `
 
-                                        <div class="d-flex justify-content-between align-items-center">
+                                        <div
+                                            class="d-flex justify-content-between align-items-center">
 
                                             <div>
 
                                                 <div class="fw-bold">
 
-                                                    <i class="fas fa-laptop text-primary me-2"></i>
+                                                    <i
+                                                        class="fas fa-laptop text-primary me-2">
+                                                    </i>
 
-                                                    ${asset.brand || ''}
-                                                    ${asset.model || ''}
+                                                    ${escapeHtml(
+                                                        cleanValue(asset.brand)
+                                                    )}
+
+                                                    ${escapeHtml(
+                                                        cleanValue(asset.model)
+                                                    )}
 
                                                 </div>
 
@@ -1837,8 +1952,13 @@ document.addEventListener('DOMContentLoaded', function () {
                                                 <small class="text-muted">
 
                                                     Asset ID:
+
                                                     <strong>
-                                                        ${asset.asset_id || '-'}
+                                                        ${escapeHtml(
+                                                            cleanValue(
+                                                                asset.asset_id
+                                                            ) || '-'
+                                                        )}
                                                     </strong>
 
                                                 </small>
@@ -1850,8 +1970,13 @@ document.addEventListener('DOMContentLoaded', function () {
                                                 <small class="text-muted">
 
                                                     Serial Number:
+
                                                     <strong>
-                                                        ${asset.serial_number || '-'}
+                                                        ${escapeHtml(
+                                                            cleanValue(
+                                                                asset.serial_number
+                                                            ) || '-'
+                                                        )}
                                                     </strong>
 
                                                 </small>
@@ -1861,7 +1986,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                                             <span class="badge bg-primary">
 
-                                                ${asset.status || '-'}
+                                                ${escapeHtml(
+                                                    cleanValue(
+                                                        asset.status
+                                                    ) || '-'
+                                                )}
 
                                             </span>
 
@@ -1876,7 +2005,11 @@ document.addEventListener('DOMContentLoaded', function () {
                                                     Processor:
                                                 </strong>
 
-                                                ${asset.processor || '-'}
+                                                ${escapeHtml(
+                                                    cleanValue(
+                                                        asset.processor
+                                                    ) || '-'
+                                                )}
 
                                             </span>
 
@@ -1887,7 +2020,11 @@ document.addEventListener('DOMContentLoaded', function () {
                                                     RAM:
                                                 </strong>
 
-                                                ${asset.ram || '-'}
+                                                ${escapeHtml(
+                                                    cleanValue(
+                                                        asset.ram
+                                                    ) || '-'
+                                                )}
 
                                             </span>
 
@@ -1898,7 +2035,11 @@ document.addEventListener('DOMContentLoaded', function () {
                                                     SSD:
                                                 </strong>
 
-                                                ${asset.ssd || '-'}
+                                                ${escapeHtml(
+                                                    cleanValue(
+                                                        asset.ssd
+                                                    ) || '-'
+                                                )}
 
                                             </span>
 
@@ -1911,7 +2052,11 @@ document.addEventListener('DOMContentLoaded', function () {
                                                 Assignment Date:
                                             </strong>
 
-                                            ${asset.assignment_date || '-'}
+                                            ${escapeHtml(
+                                                cleanValue(
+                                                    asset.assignment_date
+                                                ) || '-'
+                                            )}
 
                                         </div>
 
@@ -1931,9 +2076,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
                             assetsBody.innerHTML = `
 
-                                <div class="text-center text-muted py-4">
+                                <div
+                                    class="text-center text-muted py-4">
 
-                                    <i class="fas fa-laptop-slash fa-2x mb-2"></i>
+                                    <i
+                                        class="fas fa-laptop-slash fa-2x mb-2">
+                                    </i>
 
                                     <div>
                                         No company assets currently assigned.
@@ -1947,11 +2095,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                         /*
-                         * ================================================
-                         * SHOW PROFILE
-                         * ================================================
+                         * Show modal
                          */
-
                         if (detailModal) {
 
                             detailModal.show();
@@ -1972,6 +2117,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                             <div class="alert alert-danger">
 
+                                <i class="fas fa-circle-exclamation me-2"></i>
+
                                 Unable to load employee profile.
 
                             </div>
@@ -1986,11 +2133,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
 
-    /*
-     * ========================================================
-     * EDIT PROFILE
-     * ========================================================
-     */
+    /* ========================================================
+       EDIT PROFILE
+    ======================================================== */
 
     if (editProfileBtn) {
 
@@ -1999,7 +2144,7 @@ document.addEventListener('DOMContentLoaded', function () {
             async function () {
 
                 /*
-                 * Check employee ID
+                 * Employee must be selected
                  */
                 if (!currentEmployeeId) {
 
@@ -2016,20 +2161,28 @@ document.addEventListener('DOMContentLoaded', function () {
                  * Reset messages
                  */
                 errorBox.classList.add('d-none');
+
                 successBox.classList.add('d-none');
 
                 errorBox.textContent = '';
+
                 successBox.textContent = '';
 
 
                 try {
 
                     /*
-                     * Get employee information
+                     * Fetch employee
                      */
                     const response =
                         await fetch(
-                            `/employees/${currentEmployeeId}/json`
+                            `/employees/${currentEmployeeId}/json`,
+                            {
+                                method: 'GET',
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
+                            }
                         );
 
 
@@ -2047,83 +2200,93 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                     /*
-                     * ================================================
+                     * =================================================
                      * FILL FORM
-                     * ================================================
+                     * =================================================
                      */
 
                     document
                         .getElementById('editEmployeeId')
                         .value =
-                        data.employee_id || '';
+                        cleanValue(
+                            data.employee_id
+                        );
 
 
                     document
                         .getElementById('editEmail')
                         .value =
-                        data.email || '';
+                        cleanValue(
+                            data.email
+                        );
 
 
                     document
                         .getElementById('editName')
                         .value =
-                        data.name || '';
+                        cleanValue(
+                            data.name
+                        );
 
 
                     document
                         .getElementById('editDepartment')
                         .value =
-                        data.department === '-'
-                            ? ''
-                            : (data.department || '');
+                        cleanValue(
+                            data.department
+                        );
 
 
                     document
                         .getElementById('editDesignation')
                         .value =
-                        data.designation === '-'
-                            ? ''
-                            : (data.designation || '');
+                        cleanValue(
+                            data.designation
+                        );
 
 
                     document
                         .getElementById('editManager')
                         .value =
-                        data.manager === '-'
-                            ? ''
-                            : (data.manager || '');
+                        cleanValue(
+                            data.manager
+                        );
 
 
                     document
                         .getElementById('editOffice')
                         .value =
-                        data.office_location === '-'
-                            ? ''
-                            : (data.office_location || '');
+                        cleanValue(
+                            data.office_location
+                        );
 
 
                     /*
                      * Status
                      */
-                    document
-                        .getElementById('editStatus')
-                        .value =
-                        data.account_status || 'Active';
+                    editStatus.value =
+                        normalizeStatus(
+                            data.account_status
+                        ) || 'Active';
 
 
                     /*
                      * Dates
                      */
                     disabledDate.value =
-                        data.disabled_date || '';
+                        cleanValue(
+                            data.disabled_date
+                        );
 
 
                     offboardedDate.value =
-                        data.offboarded_date || '';
+                        cleanValue(
+                            data.offboarded_date
+                        );
 
 
                     /*
-                     * Set POST URL
+                     * POST URL
                      */
                     editForm.action =
                         `/employees/${currentEmployeeId}/edit`;
@@ -2146,7 +2309,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                     /*
-                     * Open edit modal after profile closes
+                     * Open edit modal
                      */
                     setTimeout(
                         function () {
@@ -2184,11 +2347,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    /*
-     * ========================================================
-     * SAVE EMPLOYEE
-     * ========================================================
-     */
+    /* ========================================================
+       SAVE EMPLOYEE
+    ======================================================== */
 
     if (editForm) {
 
@@ -2197,23 +2358,25 @@ document.addEventListener('DOMContentLoaded', function () {
             async function (event) {
 
                 /*
-                 * Prevent normal browser submit
+                 * Prevent normal form submission
                  */
                 event.preventDefault();
 
 
                 /*
-                 * Hide messages
+                 * Reset messages
                  */
                 errorBox.classList.add('d-none');
+
                 successBox.classList.add('d-none');
 
                 errorBox.textContent = '';
+
                 successBox.textContent = '';
 
 
                 /*
-                 * Check employee ID
+                 * Employee ID
                  */
                 if (!currentEmployeeId) {
 
@@ -2230,9 +2393,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                 /*
-                 * ================================================
+                 * =================================================
                  * VALIDATE NAME
-                 * ================================================
+                 * =================================================
                  */
 
                 const employeeName =
@@ -2257,13 +2420,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                 /*
-                 * ================================================
-                 * VALIDATE DISABLED DATE
-                 * ================================================
+                 * =================================================
+                 * VALIDATE STATUS
+                 * =================================================
+                 */
+
+                const selectedStatus =
+                    normalizeStatus(
+                        editStatus.value
+                    );
+
+
+                /*
+                 * =================================================
+                 * DISABLED DATE
+                 * =================================================
                  */
 
                 if (
-                    editStatus.value === 'Disabled' &&
+                    selectedStatus === 'Disabled' &&
                     !disabledDate.value
                 ) {
 
@@ -2274,19 +2449,21 @@ document.addEventListener('DOMContentLoaded', function () {
                         'd-none'
                     );
 
+                    disabledDate.focus();
+
                     return;
 
                 }
 
 
                 /*
-                 * ================================================
-                 * VALIDATE OFFBOARDED DATE
-                 * ================================================
+                 * =================================================
+                 * OFFBOARDED DATE
+                 * =================================================
                  */
 
                 if (
-                    editStatus.value === 'Offboarded' &&
+                    selectedStatus === 'Offboarded' &&
                     !offboardedDate.value
                 ) {
 
@@ -2297,23 +2474,48 @@ document.addEventListener('DOMContentLoaded', function () {
                         'd-none'
                     );
 
+                    offboardedDate.focus();
+
                     return;
 
                 }
 
 
                 /*
-                 * ================================================
-                 * DISABLE SAVE BUTTON
-                 * ================================================
+                 * =================================================
+                 * ACTIVE / ONBOARDED / BLOCKED
+                 * =================================================
+                 */
+
+                if (
+                    selectedStatus === 'Active' ||
+                    selectedStatus === 'Onboarded' ||
+                    selectedStatus === 'Blocked'
+                ) {
+
+                    /*
+                     * Make sure no date is submitted
+                     */
+                    disabledDate.value = '';
+
+                    offboardedDate.value = '';
+
+                }
+
+
+                /*
+                 * =================================================
+                 * DISABLE BUTTON
+                 * =================================================
                  */
 
                 saveButton.disabled = true;
 
-
                 saveButton.innerHTML = `
 
-                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <span
+                        class="spinner-border spinner-border-sm me-2">
+                    </span>
 
                     Saving...
 
@@ -2323,29 +2525,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 try {
 
                     /*
-                     * Create FormData
+                     * FormData automatically includes
+                     * CSRF token and all form fields.
                      */
                     const formData =
                         new FormData(editForm);
 
 
                     /*
-                     * POST to Flask
+                     * POST
                      */
                     const response =
                         await fetch(
+                            editForm.action ||
                             `/employees/${currentEmployeeId}/edit`,
                             {
                                 method: 'POST',
-                                body: formData
+                                body: formData,
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
                             }
                         );
 
 
                     /*
-                     * Try JSON response
+                     * Parse JSON
                      */
-                    let data = null;
+                    let data;
 
 
                     try {
@@ -2365,9 +2572,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                     /*
-                     * ================================================
+                     * =================================================
                      * ERROR
-                     * ================================================
+                     * =================================================
                      */
 
                     if (
@@ -2384,9 +2591,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                     /*
-                     * ================================================
+                     * =================================================
                      * SUCCESS
-                     * ================================================
+                     * =================================================
                      */
 
                     successBox.textContent =
@@ -2400,7 +2607,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                     /*
-                     * Reload page
+                     * Reload after successful save
                      */
                     setTimeout(
                         function () {
@@ -2456,11 +2663,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 
-    /*
-     * ========================================================
-     * INITIAL STATE
-     * ========================================================
-     */
+    /* ========================================================
+       INITIAL DATE FIELD STATE
+    ======================================================== */
 
     updateDateFields();
 
