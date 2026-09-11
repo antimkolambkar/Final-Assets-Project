@@ -1,343 +1,1132 @@
 import os
 import io
 import random
+
 from datetime import datetime
+
 from flask import current_app
+
 from app.extensions import db
-from app.models.employee import Employee, AccountStatus
-from app.models.asset import Asset, AssetStatus, AssetAssignmentHistory
+
+from app.models.employee import (
+    Employee,
+    AccountStatus
+)
+
+from app.models.asset import (
+    Asset,
+    AssetStatus,
+    AssetAssignmentHistory
+)
+
 from app.services.audit_service import AuditService
 
 
 class MicrosoftGraphService:
     """
-    Microsoft Graph API Integration Service for Entra ID Employee Sync
-    and Outlook Ticketing Processing. Supports both Live API & Mock Engine.
+    Microsoft Graph API Integration Service.
 
-    Auto-Triggers:
-      - ONBOARDED: New employee detected in Entra ID → auto-creates employee record
-      - OFFBOARDED: Employee status changed → auto-returns all assigned laptops
+    Handles:
+
+    - Entra ID employee synchronization
+    - Automatic employee creation
+    - Automatic status synchronization
+    - Status date tracking
+    - Automatic laptop return on Offboarded
+    - Entra webhook events
+    - Outlook polling placeholder
     """
+
+    # =====================================================
+    # STATUS DATE HELPER
+    # =====================================================
+
+    @staticmethod
+    def _status_date_field(status):
+
+        return {
+            AccountStatus.ONBOARDED: 'onboarded_date',
+            AccountStatus.ACTIVE: 'active_date',
+            AccountStatus.BLOCKED: 'blocked_date',
+            AccountStatus.DISABLED: 'disabled_date',
+            AccountStatus.OFFBOARDED: 'offboarded_date'
+        }.get(status)
+
+    # =====================================================
+    # APPLY STATUS
+    # =====================================================
+
+    @staticmethod
+    def _apply_status(emp, new_status):
+
+        if new_status not in {
+            AccountStatus.ONBOARDED,
+            AccountStatus.ACTIVE,
+            AccountStatus.BLOCKED,
+            AccountStatus.DISABLED,
+            AccountStatus.OFFBOARDED
+        }:
+            return False
+
+        old_status = emp.account_status
+
+        # No status change
+        if old_status == new_status:
+            return False
+
+        emp.account_status = new_status
+
+        # -------------------------------------------------
+        # Set corresponding status date
+        # -------------------------------------------------
+
+        field = MicrosoftGraphService._status_date_field(
+            new_status
+        )
+
+        if field:
+
+            current_date = getattr(
+                emp,
+                field,
+                None
+            )
+
+            # Keep existing historical date.
+            # Only create date when status is entered
+            # for the first time.
+            if not current_date:
+
+                setattr(
+                    emp,
+                    field,
+                    datetime.utcnow().date()
+                )
+
+        return True
+
+    # =====================================================
+    # AUTO RETURN LAPTOPS
+    # =====================================================
+
+    @staticmethod
+    def _return_employee_assets(emp):
+
+        returned_assets_count = 0
+
+        assigned_laptops = (
+            Asset.query
+            .filter_by(
+                assigned_employee_id=emp.id
+            )
+            .all()
+        )
+
+        for laptop in assigned_laptops:
+
+            laptop.status = AssetStatus.AVAILABLE
+
+            laptop.assigned_employee_id = None
+
+            laptop.assignment_date = None
+
+            returned_assets_count += 1
+
+            history = AssetAssignmentHistory(
+                asset_id=laptop.id,
+                employee_id=emp.id,
+                employee_name=emp.name,
+                action='Returned (Auto Offboarded)',
+                notes=(
+                    'Automated laptop return triggered by '
+                    f'Microsoft Entra ID offboarding for '
+                    f'{emp.name} ({emp.employee_id}).'
+                ),
+                performed_by='Microsoft Entra Sync Engine'
+            )
+
+            db.session.add(history)
+
+            try:
+
+                AuditService.log(
+                    action='Asset Auto Returned',
+                    entity_type='Asset',
+                    entity_id=laptop.asset_id,
+                    details=(
+                        f'Asset {laptop.asset_id} automatically '
+                        f'returned because employee {emp.name} '
+                        f'({emp.employee_id}) was offboarded.'
+                    )
+                )
+
+            except Exception:
+
+                pass
+
+        return returned_assets_count
+
+    # =====================================================
+    # MAIN SYNC
+    # =====================================================
 
     @staticmethod
     def sync_entra_employees():
-        """
-        Synchronizes employee data from Microsoft Entra ID (Azure AD / M365 Admin Center).
-        Detects Active, Blocked, Disabled, Onboarded, and Offboarded status changes.
-        
-        Auto-Onboarding Trigger:
-          - New accounts detected in Entra ID → creates employee with status Onboarded
-        
-        Auto-Offboarding Trigger:
-          - Status changed to Offboarded → auto-returns all assigned laptops
-        """
-        mode = current_app.config.get('GRAPH_INTEGRATION_MODE', 'MOCK')
+
+        mode = current_app.config.get(
+            'GRAPH_INTEGRATION_MODE',
+            'MOCK'
+        )
 
         if mode == 'LIVE':
+
             return MicrosoftGraphService._sync_live_employees()
-        else:
-            return MicrosoftGraphService._sync_mock_employees()
+
+        return MicrosoftGraphService._sync_mock_employees()
+
+    # =====================================================
+    # LIVE GRAPH SYNC
+    # =====================================================
 
     @staticmethod
     def _sync_live_employees():
-        """
-        Live Microsoft Graph API sync using MSAL OAuth token.
-        Calls https://graph.microsoft.com/v1.0/users to pull Entra ID directory.
-        Falls back to mock if credentials are not fully configured.
-        """
+
         try:
+
             import msal
             import requests as http_requests
 
-            client_id = current_app.config.get('AZURE_CLIENT_ID', '')
-            client_secret = current_app.config.get('AZURE_CLIENT_SECRET', '')
-            tenant_id = current_app.config.get('AZURE_TENANT_ID', '')
+            client_id = current_app.config.get(
+                'AZURE_CLIENT_ID',
+                ''
+            )
 
-            if not all([client_id, client_secret, tenant_id]) or 'YOUR_' in client_id:
-                current_app.logger.warning("Azure credentials not configured. Falling back to MOCK mode.")
+            client_secret = current_app.config.get(
+                'AZURE_CLIENT_SECRET',
+                ''
+            )
+
+            tenant_id = current_app.config.get(
+                'AZURE_TENANT_ID',
+                ''
+            )
+
+            if not all([
+                client_id,
+                client_secret,
+                tenant_id
+            ]):
+
+                current_app.logger.warning(
+                    'Azure credentials not configured. '
+                    'Falling back to MOCK mode.'
+                )
+
                 return MicrosoftGraphService._sync_mock_employees()
 
-            authority = f"https://login.microsoftonline.com/{tenant_id}"
+            if 'YOUR_' in client_id:
+
+                current_app.logger.warning(
+                    'Placeholder Azure credentials detected. '
+                    'Falling back to MOCK mode.'
+                )
+
+                return MicrosoftGraphService._sync_mock_employees()
+
+            authority = (
+                f'https://login.microsoftonline.com/'
+                f'{tenant_id}'
+            )
+
             app_msal = msal.ConfidentialClientApplication(
-                client_id, authority=authority, client_credential=client_secret
+                client_id,
+                authority=authority,
+                client_credential=client_secret
             )
 
             token_response = app_msal.acquire_token_for_client(
-                scopes=["https://graph.microsoft.com/.default"]
+                scopes=[
+                    'https://graph.microsoft.com/.default'
+                ]
             )
 
             if 'access_token' not in token_response:
-                current_app.logger.error("MSAL token acquisition failed. Falling back to MOCK.")
+
+                current_app.logger.error(
+                    'Microsoft Graph token acquisition failed.'
+                )
+
                 return MicrosoftGraphService._sync_mock_employees()
 
-            access_token = token_response['access_token']
-            headers = {'Authorization': f'Bearer {access_token}'}
+            access_token = token_response[
+                'access_token'
+            ]
 
-            # Fetch all users from Entra ID with relevant fields
+            headers = {
+                'Authorization': (
+                    f'Bearer {access_token}'
+                )
+            }
+
+            # -------------------------------------------------
+            # First Graph request
+            # -------------------------------------------------
+
             url = (
-                "https://graph.microsoft.com/v1.0/users"
-                "?$select=id,employeeId,displayName,mail,department,jobTitle,"
-                "manager,officeLocation,accountEnabled"
-                "&$top=999"
+                'https://graph.microsoft.com/v1.0/users'
+                '?$select='
+                'id,employeeId,displayName,mail,'
+                'department,jobTitle,officeLocation,'
+                'accountEnabled'
+                '&$top=999'
             )
-            response = http_requests.get(url, headers=headers)
-            response.raise_for_status()
-            users_data = response.json().get('value', [])
 
-            # Map Graph API fields to our Employee model
             entra_directory = []
-            for u in users_data:
-                emp_id = u.get('employeeId') or f"ENTRA-{u['id'][:8].upper()}"
-                status = AccountStatus.ACTIVE if u.get('accountEnabled') else AccountStatus.DISABLED
-                entra_directory.append({
-                    'employee_id': emp_id,
-                    'name': u.get('displayName', ''),
-                    'email': u.get('mail', ''),
-                    'department': u.get('department', ''),
-                    'designation': u.get('jobTitle', ''),
-                    'manager': u.get('manager', {}).get('displayName', '') if isinstance(u.get('manager'), dict) else '',
-                    'office_location': u.get('officeLocation', ''),
-                    'account_status': status
-                })
 
-            return MicrosoftGraphService._process_directory(entra_directory)
+            # -------------------------------------------------
+            # Handle Graph pagination
+            # -------------------------------------------------
+
+            while url:
+
+                response = http_requests.get(
+                    url,
+                    headers=headers,
+                    timeout=30
+                )
+
+                response.raise_for_status()
+
+                payload = response.json()
+
+                users_data = payload.get(
+                    'value',
+                    []
+                )
+
+                for user in users_data:
+
+                    entra_object_id = user.get(
+                        'id'
+                    )
+
+                    emp_id = (
+                        user.get('employeeId')
+                        or (
+                            f'ENTRA-'
+                            f'{entra_object_id[:8].upper()}'
+                            if entra_object_id
+                            else ''
+                        )
+                    )
+
+                    if not emp_id:
+                        continue
+
+                    # -------------------------------------------------
+                    # Graph currently exposes accountEnabled reliably.
+                    #
+                    # True  = Active
+                    # False = Disabled
+                    #
+                    # Onboarded is used only for NEW users.
+                    # -------------------------------------------------
+
+                    status = (
+                        AccountStatus.ACTIVE
+                        if user.get('accountEnabled')
+                        else AccountStatus.DISABLED
+                    )
+
+                    entra_directory.append({
+
+                        'entra_id': entra_object_id,
+
+                        'employee_id': emp_id,
+
+                        'name': (
+                            user.get(
+                                'displayName'
+                            )
+                            or ''
+                        ),
+
+                        'email': (
+                            user.get(
+                                'mail'
+                            )
+                            or ''
+                        ),
+
+                        'department': (
+                            user.get(
+                                'department'
+                            )
+                            or ''
+                        ),
+
+                        'designation': (
+                            user.get(
+                                'jobTitle'
+                            )
+                            or ''
+                        ),
+
+                        'manager': '',
+
+                        'office_location': (
+                            user.get(
+                                'officeLocation'
+                            )
+                            or ''
+                        ),
+
+                        'account_status': status
+                    })
+
+                # -------------------------------------------------
+                # Microsoft Graph pagination
+                # -------------------------------------------------
+
+                url = payload.get(
+                    '@odata.nextLink'
+                )
+
+            return MicrosoftGraphService._process_directory(
+                entra_directory
+            )
 
         except ImportError:
-            current_app.logger.warning("MSAL not installed. Using MOCK mode.")
+
+            current_app.logger.warning(
+                'MSAL or requests is not installed. '
+                'Using MOCK mode.'
+            )
+
             return MicrosoftGraphService._sync_mock_employees()
+
         except Exception as e:
-            current_app.logger.error(f"Graph API sync error: {e}. Falling back to MOCK.")
+
+            current_app.logger.error(
+                f'Graph API sync error: {e}. '
+                f'Falling back to MOCK.'
+            )
+
             return MicrosoftGraphService._sync_mock_employees()
+
+    # =====================================================
+    # MOCK SYNC
+    # =====================================================
 
     @staticmethod
     def _sync_mock_employees():
-        """
-        Mock Graph API sync generator for non-live environment.
-        Returns empty directory by default to ensure zero sample data creation.
-        Configure live Microsoft Graph API credentials (AZURE_CLIENT_ID, etc.) for directory sync.
-        """
+
+        # IMPORTANT:
+        # Empty by default.
+        # This prevents fake/sample employees being created.
+
         mock_entra_directory = []
-        return MicrosoftGraphService._process_directory(mock_entra_directory)
+
+        return MicrosoftGraphService._process_directory(
+            mock_entra_directory
+        )
+
+    # =====================================================
+    # PROCESS DIRECTORY
+    # =====================================================
 
     @staticmethod
     def _process_directory(entra_directory):
-        """
-        Core directory processing engine.
-        Handles auto-onboarding (new Entra ID accounts → ONBOARDED status)
-        and auto-offboarding (status change → laptop return).
-        """
+
         created_count = 0
         updated_count = 0
+
         onboarded_count = 0
+        active_count = 0
+        blocked_count = 0
+        disabled_count = 0
         offboarded_count = 0
+
         returned_assets_count = 0
 
         for item in entra_directory:
-            emp = Employee.query.filter_by(employee_id=item['employee_id']).first()
-            
-            if not emp:
-                # ===========================
-                # AUTO-ONBOARDING TRIGGER
-                # New account detected in Entra ID → create with Onboarded status
-                # ===========================
-                emp = Employee(
-                    employee_id=item['employee_id'],
-                    name=item['name'],
-                    email=item['email'],
-                    department=item['department'],
-                    designation=item['designation'],
-                    manager=item['manager'],
-                    office_location=item['office_location'],
-                    # New Entra IDs start as Onboarded (awaiting laptop & IT setup)
-                    account_status=AccountStatus.ONBOARDED if item['account_status'] == AccountStatus.ACTIVE else item['account_status'],
-                    last_synced_at=datetime.utcnow()
+
+            emp = (
+                Employee.query
+                .filter_by(
+                    employee_id=item['employee_id']
                 )
+                .first()
+            )
+
+            # =================================================
+            # NEW EMPLOYEE
+            # =================================================
+
+            if not emp:
+
+                # -------------------------------------------------
+                # New Microsoft user starts as ONBOARDED.
+                # -------------------------------------------------
+
+                emp = Employee(
+
+                    employee_id=item[
+                        'employee_id'
+                    ],
+
+                    name=item[
+                        'name'
+                    ],
+
+                    email=item[
+                        'email'
+                    ],
+
+                    department=item[
+                        'department'
+                    ],
+
+                    designation=item[
+                        'designation'
+                    ],
+
+                    manager=item[
+                        'manager'
+                    ],
+
+                    office_location=item[
+                        'office_location'
+                    ],
+
+                    account_status=(
+                        AccountStatus.ONBOARDED
+                    ),
+
+                    onboarded_date=(
+                        datetime.utcnow().date()
+                    ),
+
+                    last_synced_at=(
+                        datetime.utcnow()
+                    )
+                )
+
                 db.session.add(emp)
+
                 db.session.flush()
+
                 created_count += 1
+
                 onboarded_count += 1
 
-                AuditService.log(
-                    action='Employee Auto-Onboarded (Entra ID)',
-                    entity_type='Employee',
-                    entity_id=emp.employee_id,
-                    details=f'New Entra ID account detected: {emp.name} ({emp.department}). Status set to Onboarded.'
-                )
+                try:
 
-            else:
-                prev_status = emp.account_status
-                emp.name = item['name']
-                emp.email = item['email']
-                emp.department = item['department']
-                emp.designation = item['designation']
-                emp.manager = item['manager']
-                emp.office_location = item['office_location']
-                emp.account_status = item['account_status']
-                emp.last_synced_at = datetime.utcnow()
-                updated_count += 1
-
-                # ===========================
-                # AUTO-OFFBOARDING TRIGGER
-                # Status changed → Offboarded → return all assigned laptops
-                # ===========================
-                if prev_status != AccountStatus.OFFBOARDED and item['account_status'] == AccountStatus.OFFBOARDED:
-                    offboarded_count += 1
                     AuditService.log(
-                        action='Employee Auto-Offboarded (Entra ID)',
+                        action=(
+                            'Employee Auto-Onboarded '
+                            '(Entra ID)'
+                        ),
                         entity_type='Employee',
                         entity_id=emp.employee_id,
-                        details=f'Entra ID status changed to Offboarded for {emp.name}. Triggering laptop auto-return.'
+                        details=(
+                            f'New Microsoft Entra user '
+                            f'{emp.name} '
+                            f'({emp.employee_id}) '
+                            f'created as Onboarded. '
+                            f'Onboarded Date: '
+                            f'{emp.onboarded_date}.'
+                        )
                     )
 
-            # ===========================
-            # AUTO-RETURN LAPTOPS on OFFBOARDED
-            # ===========================
-            if emp.account_status == AccountStatus.OFFBOARDED:
-                assigned_laptops = Asset.query.filter_by(assigned_employee_id=emp.id).all()
-                for laptop in assigned_laptops:
-                    laptop.status = AssetStatus.AVAILABLE
-                    laptop.assigned_employee_id = None
-                    laptop.assignment_date = None
-                    returned_assets_count += 1
+                except Exception:
 
-                    hist = AssetAssignmentHistory(
-                        asset_id=laptop.id,
-                        employee_id=emp.id,
-                        employee_name=emp.name,
-                        action='Returned (Auto Offboarded)',
-                        notes=f'Automated return triggered during Entra ID sync for offboarded employee {emp.name} ({emp.employee_id})',
-                        performed_by='Microsoft Entra Sync Engine'
+                    pass
+
+            # =================================================
+            # EXISTING EMPLOYEE
+            # =================================================
+
+            else:
+
+                old_status = emp.account_status
+
+                # -------------------------------------------------
+                # Update profile information
+                # -------------------------------------------------
+
+                emp.name = item['name']
+
+                emp.email = item['email']
+
+                emp.department = item['department']
+
+                emp.designation = item['designation']
+
+                emp.manager = item['manager']
+
+                emp.office_location = item[
+                    'office_location'
+                ]
+
+                emp.last_synced_at = (
+                    datetime.utcnow()
+                )
+
+                updated_count += 1
+
+                # -------------------------------------------------
+                # Determine Microsoft status
+                # -------------------------------------------------
+
+                microsoft_status = item[
+                    'account_status'
+                ]
+
+                status_changed = (
+                    old_status != microsoft_status
+                )
+
+                if status_changed:
+
+                    MicrosoftGraphService._apply_status(
+                        emp,
+                        microsoft_status
                     )
-                    db.session.add(hist)
-                    AuditService.log(
-                        action='Asset Auto Returned',
-                        entity_type='Asset',
-                        entity_id=laptop.asset_id,
-                        details=f'Asset {laptop.asset_id} auto-returned due to offboarding of {emp.name} ({emp.employee_id})'
-                    )
+
+                    # -------------------------------------------------
+                    # Count status change
+                    # -------------------------------------------------
+
+                    if microsoft_status == AccountStatus.ACTIVE:
+                        active_count += 1
+
+                    elif microsoft_status == AccountStatus.BLOCKED:
+                        blocked_count += 1
+
+                    elif microsoft_status == AccountStatus.DISABLED:
+                        disabled_count += 1
+
+                    elif microsoft_status == AccountStatus.OFFBOARDED:
+                        offboarded_count += 1
+
+                    elif microsoft_status == AccountStatus.ONBOARDED:
+                        onboarded_count += 1
+
+                    # -------------------------------------------------
+                    # Audit
+                    # -------------------------------------------------
+
+                    try:
+
+                        field = (
+                            MicrosoftGraphService
+                            ._status_date_field(
+                                microsoft_status
+                            )
+                        )
+
+                        status_date = getattr(
+                            emp,
+                            field,
+                            None
+                        )
+
+                        AuditService.log(
+                            action=(
+                                'Employee Status Changed '
+                                '(Entra ID)'
+                            ),
+                            entity_type='Employee',
+                            entity_id=emp.employee_id,
+                            details=(
+                                f'Employee {emp.name} '
+                                f'({emp.employee_id}) '
+                                f'status changed from '
+                                f'{old_status} to '
+                                f'{microsoft_status}. '
+                                f'Status Date: '
+                                f'{status_date}.'
+                            )
+                        )
+
+                    except Exception:
+
+                        pass
+
+            # =================================================
+            # AUTO RETURN ON OFFBOARDED
+            # =================================================
+
+            if (
+                emp.account_status
+                == AccountStatus.OFFBOARDED
+            ):
+
+                returned_assets_count += (
+                    MicrosoftGraphService
+                    ._return_employee_assets(emp)
+                )
+
+        # =====================================================
+        # COMMIT
+        # =====================================================
 
         db.session.commit()
 
-        AuditService.log(
-            action='Entra ID Sync Completed',
-            entity_type='EmployeeSync',
-            details=(
-                f'Synced {len(entra_directory)} records from Entra ID. '
-                f'Auto-Onboarded: {onboarded_count}, Updated: {updated_count}, '
-                f'Auto-Offboarded: {offboarded_count}, Laptops Returned: {returned_assets_count}'
+        # =====================================================
+        # FINAL AUDIT
+        # =====================================================
+
+        try:
+
+            AuditService.log(
+                action='Entra ID Sync Completed',
+                entity_type='EmployeeSync',
+                details=(
+                    f'Synced {len(entra_directory)} '
+                    f'Entra ID records. '
+                    f'Created: {created_count}, '
+                    f'Updated: {updated_count}, '
+                    f'Onboarded: {onboarded_count}, '
+                    f'Active: {active_count}, '
+                    f'Blocked: {blocked_count}, '
+                    f'Disabled: {disabled_count}, '
+                    f'Offboarded: {offboarded_count}, '
+                    f'Laptops Returned: '
+                    f'{returned_assets_count}.'
+                )
             )
-        )
+
+        except Exception:
+
+            pass
 
         return {
-            'total': len(entra_directory),
+
+            'total': len(
+                entra_directory
+            ),
+
             'created': created_count,
+
             'updated': updated_count,
+
             'onboarded': onboarded_count,
+
+            'active': active_count,
+
+            'blocked': blocked_count,
+
+            'disabled': disabled_count,
+
             'offboarded': offboarded_count,
-            'returned_assets': returned_assets_count,
-            'synced_at': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+            'returned_assets': (
+                returned_assets_count
+            ),
+
+            'synced_at': (
+                datetime.utcnow()
+                .strftime(
+                    '%Y-%m-%d %H:%M:%S'
+                )
+            )
         }
 
+    # =====================================================
+    # WEBHOOK EVENT PROCESSOR
+    # =====================================================
+
     @staticmethod
-    def process_webhook_event(event_type, employee_id, attributes=None):
-        """
-        Handles real-time Entra ID webhook events from Azure AD lifecycle workflows.
-        
-        Supported event_types:
-          - 'onboarded'  → New user provisioned in Entra ID
-          - 'offboarded' → User account deprovisioned in Entra ID
-          - 'updated'    → User attributes updated in Entra ID
-          - 'blocked'    → Account sign-in blocked
-          - 'disabled'   → Account disabled
-        
-        Azure sends these as Activity Log alerts or via Graph Change Notifications.
-        """
+    def process_webhook_event(
+        event_type,
+        employee_id,
+        attributes=None
+    ):
+
         attributes = attributes or {}
-        emp = Employee.query.filter_by(employee_id=employee_id).first()
+
+        emp = (
+            Employee.query
+            .filter_by(
+                employee_id=employee_id
+            )
+            .first()
+        )
+
+        # =================================================
+        # ONBOARDED
+        # =================================================
 
         if event_type == 'onboarded':
-            if not emp:
-                emp = Employee(
-                    employee_id=employee_id,
-                    name=attributes.get('name', ''),
-                    email=attributes.get('email', ''),
-                    department=attributes.get('department', ''),
-                    designation=attributes.get('designation', ''),
-                    manager=attributes.get('manager', ''),
-                    office_location=attributes.get('office_location', ''),
-                    account_status=AccountStatus.ONBOARDED,
-                    last_synced_at=datetime.utcnow()
-                )
-                db.session.add(emp)
-                db.session.commit()
-                AuditService.log(
-                    action='Employee Onboarded (Entra Webhook)',
-                    entity_type='Employee',
-                    entity_id=employee_id,
-                    details=f'Real-time Entra ID webhook: {attributes.get("name")} onboarded and auto-created.'
-                )
-                return {'status': 'created', 'employee_id': employee_id}
-            return {'status': 'already_exists', 'employee_id': employee_id}
 
-        elif event_type == 'offboarded' and emp:
-            prev_status = emp.account_status
-            emp.account_status = AccountStatus.OFFBOARDED
-            emp.last_synced_at = datetime.utcnow()
+            if not emp:
+
+                today = datetime.utcnow().date()
+
+                emp = Employee(
+
+                    employee_id=employee_id,
+
+                    name=attributes.get(
+                        'name',
+                        ''
+                    ),
+
+                    email=attributes.get(
+                        'email',
+                        ''
+                    ),
+
+                    department=attributes.get(
+                        'department',
+                        ''
+                    ),
+
+                    designation=attributes.get(
+                        'designation',
+                        ''
+                    ),
+
+                    manager=attributes.get(
+                        'manager',
+                        ''
+                    ),
+
+                    office_location=attributes.get(
+                        'office_location',
+                        ''
+                    ),
+
+                    account_status=(
+                        AccountStatus.ONBOARDED
+                    ),
+
+                    onboarded_date=today,
+
+                    last_synced_at=(
+                        datetime.utcnow()
+                    )
+                )
+
+                db.session.add(emp)
+
+                db.session.commit()
+
+                try:
+
+                    AuditService.log(
+                        action=(
+                            'Employee Onboarded '
+                            '(Entra Webhook)'
+                        ),
+                        entity_type='Employee',
+                        entity_id=employee_id,
+                        details=(
+                            f'Employee {emp.name} '
+                            f'created from Entra webhook. '
+                            f'Onboarded Date: {today}.'
+                        )
+                    )
+
+                except Exception:
+
+                    pass
+
+                return {
+                    'status': 'created',
+                    'employee_id': employee_id
+                }
+
+            return {
+                'status': 'already_exists',
+                'employee_id': employee_id
+            }
+
+        # =================================================
+        # ACTIVE
+        # =================================================
+
+        elif event_type == 'active':
+
+            if not emp:
+
+                return {
+                    'status': 'employee_not_found',
+                    'employee_id': employee_id
+                }
+
+            old_status = emp.account_status
+
+            changed = (
+                MicrosoftGraphService
+                ._apply_status(
+                    emp,
+                    AccountStatus.ACTIVE
+                )
+            )
+
+            emp.last_synced_at = (
+                datetime.utcnow()
+            )
+
+            db.session.commit()
+
+            return {
+                'status': (
+                    'active'
+                    if changed
+                    else 'already_active'
+                ),
+                'employee_id': employee_id,
+                'old_status': old_status
+            }
+
+        # =================================================
+        # BLOCKED
+        # =================================================
+
+        elif event_type == 'blocked':
+
+            if not emp:
+
+                return {
+                    'status': 'employee_not_found',
+                    'employee_id': employee_id
+                }
+
+            old_status = emp.account_status
+
+            changed = (
+                MicrosoftGraphService
+                ._apply_status(
+                    emp,
+                    AccountStatus.BLOCKED
+                )
+            )
+
+            emp.last_synced_at = (
+                datetime.utcnow()
+            )
+
+            db.session.commit()
+
+            return {
+                'status': (
+                    'blocked'
+                    if changed
+                    else 'already_blocked'
+                ),
+                'employee_id': employee_id,
+                'old_status': old_status
+            }
+
+        # =================================================
+        # DISABLED
+        # =================================================
+
+        elif event_type == 'disabled':
+
+            if not emp:
+
+                return {
+                    'status': 'employee_not_found',
+                    'employee_id': employee_id
+                }
+
+            old_status = emp.account_status
+
+            changed = (
+                MicrosoftGraphService
+                ._apply_status(
+                    emp,
+                    AccountStatus.DISABLED
+                )
+            )
+
+            emp.last_synced_at = (
+                datetime.utcnow()
+            )
+
+            db.session.commit()
+
+            return {
+                'status': (
+                    'disabled'
+                    if changed
+                    else 'already_disabled'
+                ),
+                'employee_id': employee_id,
+                'old_status': old_status
+            }
+
+        # =================================================
+        # OFFBOARDED
+        # =================================================
+
+        elif event_type == 'offboarded':
+
+            if not emp:
+
+                return {
+                    'status': 'employee_not_found',
+                    'employee_id': employee_id
+                }
+
+            old_status = emp.account_status
+
+            changed = (
+                MicrosoftGraphService
+                ._apply_status(
+                    emp,
+                    AccountStatus.OFFBOARDED
+                )
+            )
+
+            emp.last_synced_at = (
+                datetime.utcnow()
+            )
 
             returned = 0
-            assigned_laptops = Asset.query.filter_by(assigned_employee_id=emp.id).all()
-            for laptop in assigned_laptops:
-                laptop.status = AssetStatus.AVAILABLE
-                laptop.assigned_employee_id = None
-                laptop.assignment_date = None
-                returned += 1
-                hist = AssetAssignmentHistory(
-                    asset_id=laptop.id,
-                    employee_id=emp.id,
-                    employee_name=emp.name,
-                    action='Returned (Entra Offboard Webhook)',
-                    notes=f'Auto-returned via Entra ID lifecycle webhook for {emp.name}',
-                    performed_by='Entra ID Lifecycle Webhook'
+
+            if changed:
+
+                returned = (
+                    MicrosoftGraphService
+                    ._return_employee_assets(
+                        emp
+                    )
                 )
-                db.session.add(hist)
 
             db.session.commit()
-            AuditService.log(
-                action='Employee Offboarded (Entra Webhook)',
-                entity_type='Employee',
-                entity_id=employee_id,
-                details=f'Entra ID webhook: {emp.name} offboarded. {returned} laptop(s) auto-returned.'
-            )
-            return {'status': 'offboarded', 'employee_id': employee_id, 'returned_assets': returned}
 
-        elif event_type == 'updated' and emp:
-            for field in ['name', 'email', 'department', 'designation', 'manager', 'office_location']:
+            try:
+
+                AuditService.log(
+                    action=(
+                        'Employee Offboarded '
+                        '(Entra Webhook)'
+                    ),
+                    entity_type='Employee',
+                    entity_id=employee_id,
+                    details=(
+                        f'Employee {emp.name} '
+                        f'offboarded through Entra webhook. '
+                        f'Laptops returned: {returned}.'
+                    )
+                )
+
+            except Exception:
+
+                pass
+
+            return {
+                'status': (
+                    'offboarded'
+                    if changed
+                    else 'already_offboarded'
+                ),
+                'employee_id': employee_id,
+                'old_status': old_status,
+                'returned_assets': returned
+            }
+
+        # =================================================
+        # UPDATED
+        # =================================================
+
+        elif event_type == 'updated':
+
+            if not emp:
+
+                return {
+                    'status': 'employee_not_found',
+                    'employee_id': employee_id
+                }
+
+            for field in [
+                'name',
+                'email',
+                'department',
+                'designation',
+                'manager',
+                'office_location'
+            ]:
+
                 if field in attributes:
-                    setattr(emp, field, attributes[field])
+
+                    setattr(
+                        emp,
+                        field,
+                        attributes[field]
+                    )
+
             if 'account_status' in attributes:
-                emp.account_status = attributes['account_status']
-            emp.last_synced_at = datetime.utcnow()
-            db.session.commit()
-            return {'status': 'updated', 'employee_id': employee_id}
 
-        elif event_type == 'blocked' and emp:
-            emp.account_status = AccountStatus.BLOCKED
-            emp.last_synced_at = datetime.utcnow()
-            db.session.commit()
-            return {'status': 'blocked', 'employee_id': employee_id}
+                new_status = attributes[
+                    'account_status'
+                ]
 
-        elif event_type == 'disabled' and emp:
-            emp.account_status = AccountStatus.DISABLED
-            emp.last_synced_at = datetime.utcnow()
-            db.session.commit()
-            return {'status': 'disabled', 'employee_id': employee_id}
+                if new_status in {
+                    AccountStatus.ONBOARDED,
+                    AccountStatus.ACTIVE,
+                    AccountStatus.BLOCKED,
+                    AccountStatus.DISABLED,
+                    AccountStatus.OFFBOARDED
+                }:
 
-        return {'status': 'no_action', 'employee_id': employee_id}
+                    old_status = (
+                        emp.account_status
+                    )
+
+                    changed = (
+                        MicrosoftGraphService
+                        ._apply_status(
+                            emp,
+                            new_status
+                        )
+                    )
+
+                    if (
+                        changed
+                        and new_status
+                        == AccountStatus.OFFBOARDED
+                    ):
+
+                        MicrosoftGraphService \
+                            ._return_employee_assets(
+                                emp
+                            )
+
+            emp.last_synced_at = (
+                datetime.utcnow()
+            )
+
+            db.session.commit()
+
+            return {
+                'status': 'updated',
+                'employee_id': employee_id
+            }
+
+        # =================================================
+        # UNKNOWN EVENT
+        # =================================================
+
+        return {
+            'status': 'no_action',
+            'employee_id': employee_id
+        }
+
+    # =====================================================
+    # OUTLOOK
+    # =====================================================
 
     @staticmethod
     def poll_outlook_inbox():
-        """
-        Polls Microsoft Outlook support mailbox via Graph API or Mock Engine
-        to process incoming support emails into Helpdesk tickets.
-        """
-        return {'processed_emails': 0, 'new_tickets': 0}
+
+        return {
+            'processed_emails': 0,
+            'new_tickets': 0
+        }
