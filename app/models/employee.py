@@ -22,7 +22,6 @@ from app.models.asset import (
     AssetAssignmentHistory
 )
 
-from app.services.graph_service import MicrosoftGraphService
 from app.services.audit_service import AuditService
 
 
