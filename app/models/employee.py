@@ -14,13 +14,17 @@ from flask_login import login_required, current_user
 
 from app.extensions import db
 
-
+# IMPORTANT: Employee and AccountStatus belong here
+from app.models.employee import Employee, AccountStatus
 
 from app.models.asset import (
     Asset,
     AssetStatus,
     AssetAssignmentHistory
 )
+
+# IMPORTANT: Graph service is used by the route, NOT by employee.py
+from app.services.graph_service import MicrosoftGraphService
 
 from app.services.audit_service import AuditService
 
@@ -79,7 +83,6 @@ def index():
     # -----------------------------------------------------
 
     if search_q:
-
         query = query.filter(
             (Employee.name.ilike(f'%{search_q}%')) |
             (Employee.employee_id.ilike(f'%{search_q}%')) |
@@ -92,7 +95,6 @@ def index():
     # -----------------------------------------------------
 
     if status_filter in VALID_ACCOUNT_STATUSES:
-
         query = query.filter(
             Employee.account_status == status_filter
         )
@@ -102,7 +104,6 @@ def index():
     # -----------------------------------------------------
 
     if dept_filter:
-
         query = query.filter(
             Employee.department == dept_filter
         )
@@ -203,10 +204,6 @@ def onboard_employee():
             url_for('employees.index')
         )
 
-    # -----------------------------------------------------
-    # FORM DATA
-    # -----------------------------------------------------
-
     name = request.form.get(
         'name',
         ''
@@ -268,7 +265,7 @@ def onboard_employee():
         )
 
     # -----------------------------------------------------
-    # VALIDATE STATUS
+    # STATUS VALIDATION
     # -----------------------------------------------------
 
     if status not in VALID_ACCOUNT_STATUSES:
@@ -283,7 +280,7 @@ def onboard_employee():
         )
 
     # -----------------------------------------------------
-    # EMAIL UNIQUENESS
+    # EMAIL CHECK
     # -----------------------------------------------------
 
     existing_email = Employee.query.filter(
@@ -302,7 +299,7 @@ def onboard_employee():
         )
 
     # -----------------------------------------------------
-    # EMPLOYEE ID UNIQUENESS
+    # EMPLOYEE ID CHECK
     # -----------------------------------------------------
 
     if emp_code:
@@ -327,7 +324,6 @@ def onboard_employee():
     # -----------------------------------------------------
 
     if not emp_code:
-
         emp_code = generate_employee_id()
 
     # -----------------------------------------------------
@@ -340,11 +336,9 @@ def onboard_employee():
     today = datetime.utcnow().date()
 
     if status == AccountStatus.DISABLED:
-
         disabled_date = today
 
     elif status == AccountStatus.OFFBOARDED:
-
         offboarded_date = today
 
     # -----------------------------------------------------
@@ -371,11 +365,11 @@ def onboard_employee():
 
         db.session.flush()
 
+        assigned_asset_msg = ""
+
         # -------------------------------------------------
         # LAPTOP ALLOCATION
         # -------------------------------------------------
-
-        assigned_asset_msg = ""
 
         if asset_id:
 
@@ -430,10 +424,6 @@ def onboard_employee():
                 f"({asset.brand} {asset.model})."
             )
 
-        # -------------------------------------------------
-        # COMMIT
-        # -------------------------------------------------
-
         db.session.commit()
 
     except Exception as e:
@@ -468,12 +458,7 @@ def onboard_employee():
         )
 
     except Exception:
-
         pass
-
-    # -----------------------------------------------------
-    # SUCCESS
-    # -----------------------------------------------------
 
     flash(
         f'Employee {new_emp.name} '
@@ -547,10 +532,6 @@ def get_employee_json(emp_id):
 
     emp = Employee.query.get_or_404(emp_id)
 
-    # -----------------------------------------------------
-    # ASSIGNED ASSETS
-    # -----------------------------------------------------
-
     assigned_assets = (
         Asset.query
         .filter(
@@ -595,10 +576,6 @@ def get_employee_json(emp_id):
                 else '-'
             )
         })
-
-    # -----------------------------------------------------
-    # EMPLOYEE JSON
-    # -----------------------------------------------------
 
     return jsonify({
 
@@ -729,9 +706,9 @@ def edit_employee(emp_id):
         ''
     ).strip()
 
-    # =====================================================
+    # -----------------------------------------------------
     # ONBOARDED
-    # =====================================================
+    # -----------------------------------------------------
 
     if new_status == AccountStatus.ONBOARDED:
 
@@ -739,9 +716,9 @@ def edit_employee(emp_id):
         emp.disabled_date = None
         emp.offboarded_date = None
 
-    # =====================================================
+    # -----------------------------------------------------
     # ACTIVE
-    # =====================================================
+    # -----------------------------------------------------
 
     elif new_status == AccountStatus.ACTIVE:
 
@@ -749,9 +726,9 @@ def edit_employee(emp_id):
         emp.disabled_date = None
         emp.offboarded_date = None
 
-    # =====================================================
+    # -----------------------------------------------------
     # BLOCKED
-    # =====================================================
+    # -----------------------------------------------------
 
     elif new_status == AccountStatus.BLOCKED:
 
@@ -759,9 +736,9 @@ def edit_employee(emp_id):
         emp.disabled_date = None
         emp.offboarded_date = None
 
-    # =====================================================
+    # -----------------------------------------------------
     # DISABLED
-    # =====================================================
+    # -----------------------------------------------------
 
     elif new_status == AccountStatus.DISABLED:
 
@@ -789,9 +766,9 @@ def edit_employee(emp_id):
         emp.account_status = AccountStatus.DISABLED
         emp.offboarded_date = None
 
-    # =====================================================
+    # -----------------------------------------------------
     # OFFBOARDED
-    # =====================================================
+    # -----------------------------------------------------
 
     elif new_status == AccountStatus.OFFBOARDED:
 
@@ -870,7 +847,6 @@ def edit_employee(emp_id):
             )
 
         except Exception:
-
             pass
 
     # -----------------------------------------------------
