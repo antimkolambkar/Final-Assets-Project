@@ -14,7 +14,7 @@ from flask_login import login_required, current_user
 
 from app.extensions import db
 
-from app.models.employee import Employee, AccountStatus
+
 
 from app.models.asset import (
     Asset,
