@@ -125,8 +125,12 @@ def index():
 
     available_assets = (
         Asset.query
-        .filter_by(status=AssetStatus.AVAILABLE)
-        .order_by(Asset.brand.asc())
+        .filter_by(
+            status=AssetStatus.AVAILABLE
+        )
+        .order_by(
+            Asset.brand.asc()
+        )
         .all()
     )
 
@@ -170,6 +174,10 @@ def index():
 def onboard_employee():
 
     """Direct Employee Onboarding & Laptop Allocation"""
+
+    # -----------------------------------------------------
+    # Permission
+    # -----------------------------------------------------
 
     if not current_user.is_it_admin:
 
@@ -279,7 +287,7 @@ def onboard_employee():
         emp_code = generate_employee_id()
 
     # -----------------------------------------------------
-    # Status Dates For New Employee
+    # Status Dates
     # -----------------------------------------------------
 
     disabled_date = None
@@ -288,9 +296,11 @@ def onboard_employee():
     today = datetime.utcnow().date()
 
     if status == AccountStatus.DISABLED:
+
         disabled_date = today
 
     elif status == AccountStatus.OFFBOARDED:
+
         offboarded_date = today
 
     # -----------------------------------------------------
@@ -299,25 +309,15 @@ def onboard_employee():
 
     new_emp = Employee(
         employee_id=emp_code,
-
         name=name,
-
         email=email,
-
         department=department,
-
         designation=designation,
-
         office_location=office_location,
-
         manager=manager,
-
         account_status=status,
-
         disabled_date=disabled_date,
-
         offboarded_date=offboarded_date,
-
         created_at=datetime.utcnow()
     )
 
@@ -375,7 +375,7 @@ def onboard_employee():
             )
 
     # -----------------------------------------------------
-    # Save Employee
+    # Save
     # -----------------------------------------------------
 
     db.session.commit()
@@ -451,6 +451,10 @@ def sync_employees():
 def get_employee_json(emp_id):
 
     emp = Employee.query.get_or_404(emp_id)
+
+    # -----------------------------------------------------
+    # Assigned Assets
+    # -----------------------------------------------------
 
     assigned_assets = (
         Asset.query
@@ -533,10 +537,6 @@ def get_employee_json(emp_id):
 
         'account_status': emp.account_status,
 
-        # -------------------------------------------------
-        # NEW STATUS DATES
-        # -------------------------------------------------
-
         'disabled_date': (
             emp.disabled_date.strftime('%Y-%m-%d')
             if emp.disabled_date
@@ -585,7 +585,7 @@ def edit_employee(emp_id):
     old_status = emp.account_status
 
     # -----------------------------------------------------
-    # Update Basic Employee Information
+    # Basic Employee Information
     # -----------------------------------------------------
 
     emp.name = request.form.get(
@@ -595,26 +595,26 @@ def edit_employee(emp_id):
 
     emp.department = request.form.get(
         "department",
-        emp.department
-    )
+        emp.department or ""
+    ).strip()
 
     emp.designation = request.form.get(
         "designation",
-        emp.designation
-    )
+        emp.designation or ""
+    ).strip()
 
     emp.manager = request.form.get(
         "manager",
-        emp.manager
-    )
+        emp.manager or ""
+    ).strip()
 
     emp.office_location = request.form.get(
         "office_location",
-        emp.office_location
-    )
+        emp.office_location or ""
+    ).strip()
 
     # -----------------------------------------------------
-    # New Account Status
+    # Account Status
     # -----------------------------------------------------
 
     new_status = request.form.get(
@@ -636,16 +636,9 @@ def edit_employee(emp_id):
         ""
     ).strip()
 
-    # -----------------------------------------------------
-    # Disabled Date
-    # -----------------------------------------------------
-    #
-    # When Disabled is selected, the user must select a date
-    # from the date picker.
-    #
-    # Existing disabled_date is replaced with the date
-    # explicitly selected by the user.
-    # -----------------------------------------------------
+    # =====================================================
+    # DISABLED
+    # =====================================================
 
     if new_status == AccountStatus.DISABLED:
 
@@ -670,16 +663,12 @@ def edit_employee(emp_id):
                 "message": "Invalid Disabled Date."
             }), 400
 
-    # -----------------------------------------------------
-    # Offboarded Date
-    # -----------------------------------------------------
-    #
-    # When Offboarded is selected, the user must select a date
-    # from the date picker.
-    #
-    # Existing offboarded_date is replaced with the date
-    # explicitly selected by the user.
-    # -----------------------------------------------------
+        # Clear Offboarded Date
+        emp.offboarded_date = None
+
+    # =====================================================
+    # OFFBOARDED
+    # =====================================================
 
     elif new_status == AccountStatus.OFFBOARDED:
 
@@ -703,6 +692,19 @@ def edit_employee(emp_id):
                 "success": False,
                 "message": "Invalid Offboarded Date."
             }), 400
+
+        # Clear Disabled Date
+        emp.disabled_date = None
+
+    # =====================================================
+    # ACTIVE / ONBOARDED / BLOCKED
+    # =====================================================
+
+    else:
+
+        emp.disabled_date = None
+
+        emp.offboarded_date = None
 
     # -----------------------------------------------------
     # Update Status
@@ -744,10 +746,14 @@ def edit_employee(emp_id):
                 f'Employee {emp.name} '
                 f'({emp.employee_id}) status changed '
                 f'from {old_status} to {new_status}. '
+
                 f'Disabled Date: '
-                f'{emp.disabled_date.strftime("%Y-%m-%d") if emp.disabled_date else "-"}, '
+                f'{emp.disabled_date.strftime("%Y-%m-%d") '
+                f'if emp.disabled_date else "-"}, '
+
                 f'Offboarded Date: '
-                f'{emp.offboarded_date.strftime("%Y-%m-%d") if emp.offboarded_date else "-"}'
+                f'{emp.offboarded_date.strftime("%Y-%m-%d") '
+                f'if emp.offboarded_date else "-"}'
             )
         )
 
@@ -756,19 +762,21 @@ def edit_employee(emp_id):
     # -----------------------------------------------------
 
     return jsonify({
+
         "success": True,
+
         "message": "Employee updated successfully",
 
         "account_status": emp.account_status,
 
         "disabled_date": (
-            emp.disabled_date.strftime('%Y-%m-%d')
+            emp.disabled_date.strftime("%Y-%m-%d")
             if emp.disabled_date
             else None
         ),
 
         "offboarded_date": (
-            emp.offboarded_date.strftime('%Y-%m-%d')
+            emp.offboarded_date.strftime("%Y-%m-%d")
             if emp.offboarded_date
             else None
         )
