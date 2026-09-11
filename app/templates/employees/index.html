@@ -77,18 +77,30 @@
 
             <div class="col-12 col-md-5">
 
-                <div class="input-group">
+                <div class="employee-search-wrapper">
 
-                    <span class="input-group-text bg-light border-end-0">
-                        <i class="fas fa-search text-muted"></i>
-                    </span>
+                    <div class="input-group">
 
-                    <input
-                        type="text"
-                        name="q"
-                        value="{{ search_q }}"
-                        class="form-control border-start-0 bg-light"
-                        placeholder="Search employee name, ID, email, designation...">
+                        <span class="input-group-text bg-light border-end-0">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+
+                        <input
+                            type="text"
+                            name="q"
+                            value="{{ search_q }}"
+                            class="form-control border-start-0 bg-light"
+                            autocomplete="off"
+                            placeholder="Search employee name, ID, email, designation...">
+
+                    </div>
+
+                    <div
+                        id="employeeAutocomplete"
+                        class="employee-autocomplete"
+                        role="listbox"
+                        aria-label="Employee search results">
+                    </div>
 
                 </div>
 
@@ -344,8 +356,6 @@
                                     fa-circle-check
                                 {% elif emp.account_status == 'Blocked' %}
                                     fa-user-lock
-                                {% elif emp.account_status == 'Disabled' %}
-                                    fa-user-slash
                                 {% elif emp.account_status == 'Offboarded' %}
                                     fa-user-xmark
                                 {% else %}
@@ -661,7 +671,7 @@
                     </div>
 
 
-                    <!-- Manager / Status -->
+                    <!-- Manager -->
                     <div class="row g-3 mb-3">
 
                         <div class="col-md-6">
@@ -678,45 +688,12 @@
 
                         </div>
 
+                    </div>
 
-                        <div class="col-md-6">
-
-                            <label class="form-label fw-semibold">
-                                Initial Account Status
-                            </label>
-
-                            <!-- ALL 5 STATUSES -->
-                            <select
-                                name="status"
-                                class="form-select"
-                                required>
-
-                                <option
-                                    value="Onboarded"
-                                    selected>
-                                    Onboarded
-                                </option>
-
-                                <option value="Active">
-                                    Active
-                                </option>
-
-                                <option value="Blocked">
-                                    Blocked
-                                </option>
-
-                                <option value="Disabled">
-                                    Disabled
-                                </option>
-
-                                <option value="Offboarded">
-                                    Offboarded
-                                </option>
-
-                            </select>
-
-                        </div>
-
+                    <div class="alert alert-info py-2 mb-3">
+                        <i class="fas fa-circle-info me-2"></i>
+                        Account status is controlled automatically by Microsoft Entra ID.
+                        New employees are created as <strong>Onboarded</strong>.
                     </div>
 
 
@@ -1202,112 +1179,21 @@
 
                         <div class="col-md-6">
 
-                            <label
-                                for="editStatus"
-                                class="form-label fw-semibold">
+                            <label class="form-label fw-semibold">
                                 Account Status
                             </label>
 
-                            <!-- ALL 5 STATUSES -->
-                            <select
-                                id="editStatus"
-                                name="account_status"
-                                class="form-select"
-                                required>
+                            <input
+                                type="text"
+                                id="editStatusDisplay"
+                                class="form-control bg-light"
+                                readonly>
 
-                                <option value="Onboarded">
-                                    Onboarded
-                                </option>
-
-                                <option value="Active">
-                                    Active
-                                </option>
-
-                                <option value="Blocked">
-                                    Blocked
-                                </option>
-
-                                <option value="Disabled">
-                                    Disabled
-                                </option>
-
-                                <option value="Offboarded">
-                                    Offboarded
-                                </option>
-
-                            </select>
+                            <small class="text-muted">
+                                Status is synchronized automatically from Microsoft Entra ID.
+                            </small>
 
                         </div>
-
-                    </div>
-
-
-                    <!-- =================================================
-                         DISABLED DATE
-                    ================================================== -->
-                    <div
-                        id="disabledDateContainer"
-                        class="mb-3 d-none">
-
-                        <label
-                            for="editDisabledDate"
-                            class="form-label fw-semibold">
-
-                            <i class="fas fa-calendar-xmark text-danger me-1"></i>
-
-                            Disabled Date
-
-                        </label>
-
-
-                        <input
-                            type="date"
-                            id="editDisabledDate"
-                            name="disabled_date"
-                            class="form-control">
-
-
-                        <small class="text-muted">
-
-                            Required when account status is
-                            <strong>Disabled</strong>.
-
-                        </small>
-
-                    </div>
-
-
-                    <!-- =================================================
-                         OFFBOARDED DATE
-                    ================================================== -->
-                    <div
-                        id="offboardedDateContainer"
-                        class="mb-3 d-none">
-
-                        <label
-                            for="editOffboardedDate"
-                            class="form-label fw-semibold">
-
-                            <i class="fas fa-calendar-check text-danger me-1"></i>
-
-                            Offboarded Date
-
-                        </label>
-
-
-                        <input
-                            type="date"
-                            id="editOffboardedDate"
-                            name="offboarded_date"
-                            class="form-control">
-
-
-                        <small class="text-muted">
-
-                            Required when account status is
-                            <strong>Offboarded</strong>.
-
-                        </small>
 
                     </div>
 
@@ -1351,6 +1237,18 @@
 <!-- =========================================================
      JAVASCRIPT
 ========================================================= -->
+<style>
+.employee-search-wrapper { position: relative; width: 100%; }
+.employee-autocomplete { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 2000; background: #fff; border: 1px solid #d9dee7; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.12); max-height: 360px; overflow-y: auto; display: none; }
+.employee-autocomplete.show { display: block; }
+.employee-autocomplete-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f0f2f5; }
+.employee-autocomplete-item:last-child { border-bottom: 0; }
+.employee-autocomplete-item:hover, .employee-autocomplete-item.active { background: #f5f8ff; }
+.employee-autocomplete-name { font-weight: 600; color: #1f2937; }
+.employee-autocomplete-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.employee-autocomplete-empty { padding: 12px; color: #6b7280; font-size: 13px; }
+</style>
+
 <script>
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -1363,23 +1261,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const editForm =
         document.getElementById('editEmployeeForm');
-
-    const editStatus =
-        document.getElementById('editStatus');
-
-    const disabledDateContainer =
-        document.getElementById('disabledDateContainer');
-
-    const offboardedDateContainer =
-        document.getElementById('offboardedDateContainer');
-
-    const disabledDate =
-        document.getElementById('editDisabledDate');
-
-    const offboardedDate =
-        document.getElementById('editOffboardedDate');
-
-    const errorBox =
+const errorBox =
         document.getElementById('editEmployeeError');
 
     const successBox =
@@ -1450,80 +1332,193 @@ document.addEventListener('DOMContentLoaded', function () {
 
     }
 
-
     /* ========================================================
-       DATE FIELD CONTROL
+       LIVE EMPLOYEE AUTOCOMPLETE
     ======================================================== */
 
-    function updateDateFields() {
+    const searchInput =
+        document.querySelector('input[name="q"]');
 
-        if (!editStatus) {
-            return;
+    const autocompleteBox =
+        document.getElementById('employeeAutocomplete');
+
+    if (searchInput && autocompleteBox) {
+
+        let debounceTimer = null;
+        let controller = null;
+        let currentResults = [];
+        let activeIndex = -1;
+
+        function hideAutocomplete() {
+            autocompleteBox.classList.remove('show');
+            autocompleteBox.innerHTML = '';
+            currentResults = [];
+            activeIndex = -1;
         }
 
-        const status =
-            normalizeStatus(editStatus.value);
+        function renderAutocomplete(results) {
+            currentResults = Array.isArray(results) ? results : [];
+            activeIndex = -1;
 
+            if (!currentResults.length) {
+                autocompleteBox.innerHTML = `
+                    <div class="employee-autocomplete-empty">
+                        No employees found.
+                    </div>
+                `;
+                autocompleteBox.classList.add('show');
+                return;
+            }
 
-        disabledDateContainer.classList.add('d-none');
+            autocompleteBox.innerHTML = currentResults.map(function (emp, index) {
+                const name = escapeHtml(cleanValue(emp.name) || '-');
+                const employeeId = escapeHtml(cleanValue(emp.employee_id) || '-');
+                const department = escapeHtml(cleanValue(emp.department) || '-');
+                const email = escapeHtml(cleanValue(emp.email) || '');
 
-        offboardedDateContainer.classList.add('d-none');
+                return `
+                    <div class="employee-autocomplete-item"
+                         role="option"
+                         data-index="${index}">
+                        <div class="employee-autocomplete-name">${name}</div>
+                        <div class="employee-autocomplete-meta">
+                            ${employeeId}
+                            ${department !== '-' ? ` • ${department}` : ''}
+                            ${email ? ` • ${email}` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
 
-        disabledDate.required = false;
+            autocompleteBox.classList.add('show');
 
-        offboardedDate.required = false;
+            autocompleteBox
+                .querySelectorAll('.employee-autocomplete-item')
+                .forEach(function (item) {
+                    item.addEventListener('mousedown', function (event) {
+                        event.preventDefault();
 
+                        const selected =
+                            currentResults[Number(this.dataset.index)];
 
-        /* DISABLED */
+                        if (!selected) return;
 
-        if (status === 'Disabled') {
+                        searchInput.value = cleanValue(selected.name);
+                        hideAutocomplete();
 
-            disabledDateContainer.classList.remove('d-none');
-
-            disabledDate.required = true;
-
-            offboardedDate.value = '';
-
+                        const form = searchInput.closest('form');
+                        if (form) form.submit();
+                    });
+                });
         }
 
+        async function searchEmployees(value) {
+            const query = value.trim();
 
-        /* OFFBOARDED */
+            if (!query) {
+                hideAutocomplete();
+                return;
+            }
 
-        else if (status === 'Offboarded') {
+            if (controller) controller.abort();
+            controller = new AbortController();
 
-            offboardedDateContainer.classList.remove('d-none');
+            try {
+                const response = await fetch(
+                    `{{ url_for('employees.employee_autocomplete') }}?q=${encodeURIComponent(query)}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        signal: controller.signal
+                    }
+                );
 
-            offboardedDate.required = true;
+                if (!response.ok) {
+                    throw new Error('Autocomplete request failed.');
+                }
 
-            disabledDate.value = '';
+                const results = await response.json();
 
+                if (searchInput.value.trim() !== query) return;
+
+                renderAutocomplete(results);
+            }
+            catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('Employee autocomplete:', error);
+                    hideAutocomplete();
+                }
+            }
         }
 
+        function updateActiveItem() {
+            const items = autocompleteBox.querySelectorAll(
+                '.employee-autocomplete-item'
+            );
 
-        /* ACTIVE / ONBOARDED / BLOCKED */
+            items.forEach(function (item, index) {
+                item.classList.toggle('active', index === activeIndex);
+            });
 
-        else if (
-            status === 'Active' ||
-            status === 'Onboarded' ||
-            status === 'Blocked'
-        ) {
-
-            disabledDate.value = '';
-
-            offboardedDate.value = '';
-
+            if (items[activeIndex]) {
+                items[activeIndex].scrollIntoView({ block: 'nearest' });
+            }
         }
 
-    }
+        searchInput.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () {
+                searchEmployees(searchInput.value);
+            }, 180);
+        });
 
+        searchInput.addEventListener('keydown', function (event) {
+            if (!autocompleteBox.classList.contains('show') || !currentResults.length) {
+                return;
+            }
 
-    if (editStatus) {
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                activeIndex = (activeIndex + 1) % currentResults.length;
+                updateActiveItem();
+            }
+            else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                activeIndex = activeIndex <= 0
+                    ? currentResults.length - 1
+                    : activeIndex - 1;
+                updateActiveItem();
+            }
+            else if (event.key === 'Enter' && activeIndex >= 0) {
+                event.preventDefault();
+                const selected = currentResults[activeIndex];
 
-        editStatus.addEventListener(
-            'change',
-            updateDateFields
-        );
+                if (selected) {
+                    searchInput.value = cleanValue(selected.name);
+                    hideAutocomplete();
+                    const form = searchInput.closest('form');
+                    if (form) form.submit();
+                }
+            }
+            else if (event.key === 'Escape') {
+                hideAutocomplete();
+            }
+        });
 
+        searchInput.addEventListener('focus', function () {
+            if (searchInput.value.trim()) {
+                searchEmployees(searchInput.value);
+            }
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!autocompleteBox.contains(event.target) && event.target !== searchInput) {
+                hideAutocomplete();
+            }
+        });
     }
 
 
@@ -1678,16 +1673,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             );
 
                         }
-
-                        else if (status === 'Disabled') {
-
-                            statusElement.classList.add(
-                                'bg-warning',
-                                'text-dark'
-                            );
-
-                        }
-
                         else if (status === 'Offboarded') {
 
                             statusElement.classList.add(
@@ -1712,44 +1697,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
                         statusDateInfo.innerHTML = '';
+                        const statusDateMap = {
+                            'Onboarded': data.onboarded_date,
+                            'Active': data.active_date,
+                            'Blocked': data.blocked_date,
+                            'Offboarded': data.offboarded_date
+                        };
 
+                        const currentStatusDate =
+                            statusDateMap[status];
 
-                        if (
-                            status === 'Disabled' &&
-                            data.disabled_date
-                        ) {
-
+                        if (currentStatusDate) {
                             statusDateInfo.innerHTML = `
-
                                 <strong class="text-dark">
-                                    Disabled Date:
+                                    ${escapeHtml(status)} Date:
                                 </strong>
-
-                                ${escapeHtml(
-                                    data.disabled_date
-                                )}
-
+                                ${escapeHtml(currentStatusDate)}
                             `;
-
-                        }
-
-                        else if (
-                            status === 'Offboarded' &&
-                            data.offboarded_date
-                        ) {
-
-                            statusDateInfo.innerHTML = `
-
-                                <strong class="text-dark">
-                                    Offboarded Date:
-                                </strong>
-
-                                ${escapeHtml(
-                                    data.offboarded_date
-                                )}
-
-                            `;
-
                         }
 
 
@@ -2083,37 +2047,17 @@ document.addEventListener('DOMContentLoaded', function () {
                             data.office_location
                         );
 
+                    const editStatusDisplay =
+                        document.getElementById('editStatusDisplay');
 
-                    /*
-                     * IMPORTANT:
-                     * Preserve the employee's current status.
-                     */
-                    editStatus.value =
-                        normalizeStatus(
-                            data.account_status
-                        );
-
-
-                    /*
-                     * Existing Disabled / Offboarded dates
-                     */
-                    disabledDate.value =
-                        cleanValue(
-                            data.disabled_date
-                        );
-
-
-                    offboardedDate.value =
-                        cleanValue(
-                            data.offboarded_date
-                        );
-
+                    if (editStatusDisplay) {
+                        editStatusDisplay.value =
+                            normalizeStatus(data.account_status) || '-';
+                    }
 
                     editForm.action =
                         `/employees/${currentEmployeeId}/edit`;
 
-
-                    updateDateFields();
 
 
                     if (detailModal) {
@@ -2207,102 +2151,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 }
 
-
-                const selectedStatus =
-                    normalizeStatus(
-                        editStatus.value
-                    );
-
-
-                /*
-                 * ACTIVE / ONBOARDED / BLOCKED
-                 *
-                 * No date required.
-                 */
-
-                if (
-                    selectedStatus === 'Active' ||
-                    selectedStatus === 'Onboarded' ||
-                    selectedStatus === 'Blocked'
-                ) {
-
-                    disabledDate.value = '';
-
-                    offboardedDate.value = '';
-
-                }
-
-
-                /*
-                 * DISABLED
-                 */
-
-                if (
-                    selectedStatus === 'Disabled' &&
-                    !disabledDate.value
-                ) {
-
-                    errorBox.textContent =
-                        'Please select the Disabled Date.';
-
-                    errorBox.classList.remove('d-none');
-
-                    disabledDate.focus();
-
-                    return;
-
-                }
-
-
-                /*
-                 * OFFBOARDED
-                 */
-
-                if (
-                    selectedStatus === 'Offboarded' &&
-                    !offboardedDate.value
-                ) {
-
-                    errorBox.textContent =
-                        'Please select the Offboarded Date.';
-
-                    errorBox.classList.remove('d-none');
-
-                    offboardedDate.focus();
-
-                    return;
-
-                }
-
-
-                /*
-                 * Make sure the selected status is valid.
-                 */
-
-                const validStatuses = [
-                    'Onboarded',
-                    'Active',
-                    'Blocked',
-                    'Disabled',
-                    'Offboarded'
-                ];
-
-
-                if (
-                    !validStatuses.includes(
-                        selectedStatus
-                    )
-                ) {
-
-                    errorBox.textContent =
-                        'Please select a valid account status.';
-
-                    errorBox.classList.remove('d-none');
-
-                    return;
-
-                }
-
+                // Status and status dates are intentionally not sent.
+                // Microsoft Entra ID is the source of truth.
 
                 saveButton.disabled = true;
 
@@ -2428,12 +2278,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     }
 
-
-    /* ========================================================
-       INITIAL DATE STATE
-    ======================================================== */
-
-    updateDateFields();
 
 });
 
