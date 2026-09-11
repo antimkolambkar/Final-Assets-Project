@@ -225,34 +225,21 @@ def index():
     # ?status=Active,Onboarded
     # -----------------------------------------------------
 
-    if status_filter:
+   if status_filter:
+    statuses = [
+        status.strip()
+        for status in status_filter.split(',')
+        if status.strip()
+    ]
 
-        statuses = [
-            status.strip()
-            for status in status_filter.split(',')
-            if status.strip()
-        ]
-
-        statuses = [
-            status
-            for status in statuses
-            if status in VALID_ACCOUNT_STATUSES
-        ]
-
-        if statuses:
-
-            if len(statuses) == 1:
-
-                query = query.filter(
-                    Employee.account_status == statuses[0]
-                )
-
-            else:
-
-                query = query.filter(
-                    Employee.account_status.in_(statuses)
-                )
-
+    if len(statuses) == 1:
+        query = query.filter(
+            Employee.account_status == statuses[0]
+        )
+    elif statuses:
+        query = query.filter(
+            Employee.account_status.in_(statuses)
+        )
     # -----------------------------------------------------
     # Department Filter
     # -----------------------------------------------------
