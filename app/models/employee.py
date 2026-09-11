@@ -24,6 +24,8 @@ from app.models.asset import (
 
 from app.services.graph_service import MicrosoftGraphService
 from app.services.audit_service import AuditService
+
+
 employees_bp = Blueprint(
     'employees',
     __name__,
@@ -74,10 +76,11 @@ def index():
     query = Employee.query
 
     # -----------------------------------------------------
-    # Search
+    # SEARCH
     # -----------------------------------------------------
 
     if search_q:
+
         query = query.filter(
             (Employee.name.ilike(f'%{search_q}%')) |
             (Employee.employee_id.ilike(f'%{search_q}%')) |
@@ -86,25 +89,27 @@ def index():
         )
 
     # -----------------------------------------------------
-    # Status Filter
+    # STATUS FILTER
     # -----------------------------------------------------
 
     if status_filter in VALID_ACCOUNT_STATUSES:
+
         query = query.filter(
             Employee.account_status == status_filter
         )
 
     # -----------------------------------------------------
-    # Department Filter
+    # DEPARTMENT FILTER
     # -----------------------------------------------------
 
     if dept_filter:
+
         query = query.filter(
             Employee.department == dept_filter
         )
 
     # -----------------------------------------------------
-    # Pagination
+    # PAGINATION
     # -----------------------------------------------------
 
     pagination = (
@@ -123,7 +128,7 @@ def index():
     employees = pagination.items
 
     # -----------------------------------------------------
-    # Department Dropdown
+    # DEPARTMENTS
     # -----------------------------------------------------
 
     departments = [
@@ -140,7 +145,7 @@ def index():
     departments.sort()
 
     # -----------------------------------------------------
-    # Available Assets
+    # AVAILABLE ASSETS
     # -----------------------------------------------------
 
     available_assets = (
@@ -155,7 +160,7 @@ def index():
     )
 
     # -----------------------------------------------------
-    # Render
+    # RENDER
     # -----------------------------------------------------
 
     return render_template(
@@ -200,16 +205,43 @@ def onboard_employee():
         )
 
     # -----------------------------------------------------
-    # Form Data
+    # FORM DATA
     # -----------------------------------------------------
 
-    name = request.form.get('name', '').strip()
-    email = request.form.get('email', '').strip()
-    emp_code = request.form.get('employee_id', '').strip()
-    department = request.form.get('department', '').strip()
-    designation = request.form.get('designation', '').strip()
-    office_location = request.form.get('office_location', '').strip()
-    manager = request.form.get('manager', '').strip()
+    name = request.form.get(
+        'name',
+        ''
+    ).strip()
+
+    email = request.form.get(
+        'email',
+        ''
+    ).strip()
+
+    emp_code = request.form.get(
+        'employee_id',
+        ''
+    ).strip()
+
+    department = request.form.get(
+        'department',
+        ''
+    ).strip()
+
+    designation = request.form.get(
+        'designation',
+        ''
+    ).strip()
+
+    office_location = request.form.get(
+        'office_location',
+        ''
+    ).strip()
+
+    manager = request.form.get(
+        'manager',
+        ''
+    ).strip()
 
     status = request.form.get(
         'status',
@@ -222,7 +254,7 @@ def onboard_employee():
     )
 
     # -----------------------------------------------------
-    # Required Fields
+    # REQUIRED FIELDS
     # -----------------------------------------------------
 
     if not name or not email:
@@ -237,7 +269,7 @@ def onboard_employee():
         )
 
     # -----------------------------------------------------
-    # Validate Status
+    # VALIDATE STATUS
     # -----------------------------------------------------
 
     if status not in VALID_ACCOUNT_STATUSES:
@@ -252,7 +284,7 @@ def onboard_employee():
         )
 
     # -----------------------------------------------------
-    # Email Uniqueness
+    # EMAIL UNIQUENESS
     # -----------------------------------------------------
 
     existing_email = Employee.query.filter(
@@ -271,7 +303,7 @@ def onboard_employee():
         )
 
     # -----------------------------------------------------
-    # Employee ID Uniqueness
+    # EMPLOYEE ID UNIQUENESS
     # -----------------------------------------------------
 
     if emp_code:
@@ -292,14 +324,15 @@ def onboard_employee():
             )
 
     # -----------------------------------------------------
-    # Generate Employee ID
+    # GENERATE EMPLOYEE ID
     # -----------------------------------------------------
 
     if not emp_code:
+
         emp_code = generate_employee_id()
 
     # -----------------------------------------------------
-    # Status Dates
+    # STATUS DATES
     # -----------------------------------------------------
 
     disabled_date = None
@@ -308,13 +341,15 @@ def onboard_employee():
     today = datetime.utcnow().date()
 
     if status == AccountStatus.DISABLED:
+
         disabled_date = today
 
     elif status == AccountStatus.OFFBOARDED:
+
         offboarded_date = today
 
     # -----------------------------------------------------
-    # Create Employee
+    # CREATE EMPLOYEE
     # -----------------------------------------------------
 
     new_emp = Employee(
@@ -338,7 +373,7 @@ def onboard_employee():
         db.session.flush()
 
         # -------------------------------------------------
-        # Laptop Allocation
+        # LAPTOP ALLOCATION
         # -------------------------------------------------
 
         assigned_asset_msg = ""
@@ -397,7 +432,7 @@ def onboard_employee():
             )
 
         # -------------------------------------------------
-        # Commit
+        # COMMIT
         # -------------------------------------------------
 
         db.session.commit()
@@ -416,7 +451,7 @@ def onboard_employee():
         )
 
     # -----------------------------------------------------
-    # Audit
+    # AUDIT
     # -----------------------------------------------------
 
     try:
@@ -434,10 +469,11 @@ def onboard_employee():
         )
 
     except Exception:
+
         pass
 
     # -----------------------------------------------------
-    # Success
+    # SUCCESS
     # -----------------------------------------------------
 
     flash(
@@ -513,7 +549,7 @@ def get_employee_json(emp_id):
     emp = Employee.query.get_or_404(emp_id)
 
     # -----------------------------------------------------
-    # Assigned Assets
+    # ASSIGNED ASSETS
     # -----------------------------------------------------
 
     assigned_assets = (
@@ -562,7 +598,7 @@ def get_employee_json(emp_id):
         })
 
     # -----------------------------------------------------
-    # Employee JSON
+    # EMPLOYEE JSON
     # -----------------------------------------------------
 
     return jsonify({
@@ -627,7 +663,7 @@ def edit_employee(emp_id):
     old_status = emp.account_status
 
     # -----------------------------------------------------
-    # Basic Information
+    # BASIC INFORMATION
     # -----------------------------------------------------
 
     name = request.form.get(
@@ -665,7 +701,7 @@ def edit_employee(emp_id):
     ).strip()
 
     # -----------------------------------------------------
-    # Status
+    # STATUS
     # -----------------------------------------------------
 
     new_status = request.form.get(
@@ -681,7 +717,7 @@ def edit_employee(emp_id):
         }), 400
 
     # -----------------------------------------------------
-    # Dates
+    # DATES
     # -----------------------------------------------------
 
     disabled_date_value = request.form.get(
@@ -785,7 +821,7 @@ def edit_employee(emp_id):
         emp.disabled_date = None
 
     # -----------------------------------------------------
-    # Commit
+    # COMMIT
     # -----------------------------------------------------
 
     try:
@@ -802,7 +838,7 @@ def edit_employee(emp_id):
         }), 500
 
     # -----------------------------------------------------
-    # Audit
+    # AUDIT
     # -----------------------------------------------------
 
     if old_status != new_status:
@@ -835,10 +871,11 @@ def edit_employee(emp_id):
             )
 
         except Exception:
+
             pass
 
     # -----------------------------------------------------
-    # Response
+    # RESPONSE
     # -----------------------------------------------------
 
     return jsonify({
