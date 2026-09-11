@@ -43,6 +43,88 @@ def generate_employee_id():
 
 
 # =========================================================
+# VALID ACCOUNT STATUSES
+# =========================================================
+
+VALID_ACCOUNT_STATUSES = {
+    AccountStatus.ONBOARDED,
+    AccountStatus.ACTIVE,
+    AccountStatus.BLOCKED,
+    AccountStatus.DISABLED,
+    AccountStatus.OFFBOARDED
+}
+
+
+# =========================================================
+# STATUS DATE HELPERS
+# =========================================================
+
+def status_date_field(status):
+    """
+    Returns the Employee model field name belonging
+    to the selected account status.
+    """
+
+    return {
+        AccountStatus.ONBOARDED: 'onboarded_date',
+        AccountStatus.ACTIVE: 'active_date',
+        AccountStatus.BLOCKED: 'blocked_date',
+        AccountStatus.DISABLED: 'disabled_date',
+        AccountStatus.OFFBOARDED: 'offboarded_date'
+    }.get(status)
+
+
+def set_status_date(employee, status, date_value=None):
+    """
+    Set the date for the selected status.
+
+    If date_value is supplied, it is used.
+    Otherwise today's UTC date is used.
+    """
+
+    field = status_date_field(status)
+
+    if not field:
+        return
+
+    if date_value is None:
+        date_value = datetime.utcnow().date()
+
+    setattr(employee, field, date_value)
+
+
+def parse_date(value, field_name):
+    """
+    Convert YYYY-MM-DD string into date object.
+    """
+
+    if not value:
+        return None
+
+    try:
+        return datetime.strptime(
+            value,
+            '%Y-%m-%d'
+        ).date()
+
+    except ValueError:
+        raise ValueError(
+            f'Invalid {field_name}.'
+        )
+
+
+def date_to_string(value):
+    """
+    Convert date to YYYY-MM-DD.
+    """
+
+    if not value:
+        return None
+
+    return value.strftime('%Y-%m-%d')
+
+
+# =========================================================
 # EMPLOYEE INDEX
 # =========================================================
 
@@ -50,10 +132,26 @@ def generate_employee_id():
 @login_required
 def index():
 
-    search_q = request.args.get('q', '').strip()
-    status_filter = request.args.get('status', '').strip()
-    dept_filter = request.args.get('department', '').strip()
-    page = request.args.get('page', 1, type=int)
+    search_q = request.args.get(
+        'q',
+        ''
+    ).strip()
+
+    status_filter = request.args.get(
+        'status',
+        ''
+    ).strip()
+
+    dept_filter = request.args.get(
+        'department',
+        ''
+    ).strip()
+
+    page = request.args.get(
+        'page',
+        1,
+        type=int
+    )
 
     query = Employee.query
 
@@ -62,6 +160,7 @@ def index():
     # -----------------------------------------------------
 
     if search_q:
+
         query = query.filter(
             (Employee.name.ilike(f'%{search_q}%')) |
             (Employee.employee_id.ilike(f'%{search_q}%')) |
@@ -73,9 +172,10 @@ def index():
     # Status Filter
     # -----------------------------------------------------
 
-    if status_filter:
-        query = query.filter_by(
-            account_status=status_filter
+    if status_filter in VALID_ACCOUNT_STATUSES:
+
+        query = query.filter(
+            Employee.account_status == status_filter
         )
 
     # -----------------------------------------------------
@@ -83,8 +183,9 @@ def index():
     # -----------------------------------------------------
 
     if dept_filter:
-        query = query.filter_by(
-            department=dept_filter
+
+        query = query.filter(
+            Employee.department == dept_filter
         )
 
     # -----------------------------------------------------
@@ -112,12 +213,16 @@ def index():
 
     departments = [
         d[0]
-        for d in db.session
-        .query(Employee.department)
-        .distinct()
-        .all()
+        for d in (
+            db.session
+            .query(Employee.department)
+            .distinct()
+            .all()
+        )
         if d[0]
     ]
+
+    departments.sort()
 
     # -----------------------------------------------------
     # Available Assets
@@ -125,8 +230,8 @@ def index():
 
     available_assets = (
         Asset.query
-        .filter_by(
-            status=AssetStatus.AVAILABLE
+        .filter(
+            Asset.status == AssetStatus.AVAILABLE
         )
         .order_by(
             Asset.brand.asc()
@@ -169,7 +274,10 @@ def index():
 # DIRECT EMPLOYEE ONBOARDING
 # =========================================================
 
-@employees_bp.route('/onboard', methods=['POST'])
+@employees_bp.route(
+    '/onboard',
+    methods=['POST']
+)
 @login_required
 def onboard_employee():
 
@@ -232,7 +340,7 @@ def onboard_employee():
     status = request.form.get(
         'status',
         AccountStatus.ONBOARDED
-    )
+    ).strip()
 
     asset_id = request.form.get(
         'asset_id',
@@ -255,23 +363,13 @@ def onboard_employee():
         )
 
     # -----------------------------------------------------
-    # Uniqueness Check
+    # Validate Status
     # -----------------------------------------------------
 
-    existing = Employee.query.filter(
-        (Employee.email == email) |
-        (
-            Employee.employee_id == emp_code
-            if emp_code
-            else False
-        )
-    ).first()
-
-    if existing:
+    if status not in VALID_ACCOUNT_STATUSES:
 
         flash(
-            f'An employee with email "{email}" or ID '
-            f'"{emp_code}" already exists in the system.',
+            'Invalid employee account status selected.',
             'danger'
         )
 
@@ -280,34 +378,67 @@ def onboard_employee():
         )
 
     # -----------------------------------------------------
+    # Uniqueness Check
+    # -----------------------------------------------------
+
+    existing_email = Employee.query.filter(
+        Employee.email == email
+    ).first()
+
+    if existing_email:
+
+        flash(
+            f'An employee with email "{email}" already exists.',
+            'danger'
+        )
+
+        return redirect(
+            url_for('employees.index')
+        )
+
+    if emp_code:
+
+        existing_id = Employee.query.filter(
+            Employee.employee_id == emp_code
+        ).first()
+
+        if existing_id:
+
+            flash(
+                f'Employee ID "{emp_code}" already exists.',
+                'danger'
+            )
+
+            return redirect(
+                url_for('employees.index')
+            )
+
+    # -----------------------------------------------------
     # Generate Employee ID
     # -----------------------------------------------------
 
     if not emp_code:
+
         emp_code = generate_employee_id()
 
     # -----------------------------------------------------
-    # Status Dates
+    # Status Date
     # -----------------------------------------------------
-    #
-    # Disabled and Offboarded keep their existing date
-    # functionality.
-    #
-    # Active / Onboarded / Blocked do NOT use dates.
-    # -----------------------------------------------------
-
-    disabled_date = None
-    offboarded_date = None
 
     today = datetime.utcnow().date()
 
-    if status == AccountStatus.DISABLED:
+    status_dates = {
+        'onboarded_date': None,
+        'active_date': None,
+        'blocked_date': None,
+        'disabled_date': None,
+        'offboarded_date': None
+    }
 
-        disabled_date = today
+    selected_date_field = status_date_field(status)
 
-    elif status == AccountStatus.OFFBOARDED:
-
-        offboarded_date = today
+    if selected_date_field:
+        status_dates[selected_date_field] = today
 
     # -----------------------------------------------------
     # Create Employee
@@ -322,8 +453,11 @@ def onboard_employee():
         office_location=office_location,
         manager=manager,
         account_status=status,
-        disabled_date=disabled_date,
-        offboarded_date=offboarded_date,
+        onboarded_date=status_dates['onboarded_date'],
+        active_date=status_dates['active_date'],
+        blocked_date=status_dates['blocked_date'],
+        disabled_date=status_dates['disabled_date'],
+        offboarded_date=status_dates['offboarded_date'],
         created_at=datetime.utcnow()
     )
 
@@ -339,22 +473,18 @@ def onboard_employee():
 
     if asset_id:
 
-        asset = Asset.query.get(asset_id)
+        asset = db.session.get(
+            Asset,
+            asset_id
+        )
 
-        if (
-            asset
-            and asset.status == AssetStatus.AVAILABLE
-        ):
+        if asset and asset.status == AssetStatus.AVAILABLE:
 
             asset.status = AssetStatus.ASSIGNED
 
             asset.assigned_employee_id = new_emp.id
 
             asset.assignment_date = datetime.utcnow()
-
-            # -------------------------------------------------
-            # Assignment History
-            # -------------------------------------------------
 
             hist = AssetAssignmentHistory(
                 asset_id=asset.id,
@@ -375,30 +505,65 @@ def onboard_employee():
                 f"({asset.brand} {asset.model})."
             )
 
+        else:
+
+            db.session.rollback()
+
+            flash(
+                'Selected laptop is no longer available.',
+                'danger'
+            )
+
+            return redirect(
+                url_for('employees.index')
+            )
+
     # -----------------------------------------------------
     # Save
     # -----------------------------------------------------
 
-    db.session.commit()
+    try:
+
+        db.session.commit()
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        flash(
+            f'Failed to onboard employee: {str(e)}',
+            'danger'
+        )
+
+        return redirect(
+            url_for('employees.index')
+        )
 
     # -----------------------------------------------------
     # Audit
     # -----------------------------------------------------
 
-    AuditService.log(
-        action='Employee Onboarded',
-        entity_type='Employee',
-        entity_id=new_emp.employee_id,
-        details=(
-            f'Onboarded new employee {new_emp.name} '
-            f'({new_emp.department} - '
-            f'{new_emp.account_status}).'
-            f'{assigned_asset_msg}'
+    try:
+
+        AuditService.log(
+            action='Employee Onboarded',
+            entity_type='Employee',
+            entity_id=new_emp.employee_id,
+            details=(
+                f'Employee {new_emp.name} '
+                f'({new_emp.employee_id}) created with status '
+                f'{new_emp.account_status}. '
+                f'Status date: {today}.'
+                f'{assigned_asset_msg}'
+            )
         )
-    )
+
+    except Exception:
+
+        pass
 
     # -----------------------------------------------------
-    # Success Message
+    # Success
     # -----------------------------------------------------
 
     flash(
@@ -417,23 +582,50 @@ def onboard_employee():
 # ENTRA ID SYNC
 # =========================================================
 
-@employees_bp.route('/sync', methods=['POST'])
+@employees_bp.route(
+    '/sync',
+    methods=['POST']
+)
 @login_required
 def sync_employees():
 
-    """Trigger manual Entra ID employee synchronization"""
+    """Trigger Microsoft Entra ID employee synchronization"""
 
-    res = MicrosoftGraphService.sync_entra_employees()
+    if not current_user.is_it_admin:
 
-    flash(
-        f"Entra ID Sync Complete! "
-        f"Synced {res['total']} employees. "
-        f"(Auto-Onboarded: {res.get('onboarded', 0)}, "
-        f"Updated: {res['updated']}, "
-        f"Auto-Offboarded: {res['offboarded']}, "
-        f"Laptops Returned: {res['returned_assets']})",
-        'success'
-    )
+        flash(
+            'Permission denied.',
+            'danger'
+        )
+
+        return redirect(
+            url_for('employees.index')
+        )
+
+    try:
+
+        res = MicrosoftGraphService.sync_entra_employees()
+
+        flash(
+            f"Entra ID Sync Complete! "
+            f"Synced {res['total']} employees. "
+            f"(Created: {res.get('created', 0)}, "
+            f"Updated: {res.get('updated', 0)}, "
+            f"Onboarded: {res.get('onboarded', 0)}, "
+            f"Active: {res.get('active', 0)}, "
+            f"Blocked: {res.get('blocked', 0)}, "
+            f"Disabled: {res.get('disabled', 0)}, "
+            f"Offboarded: {res.get('offboarded', 0)}, "
+            f"Laptops Returned: {res.get('returned_assets', 0)})",
+            'success'
+        )
+
+    except Exception as e:
+
+        flash(
+            f'Entra ID Sync failed: {str(e)}',
+            'danger'
+        )
 
     return redirect(
         url_for('employees.index')
@@ -444,7 +636,9 @@ def sync_employees():
 # EMPLOYEE JSON / PROFILE
 # =========================================================
 
-@employees_bp.route('/<int:emp_id>/json')
+@employees_bp.route(
+    '/<int:emp_id>/json'
+)
 @login_required
 def get_employee_json(emp_id):
 
@@ -456,8 +650,8 @@ def get_employee_json(emp_id):
 
     assigned_assets = (
         Asset.query
-        .filter_by(
-            assigned_employee_id=emp.id
+        .filter(
+            Asset.assigned_employee_id == emp.id
         )
         .all()
     )
@@ -533,26 +727,33 @@ def get_employee_json(emp_id):
             or '-'
         ),
 
-        'account_status': emp.account_status,
-
-        # -------------------------------------------------
-        # Existing Disabled Date
-        # -------------------------------------------------
-
-        'disabled_date': (
-            emp.disabled_date.strftime('%Y-%m-%d')
-            if emp.disabled_date
-            else None
+        'account_status': (
+            emp.account_status
+            or AccountStatus.ACTIVE
         ),
 
         # -------------------------------------------------
-        # Existing Offboarded Date
+        # ALL FIVE STATUS DATES
         # -------------------------------------------------
 
-        'offboarded_date': (
-            emp.offboarded_date.strftime('%Y-%m-%d')
-            if emp.offboarded_date
-            else None
+        'onboarded_date': date_to_string(
+            emp.onboarded_date
+        ),
+
+        'active_date': date_to_string(
+            emp.active_date
+        ),
+
+        'blocked_date': date_to_string(
+            emp.blocked_date
+        ),
+
+        'disabled_date': date_to_string(
+            emp.disabled_date
+        ),
+
+        'offboarded_date': date_to_string(
+            emp.offboarded_date
         ),
 
         'assigned_assets': assets_data
@@ -563,12 +764,15 @@ def get_employee_json(emp_id):
 # EDIT EMPLOYEE
 # =========================================================
 
-@employees_bp.route('/<int:emp_id>/edit', methods=['POST'])
+@employees_bp.route(
+    '/<int:emp_id>/edit',
+    methods=['POST']
+)
 @login_required
 def edit_employee(emp_id):
 
     # -----------------------------------------------------
-    # Permission Check
+    # Permission
     # -----------------------------------------------------
 
     if not current_user.is_it_admin:
@@ -579,169 +783,216 @@ def edit_employee(emp_id):
         }), 403
 
     # -----------------------------------------------------
-    # Get Employee
+    # Employee
     # -----------------------------------------------------
 
     emp = Employee.query.get_or_404(emp_id)
 
-    # -----------------------------------------------------
-    # Existing Status
-    # -----------------------------------------------------
-
     old_status = emp.account_status
 
     # -----------------------------------------------------
-    # Basic Employee Information
+    # Basic Information
     # -----------------------------------------------------
 
-    emp.name = request.form.get(
-        "name",
+    name = request.form.get(
+        'name',
         emp.name
     ).strip()
 
-    emp.department = request.form.get(
-        "department",
-        emp.department or ""
-    ).strip()
-
-    emp.designation = request.form.get(
-        "designation",
-        emp.designation or ""
-    ).strip()
-
-    emp.manager = request.form.get(
-        "manager",
-        emp.manager or ""
-    ).strip()
-
-    emp.office_location = request.form.get(
-        "office_location",
-        emp.office_location or ""
-    ).strip()
-
-    # -----------------------------------------------------
-    # Account Status
-    # -----------------------------------------------------
-
-    new_status = request.form.get(
-        "account_status",
-        emp.account_status
-    )
-
-    # -----------------------------------------------------
-    # Existing Date Picker Values
-    # -----------------------------------------------------
-
-    disabled_date_value = request.form.get(
-        "disabled_date",
-        ""
-    ).strip()
-
-    offboarded_date_value = request.form.get(
-        "offboarded_date",
-        ""
-    ).strip()
-
-    # =====================================================
-    # ACTIVE / ONBOARDED / BLOCKED
-    # =====================================================
-    #
-    # These three statuses do not require any date.
-    #
-    # Existing laptop assignment is NOT changed here.
-    # =====================================================
-
-    if new_status in (
-        AccountStatus.ACTIVE,
-        AccountStatus.ONBOARDED,
-        AccountStatus.BLOCKED
-    ):
-
-        emp.disabled_date = None
-
-        emp.offboarded_date = None
-
-    # =====================================================
-    # DISABLED
-    # =====================================================
-
-    elif new_status == AccountStatus.DISABLED:
-
-        if not disabled_date_value:
-
-            return jsonify({
-                "success": False,
-                "message": "Please select the Disabled Date."
-            }), 400
-
-        try:
-
-            emp.disabled_date = datetime.strptime(
-                disabled_date_value,
-                "%Y-%m-%d"
-            ).date()
-
-        except ValueError:
-
-            return jsonify({
-                "success": False,
-                "message": "Invalid Disabled Date."
-            }), 400
-
-        # Clear Offboarded Date
-
-        emp.offboarded_date = None
-
-    # =====================================================
-    # OFFBOARDED
-    # =====================================================
-
-    elif new_status == AccountStatus.OFFBOARDED:
-
-        if not offboarded_date_value:
-
-            return jsonify({
-                "success": False,
-                "message": "Please select the Offboarded Date."
-            }), 400
-
-        try:
-
-            emp.offboarded_date = datetime.strptime(
-                offboarded_date_value,
-                "%Y-%m-%d"
-            ).date()
-
-        except ValueError:
-
-            return jsonify({
-                "success": False,
-                "message": "Invalid Offboarded Date."
-            }), 400
-
-        # Clear Disabled Date
-
-        emp.disabled_date = None
-
-    # =====================================================
-    # INVALID STATUS
-    # =====================================================
-
-    else:
+    if not name:
 
         return jsonify({
             "success": False,
-            "message": "Invalid employee account status."
+            "message": "Employee Name is required."
+        }), 400
+
+    emp.name = name
+
+    emp.department = request.form.get(
+        'department',
+        emp.department or ''
+    ).strip()
+
+    emp.designation = request.form.get(
+        'designation',
+        emp.designation or ''
+    ).strip()
+
+    emp.manager = request.form.get(
+        'manager',
+        emp.manager or ''
+    ).strip()
+
+    emp.office_location = request.form.get(
+        'office_location',
+        emp.office_location or ''
+    ).strip()
+
+    # -----------------------------------------------------
+    # Status
+    # -----------------------------------------------------
+
+    new_status = request.form.get(
+        'account_status',
+        emp.account_status
+    ).strip()
+
+    if new_status not in VALID_ACCOUNT_STATUSES:
+
+        return jsonify({
+            "success": False,
+            "message": "Please select a valid employee account status."
         }), 400
 
     # -----------------------------------------------------
-    # Update Status
+    # Status Dates From Form
     # -----------------------------------------------------
 
-    emp.account_status = new_status
+    date_values = {
+        AccountStatus.ONBOARDED: request.form.get(
+            'onboarded_date',
+            ''
+        ).strip(),
+
+        AccountStatus.ACTIVE: request.form.get(
+            'active_date',
+            ''
+        ).strip(),
+
+        AccountStatus.BLOCKED: request.form.get(
+            'blocked_date',
+            ''
+        ).strip(),
+
+        AccountStatus.DISABLED: request.form.get(
+            'disabled_date',
+            ''
+        ).strip(),
+
+        AccountStatus.OFFBOARDED: request.form.get(
+            'offboarded_date',
+            ''
+        ).strip()
+    }
 
     # -----------------------------------------------------
-    # Save Changes
+    # Status Change
+    # -----------------------------------------------------
+
+    if old_status != new_status:
+
+        selected_date_value = date_values.get(
+            new_status
+        )
+
+        # If UI sends a date, use it.
+        # Otherwise automatically use today's date.
+        if selected_date_value:
+
+            try:
+
+                selected_date = parse_date(
+                    selected_date_value,
+                    f'{new_status} Date'
+                )
+
+            except ValueError as e:
+
+                return jsonify({
+                    "success": False,
+                    "message": str(e)
+                }), 400
+
+        else:
+
+            selected_date = datetime.utcnow().date()
+
+        set_status_date(
+            emp,
+            new_status,
+            selected_date
+        )
+
+        emp.account_status = new_status
+
+    else:
+
+        # -------------------------------------------------
+        # Same status:
+        # allow user to edit the selected status date
+        # -------------------------------------------------
+
+        selected_date_value = date_values.get(
+            new_status
+        )
+
+        if selected_date_value:
+
+            try:
+
+                selected_date = parse_date(
+                    selected_date_value,
+                    f'{new_status} Date'
+                )
+
+                set_status_date(
+                    emp,
+                    new_status,
+                    selected_date
+                )
+
+            except ValueError as e:
+
+                return jsonify({
+                    "success": False,
+                    "message": str(e)
+                }), 400
+
+    # -----------------------------------------------------
+    # Offboarded = Automatic Laptop Return
+    # -----------------------------------------------------
+
+    returned_assets = 0
+
+    if (
+        new_status == AccountStatus.OFFBOARDED
+        and old_status != AccountStatus.OFFBOARDED
+    ):
+
+        assigned_laptops = (
+            Asset.query
+            .filter_by(
+                assigned_employee_id=emp.id
+            )
+            .all()
+        )
+
+        for laptop in assigned_laptops:
+
+            laptop.status = AssetStatus.AVAILABLE
+
+            laptop.assigned_employee_id = None
+
+            laptop.assignment_date = None
+
+            returned_assets += 1
+
+            history = AssetAssignmentHistory(
+                asset_id=laptop.id,
+                employee_id=emp.id,
+                employee_name=emp.name,
+                action='Returned (Employee Offboarded)',
+                notes=(
+                    f'Laptop automatically returned because '
+                    f'{emp.name} ({emp.employee_id}) was offboarded.'
+                ),
+                performed_by=current_user.full_name
+            )
+
+            db.session.add(history)
+
+    # -----------------------------------------------------
+    # Save
     # -----------------------------------------------------
 
     try:
@@ -758,35 +1009,43 @@ def edit_employee(emp_id):
         }), 500
 
     # -----------------------------------------------------
-    # Audit Status Change
+    # Audit
     # -----------------------------------------------------
 
     if old_status != new_status:
 
-        disabled_date_text = (
-            emp.disabled_date.strftime('%Y-%m-%d')
-            if emp.disabled_date
-            else '-'
+        status_field = status_date_field(
+            new_status
         )
 
-        offboarded_date_text = (
-            emp.offboarded_date.strftime('%Y-%m-%d')
-            if emp.offboarded_date
-            else '-'
+        status_date = getattr(
+            emp,
+            status_field,
+            None
         )
 
-        AuditService.log(
-            action='Employee Status Changed',
-            entity_type='Employee',
-            entity_id=emp.employee_id,
-            details=(
-                f'Employee {emp.name} '
-                f'({emp.employee_id}) status changed '
-                f'from {old_status} to {new_status}. '
-                f'Disabled Date: {disabled_date_text}, '
-                f'Offboarded Date: {offboarded_date_text}'
+        status_date_text = date_to_string(
+            status_date
+        ) or '-'
+
+        try:
+
+            AuditService.log(
+                action='Employee Status Changed',
+                entity_type='Employee',
+                entity_id=emp.employee_id,
+                details=(
+                    f'Employee {emp.name} '
+                    f'({emp.employee_id}) status changed '
+                    f'from {old_status} to {new_status}. '
+                    f'{new_status} Date: {status_date_text}. '
+                    f'Laptops Returned: {returned_assets}.'
+                )
             )
-        )
+
+        except Exception:
+
+            pass
 
     # -----------------------------------------------------
     # Response
@@ -796,19 +1055,36 @@ def edit_employee(emp_id):
 
         "success": True,
 
-        "message": "Employee updated successfully",
+        "message": (
+            "Employee updated successfully"
+            + (
+                f". {returned_assets} laptop(s) automatically returned."
+                if returned_assets
+                else ""
+            )
+        ),
 
         "account_status": emp.account_status,
 
-        "disabled_date": (
-            emp.disabled_date.strftime('%Y-%m-%d')
-            if emp.disabled_date
-            else None
+        "onboarded_date": date_to_string(
+            emp.onboarded_date
         ),
 
-        "offboarded_date": (
-            emp.offboarded_date.strftime('%Y-%m-%d')
-            if emp.offboarded_date
-            else None
-        )
+        "active_date": date_to_string(
+            emp.active_date
+        ),
+
+        "blocked_date": date_to_string(
+            emp.blocked_date
+        ),
+
+        "disabled_date": date_to_string(
+            emp.disabled_date
+        ),
+
+        "offboarded_date": date_to_string(
+            emp.offboarded_date
+        ),
+
+        "returned_assets": returned_assets
     })
