@@ -905,7 +905,7 @@ body > .asset-action-menu .dropdown-item i {
                                 <i class="fas fa-wrench me-1 text-warning"></i>
                                 Description
                             </div>
-                            <small class="text-muted repair-description-text">Loading...</small>
+                            <small class="text-muted repair-description-text">No repair description</small>
                         </div>
 
                         {% elif ast.assigned_employee %}
@@ -4388,41 +4388,29 @@ document.addEventListener("DOMContentLoaded", function () {
 {% endblock %}
 
 <script>
-/* Show the repair description only for laptops currently Under Repair. */
+/* Show the exact repair description saved when the laptop was sent to repair. */
 document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll(".repair-description-cell").forEach(function (cell) {
         const assetId = cell.getAttribute("data-asset-id");
         const textElement = cell.querySelector(".repair-description-text");
         if (!assetId || !textElement) return;
 
-        fetch("/assets/" + encodeURIComponent(assetId) + "/history")
-            .then(function (response) {
-                if (!response.ok) throw new Error("Unable to load history");
-                return response.json();
-            })
-            .then(function (data) {
-                const history = Array.isArray(data.history) ? data.history : [];
-                const repairEntry = history.find(function (item) {
-                    return item.action === "Sent to Repair";
-                });
-
-                if (!repairEntry || !repairEntry.notes) {
-                    textElement.textContent = "No repair description";
-                    return;
-                }
-
-                let description = repairEntry.notes;
-                const marker = "Notes:";
-                const markerIndex = description.indexOf(marker);
-                if (markerIndex !== -1) {
-                    description = description.substring(markerIndex + marker.length).trim();
-                }
-
-                textElement.textContent = description || "No repair description";
-            })
-            .catch(function () {
-                textElement.textContent = "No repair description";
-            });
+        fetch("/assets/" + encodeURIComponent(assetId) + "/repair-description", {
+            method: "GET",
+            headers: {"Accept": "application/json"},
+            credentials: "same-origin"
+        })
+        .then(function (response) {
+            if (!response.ok) throw new Error("Unable to load repair description");
+            return response.json();
+        })
+        .then(function (data) {
+            const description = (data.description || "").trim();
+            textElement.textContent = description || "No repair description";
+        })
+        .catch(function () {
+            textElement.textContent = "No repair description";
+        });
     });
 });
 </script>
