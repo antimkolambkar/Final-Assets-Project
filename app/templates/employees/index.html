@@ -60,7 +60,7 @@
             method="GET"
             class="row g-2">
 
-            <div class="col-12 col-md-5">
+            <div class="col-12 col-md-5 position-relative">
 
                 <div class="input-group">
 
@@ -70,11 +70,21 @@
 
                     <input
                         type="text"
+                        id="employeeSearchInput"
                         name="q"
                         value="{{ search_q }}"
                         class="form-control border-start-0 bg-light"
-                        placeholder="Search employee name, ID, email, designation...">
+                        placeholder="Search employee name, ID, email, designation..."
+                        autocomplete="off">
 
+                </div>
+
+                <!-- Employee autocomplete popup -->
+                <div
+                    id="employeeSearchResults"
+                    class="employee-search-results"
+                    role="listbox"
+                    aria-label="Employee search results">
                 </div>
 
             </div>
@@ -686,6 +696,102 @@
 
 
 <!-- =========================================================
+     EMPLOYEE SEARCH AUTOCOMPLETE STYLES
+========================================================= -->
+<style>
+.employee-search-results {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    z-index: 1055;
+    display: none;
+    max-height: 430px;
+    overflow-y: auto;
+    background: #ffffff;
+    border: 1px solid #e3e7ed;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.12);
+}
+
+.employee-search-results.show {
+    display: block;
+}
+
+.employee-search-result {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 18px;
+    background: #fff;
+    border: 0;
+    border-bottom: 1px solid #edf0f3;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.employee-search-result:last-child {
+    border-bottom: 0;
+}
+
+.employee-search-result:hover,
+.employee-search-result:focus {
+    background: #f5f8fc;
+    outline: none;
+}
+
+.employee-search-avatar {
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #eaf2ff;
+    color: #0d6efd;
+    font-size: 18px;
+}
+
+.employee-search-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #171717;
+    line-height: 1.25;
+}
+
+.employee-search-id {
+    margin-top: 3px;
+    font-size: 14px;
+    color: #6c757d;
+    line-height: 1.25;
+}
+
+.employee-search-dept {
+    margin-top: 2px;
+    font-size: 12px;
+    color: #8a939d;
+}
+
+.employee-search-empty {
+    padding: 18px;
+    text-align: center;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.employee-search-loading {
+    padding: 16px;
+    text-align: center;
+    color: #6c757d;
+    font-size: 14px;
+}
+</style>
+
+
+<!-- =========================================================
      JAVASCRIPT - READ ONLY EMPLOYEE DIRECTORY
 ========================================================= -->
 <script>
@@ -694,6 +800,339 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const detailModalElement =
         document.getElementById('employeeDetailModal');
+
+    const detailModal =
+        detailModalElement && typeof bootstrap !== 'undefined'
+            ? new bootstrap.Modal(detailModalElement)
+            : null;
+
+
+    /* ========================================================
+       EMPLOYEE SEARCH AUTOCOMPLETE
+    ======================================================== */
+
+    const employeeSearchInput =
+        document.getElementById('employeeSearchInput');
+
+    const employeeSearchResults =
+        document.getElementById('employeeSearchResults');
+
+    let employeeSearchTimer = null;
+    let employeeSearchRequest = null;
+
+
+    function escapeSearchHtml(value) {
+        const div = document.createElement('div');
+        div.textContent = value == null ? '' : String(value);
+        return div.innerHTML;
+    }
+
+
+    function hideEmployeeSearchResults() {
+        if (!employeeSearchResults) {
+            return;
+        }
+
+        employeeSearchResults.classList.remove('show');
+        employeeSearchResults.innerHTML = '';
+    }
+
+
+    function showEmployeeSearchResults() {
+        if (!employeeSearchResults) {
+            return;
+        }
+
+        employeeSearchResults.classList.add('show');
+    }
+
+
+    function renderEmployeeSearchResults(employees) {
+
+        if (!employeeSearchResults) {
+            return;
+        }
+
+        if (!employees || employees.length === 0) {
+            employeeSearchResults.innerHTML = `
+                <div class="employee-search-empty">
+                    <i class="fas fa-user-slash me-2"></i>
+                    No employee found
+                </div>
+            `;
+
+            showEmployeeSearchResults();
+            return;
+        }
+
+
+        employeeSearchResults.innerHTML = employees.map(function (emp) {
+
+            const name = escapeSearchHtml(emp.name || 'Unknown Employee');
+            const employeeId = escapeSearchHtml(
+                emp.employee_id || '-'
+            );
+            const department = escapeSearchHtml(
+                emp.department || ''
+            );
+
+            return `
+                <button
+                    type="button"
+                    class="employee-search-result"
+                    data-employee-id="${escapeSearchHtml(emp.id)}"
+                    data-employee-code="${employeeId}"
+                    role="option">
+
+                    <span class="employee-search-avatar">
+                        <i class="fas fa-user"></i>
+                    </span>
+
+                    <span class="flex-grow-1">
+                        <span class="employee-search-name d-block">
+                            ${name}
+                        </span>
+
+                        <span class="employee-search-id d-block">
+                            ${employeeId}
+                        </span>
+
+                        ${
+                            department
+                                ? `<span class="employee-search-dept d-block">
+                                    ${department}
+                                   </span>`
+                                : ''
+                        }
+                    </span>
+                </button>
+            `;
+        }).join('');
+
+
+        showEmployeeSearchResults();
+    }
+
+
+    async function searchEmployees(value) {
+
+        const query = value.trim();
+
+        if (query.length < 2) {
+            hideEmployeeSearchResults();
+            return;
+        }
+
+
+        if (employeeSearchRequest) {
+            employeeSearchRequest.abort();
+        }
+
+        employeeSearchRequest = new AbortController();
+
+
+        employeeSearchResults.innerHTML = `
+            <div class="employee-search-loading">
+                <span class="spinner-border spinner-border-sm me-2"></span>
+                Searching employees...
+            </div>
+        `;
+
+        showEmployeeSearchResults();
+
+
+        try {
+
+            const response = await fetch(
+                `{{ url_for('employees.employee_autocomplete') }}?q=${encodeURIComponent(query)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    signal: employeeSearchRequest.signal
+                }
+            );
+
+
+            if (!response.ok) {
+                throw new Error('Employee search failed.');
+            }
+
+
+            const employees = await response.json();
+
+            renderEmployeeSearchResults(employees);
+
+        }
+        catch (error) {
+
+            if (error.name === 'AbortError') {
+                return;
+            }
+
+            console.error('Employee autocomplete error:', error);
+
+            employeeSearchResults.innerHTML = `
+                <div class="employee-search-empty text-danger">
+                    <i class="fas fa-circle-exclamation me-2"></i>
+                    Unable to search employees
+                </div>
+            `;
+
+            showEmployeeSearchResults();
+        }
+    }
+
+
+    if (employeeSearchInput && employeeSearchResults) {
+
+        employeeSearchInput.addEventListener(
+            'input',
+            function () {
+
+                const value = this.value;
+
+                clearTimeout(employeeSearchTimer);
+
+                if (value.trim().length < 2) {
+                    hideEmployeeSearchResults();
+                    return;
+                }
+
+                employeeSearchTimer = setTimeout(
+                    function () {
+                        searchEmployees(value);
+                    },
+                    250
+                );
+            }
+        );
+
+
+        employeeSearchInput.addEventListener(
+            'focus',
+            function () {
+
+                if (this.value.trim().length >= 2) {
+                    searchEmployees(this.value);
+                }
+            }
+        );
+
+
+        employeeSearchResults.addEventListener(
+            'click',
+            function (event) {
+
+                const result =
+                    event.target.closest(
+                        '.employee-search-result'
+                    );
+
+                if (!result) {
+                    return;
+                }
+
+
+                const employeeId =
+                    result.dataset.employeeId;
+
+                const employeeCode =
+                    result.dataset.employeeCode;
+
+
+                hideEmployeeSearchResults();
+
+
+                /*
+                 * Use the normal employee search URL so the
+                 * selected employee is loaded in the table.
+                 *
+                 * The page-load code below then automatically
+                 * opens that employee's profile modal.
+                 */
+
+                window.location.href =
+                    `{{ url_for('employees.index') }}?q=${encodeURIComponent(employeeCode)}`;
+            }
+        );
+
+
+        document.addEventListener(
+            'click',
+            function (event) {
+
+                if (
+                    !employeeSearchInput.contains(event.target) &&
+                    !employeeSearchResults.contains(event.target)
+                ) {
+                    hideEmployeeSearchResults();
+                }
+            }
+        );
+
+
+        employeeSearchInput.addEventListener(
+            'keydown',
+            function (event) {
+
+                if (event.key === 'Escape') {
+                    hideEmployeeSearchResults();
+                }
+            }
+        );
+    }
+
+
+    /* ========================================================
+       AUTO-OPEN PROFILE AFTER AUTOCOMPLETE SELECTION
+    ======================================================== */
+
+    const currentSearch =
+        new URLSearchParams(window.location.search).get('q');
+
+
+    if (currentSearch && employeeSearchInput) {
+
+        /*
+         * Only auto-open when the search value looks like an
+         * exact employee ID. This prevents normal searches
+         * such as "an" from automatically opening a profile.
+         */
+
+        if (/^EMP-/i.test(currentSearch)) {
+
+            const matchingButton =
+                Array.from(
+                    document.querySelectorAll('.btn-view-employee')
+                ).find(function (button) {
+
+                    const row =
+                        button.closest('tr');
+
+                    return row &&
+                        row.querySelector('strong.text-primary') &&
+                        row.querySelector('strong.text-primary')
+                            .textContent
+                            .trim()
+                            .toLowerCase() ===
+                        currentSearch.trim().toLowerCase();
+                });
+
+
+            if (matchingButton) {
+
+                setTimeout(
+                    function () {
+                        matchingButton.click();
+                    },
+                    150
+                );
+            }
+        }
+    }
+
 
     /* ========================================================
        VIEW EMPLOYEE
