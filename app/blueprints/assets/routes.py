@@ -78,24 +78,47 @@ def index():
     available_assets = Asset.query.filter_by(status=AssetStatus.AVAILABLE).order_by(Asset.brand.asc()).all()
     assigned_assets = Asset.query.filter_by(status=AssetStatus.ASSIGNED).order_by(Asset.asset_id.asc()).all()
 
-    # Dates used by the asset table.
-    # Keep these in the route so the template always receives the
-    # dictionaries it expects, including when there are no repair records.
-    repair_start_dates = {}
-    repair_completion_dates = {}
+    # Get the latest repair description for assets currently under repair.
+    # This is passed directly to the template so it does not depend on AJAX.
+    repair_descriptions = {}
+    repair_asset_ids = [asset.id for asset in assets if str(asset.status.value if hasattr(asset.status, 'value') else asset.status) in ('Repair', 'Under Repair')]
 
-    history_rows = (
-        AssetAssignmentHistory.query
-        .filter(AssetAssignmentHistory.asset_id.in_([asset.id for asset in assets]))
-        .order_by(AssetAssignmentHistory.timestamp.asc())
-        .all()
-    )
+    if repair_asset_ids:
+        repair_history = (
+            AssetAssignmentHistory.query
+            .filter(
+                AssetAssignmentHistory.asset_id.in_(repair_asset_ids),
+                AssetAssignmentHistory.action == 'Sent to Repair'
+            )
+            .order_by(
+                AssetAssignmentHistory.timestamp.desc(),
+                AssetAssignmentHistory.id.desc()
+            )
+            .all()
+        )
 
-    for history in history_rows:
-        if history.action == 'Sent to Repair':
-            repair_start_dates.setdefault(history.asset_id, history.timestamp)
-        elif history.action == 'Repair Completed':
-            repair_completion_dates[history.asset_id] = history.timestamp
+        for history in repair_history:
+            if history.asset_id in repair_descriptions:
+                continue
+
+            notes = (history.notes or '').strip()
+            if 'Notes:' in notes:
+                notes = notes.split('Notes:', 1)[1].strip()
+
+            repair_descriptions[history.asset_id] = notes
+
+        # Fallback for older records where the description exists only in the repair ticket.
+        missing_ids = [asset_id for asset_id in repair_asset_ids if not repair_descriptions.get(asset_id)]
+        if missing_ids:
+            repair_tickets = (
+                VendorRepairTicket.query
+                .filter(VendorRepairTicket.asset_id.in_(missing_ids))
+                .order_by(VendorRepairTicket.sent_date.desc(), VendorRepairTicket.id.desc())
+                .all()
+            )
+            for ticket in repair_tickets:
+                if ticket.asset_id not in repair_descriptions and ticket.notes:
+                    repair_descriptions[ticket.asset_id] = ticket.notes.strip()
 
     return render_template(
         'assets/index.html',
@@ -108,8 +131,7 @@ def index():
         active_employees=active_employees,
         available_assets=available_assets,
         assigned_assets=assigned_assets,
-        repair_start_dates=repair_start_dates,
-        repair_completion_dates=repair_completion_dates
+        repair_descriptions=repair_descriptions
     )
 
 
@@ -523,52 +545,6 @@ def send_to_repair():
     )
 
     return redirect(url_for('assets.index'))
-
-
-@assets_bp.route('/<int:asset_id>/repair-description')
-@login_required
-def get_repair_description(asset_id):
-    """Return the exact description entered when the asset was sent to repair."""
-    asset = Asset.query.get_or_404(asset_id)
-
-    # The repair history stores the exact text entered in the Send to Repair form.
-    history = (
-        AssetAssignmentHistory.query
-        .filter_by(asset_id=asset.id, action='Sent to Repair')
-        .order_by(
-            AssetAssignmentHistory.timestamp.desc(),
-            AssetAssignmentHistory.id.desc()
-        )
-        .first()
-    )
-
-    description = ''
-
-    if history and history.notes:
-        history_notes = history.notes.strip()
-        if 'Notes:' in history_notes:
-            description = history_notes.split('Notes:', 1)[1].strip()
-        else:
-            description = history_notes
-
-    # Fallback to the repair ticket notes for records where history is unavailable.
-    if not description:
-        repair_ticket = (
-            VendorRepairTicket.query
-            .filter_by(asset_id=asset.id)
-            .order_by(
-                VendorRepairTicket.sent_date.desc(),
-                VendorRepairTicket.id.desc()
-            )
-            .first()
-        )
-        if repair_ticket and repair_ticket.notes:
-            description = repair_ticket.notes.strip()
-
-    return jsonify({
-        'asset_id': asset.asset_id,
-        'description': description
-    })
 
 
 @assets_bp.route('/<int:asset_id>/history')
