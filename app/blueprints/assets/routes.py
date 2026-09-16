@@ -132,6 +132,11 @@ def index():
     repair_start_dates = {}
     repair_completion_dates = {}
 
+    # Values used by assets/index.html
+    available_dates = {}
+    available_returned_by = {}
+    repair_descriptions = {}
+
     for asset in assets:
 
         # Latest repair start date
@@ -158,14 +163,8 @@ def index():
         if repair_completion_history and repair_completion_history.event_date:
             repair_completion_dates[asset.id] = repair_completion_history.event_date
 
-    # =====================================================
-    # AVAILABLE ASSET DATES
-    # =====================================================
-    available_dates = {}
-
-    for asset in assets:
-        # Latest event that can make an asset available
-        history = AssetAssignmentHistory.query.filter(
+        # Latest event that made the asset Available.
+        available_history = AssetAssignmentHistory.query.filter(
             AssetAssignmentHistory.asset_id == asset.id,
             AssetAssignmentHistory.action.in_([
                 'Stock',
@@ -177,8 +176,32 @@ def index():
             AssetAssignmentHistory.timestamp.desc()
         ).first()
 
-        if history and history.event_date:
-            available_dates[asset.id] = history.event_date
+        if available_history and available_history.event_date:
+            available_dates[asset.id] = available_history.event_date
+
+        # Employee who most recently returned the asset.
+        returned_history = AssetAssignmentHistory.query.filter_by(
+            asset_id=asset.id,
+            action='Returned'
+        ).order_by(
+            AssetAssignmentHistory.event_date.desc(),
+            AssetAssignmentHistory.timestamp.desc()
+        ).first()
+
+        if returned_history and returned_history.employee_name:
+            available_returned_by[asset.id] = returned_history.employee_name
+
+        # Latest repair description/notes.
+        repair_history = AssetAssignmentHistory.query.filter_by(
+            asset_id=asset.id,
+            action='Sent to Repair'
+        ).order_by(
+            AssetAssignmentHistory.event_date.desc(),
+            AssetAssignmentHistory.timestamp.desc()
+        ).first()
+
+        if repair_history and repair_history.notes:
+            repair_descriptions[asset.id] = repair_history.notes
 
     vendors = Vendor.query.order_by(
         Vendor.name.asc()
@@ -215,7 +238,9 @@ def index():
         assigned_assets=assigned_assets,
         repair_start_dates=repair_start_dates,
         repair_completion_dates=repair_completion_dates,
-        available_dates=available_dates
+        available_dates=available_dates,
+        available_returned_by=available_returned_by,
+        repair_descriptions=repair_descriptions
     )
 
 
@@ -403,90 +428,6 @@ def add_asset():
         'success'
     )
 
-    return redirect(url_for('assets.index'))
-
-
-# =========================================================
-# MARK AS NON-REPAIRABLE
-# =========================================================
-@assets_bp.route('/mark-non-repairable/<int:asset_id>', methods=['POST'])
-@login_required
-def mark_non_repairable(asset_id):
-    if not current_user.is_it_admin:
-        flash('Permission denied. Only IT Admins can change asset lifecycle status.', 'danger')
-        return redirect(url_for('assets.index'))
-
-    asset = Asset.query.get_or_404(asset_id)
-    status_value = asset.status.value if hasattr(asset.status, 'value') else str(asset.status)
-
-    if status_value != 'Available':
-        flash(f'Asset {asset.asset_id} is currently {status_value} and cannot be marked as Non-Repairable.', 'warning')
-        return redirect(url_for('assets.index'))
-
-    asset.status = 'Non-Repairable'
-    asset.assigned_employee_id = None
-    asset.assignment_date = None
-
-    hist = AssetAssignmentHistory(
-        asset_id=asset.id,
-        action='Marked as Non-Repairable',
-        event_date=datetime.utcnow(),
-        notes=f'Asset {asset.asset_id} marked as Non-Repairable.',
-        performed_by=current_user.full_name
-    )
-    db.session.add(hist)
-
-    AuditService.log(
-        action='Asset Marked Non-Repairable',
-        entity_type='Asset',
-        entity_id=asset.asset_id,
-        details=f'Asset {asset.asset_id} marked as Non-Repairable.'
-    )
-
-    db.session.commit()
-    flash(f'Asset {asset.asset_id} marked as Non-Repairable.', 'success')
-    return redirect(url_for('assets.index'))
-
-
-# =========================================================
-# SEND ASSET TO CHARITY
-# =========================================================
-@assets_bp.route('/send-to-charity/<int:asset_id>', methods=['POST'])
-@login_required
-def send_to_charity(asset_id):
-    if not current_user.is_it_admin:
-        flash('Permission denied. Only IT Admins can send assets to charity.', 'danger')
-        return redirect(url_for('assets.index'))
-
-    asset = Asset.query.get_or_404(asset_id)
-    status_value = asset.status.value if hasattr(asset.status, 'value') else str(asset.status)
-
-    if status_value != 'Available':
-        flash(f'Asset {asset.asset_id} is currently {status_value} and cannot be sent to charity.', 'warning')
-        return redirect(url_for('assets.index'))
-
-    asset.status = 'Donated Assets'
-    asset.assigned_employee_id = None
-    asset.assignment_date = None
-
-    hist = AssetAssignmentHistory(
-        asset_id=asset.id,
-        action='Sent to Charity',
-        event_date=datetime.utcnow(),
-        notes=f'Asset {asset.asset_id} sent to charity/donation.',
-        performed_by=current_user.full_name
-    )
-    db.session.add(hist)
-
-    AuditService.log(
-        action='Asset Sent to Charity',
-        entity_type='Asset',
-        entity_id=asset.asset_id,
-        details=f'Asset {asset.asset_id} sent to charity/donation.'
-    )
-
-    db.session.commit()
-    flash(f'Asset {asset.asset_id} sent to Charity successfully.', 'success')
     return redirect(url_for('assets.index'))
 
 
