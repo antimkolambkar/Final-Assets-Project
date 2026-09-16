@@ -78,6 +78,25 @@ def index():
     available_assets = Asset.query.filter_by(status=AssetStatus.AVAILABLE).order_by(Asset.brand.asc()).all()
     assigned_assets = Asset.query.filter_by(status=AssetStatus.ASSIGNED).order_by(Asset.asset_id.asc()).all()
 
+    # Dates used by the asset table.
+    # Keep these in the route so the template always receives the
+    # dictionaries it expects, including when there are no repair records.
+    repair_start_dates = {}
+    repair_completion_dates = {}
+
+    history_rows = (
+        AssetAssignmentHistory.query
+        .filter(AssetAssignmentHistory.asset_id.in_([asset.id for asset in assets]))
+        .order_by(AssetAssignmentHistory.timestamp.asc())
+        .all()
+    )
+
+    for history in history_rows:
+        if history.action == 'Sent to Repair':
+            repair_start_dates.setdefault(history.asset_id, history.timestamp)
+        elif history.action == 'Repair Completed':
+            repair_completion_dates[history.asset_id] = history.timestamp
+
     return render_template(
         'assets/index.html',
         assets=assets,
@@ -88,7 +107,9 @@ def index():
         vendors=vendors,
         active_employees=active_employees,
         available_assets=available_assets,
-        assigned_assets=assigned_assets
+        assigned_assets=assigned_assets,
+        repair_start_dates=repair_start_dates,
+        repair_completion_dates=repair_completion_dates
     )
 
 
