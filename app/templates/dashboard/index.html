@@ -18,197 +18,127 @@
     </div>
 </div>
 
-<!-- 1. Metric Cards Row 1: Assets -->
-
+<!-- Asset metric cards -->
 <div class="row g-3 mb-4">
-
-    <!-- Total Assets -->
     <div class="col-12 col-sm-6 col-xl-3">
-        <a href="{{ url_for('assets.index') }}"
-           class="text-decoration-none text-dark">
+        <a href="{{ url_for('assets.index') }}" class="text-decoration-none text-dark">
             <div class="card-stat h-100 dashboard-clickable">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="stat-label">Total Assets</span>
-
                     <div class="icon-box bg-primary bg-opacity-10 text-primary">
                         <i class="fas fa-laptop"></i>
                     </div>
                 </div>
-
-                <div class="stat-value" id="card-total-assets">
-                    {{ total_assets }}
-                </div>
-
+                <div class="stat-value" id="card-total-assets">{{ total_assets }}</div>
                 <div class="small text-muted mt-1">
-                    <i class="fas fa-cubes me-1"></i>
-                    Hardware Inventory
+                    <i class="fas fa-cubes me-1"></i>Hardware Inventory
                 </div>
             </div>
         </a>
     </div>
 
-
-    <!-- Assigned Assets -->
     <div class="col-12 col-sm-6 col-xl-3">
-        <a href="{{ url_for('assets.index', status='Assigned') }}"
-           class="text-decoration-none text-dark">
+        <a href="{{ url_for('assets.index', status='Assigned') }}" class="text-decoration-none text-dark">
             <div class="card-stat h-100 dashboard-clickable">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="stat-label">Assigned Assets</span>
-
                     <div class="icon-box bg-info bg-opacity-10 text-info">
                         <i class="fas fa-user-check"></i>
                     </div>
                 </div>
-
-                <div class="stat-value text-info" id="card-assigned-assets">
-                    {{ assigned_assets }}
-                </div>
-
+                <div class="stat-value text-info" id="card-assigned-assets">{{ assigned_assets }}</div>
                 <div class="small text-muted mt-1">
-                    <i class="fas fa-link me-1"></i>
-                    Deployed to Staff
+                    <i class="fas fa-link me-1"></i>Deployed to Staff
                 </div>
             </div>
         </a>
     </div>
 
-
-    <!-- Available Assets -->
     <div class="col-12 col-sm-6 col-xl-3">
-        <a href="{{ url_for('assets.index', status='Available') }}"
-           class="text-decoration-none text-dark">
+        <a href="{{ url_for('assets.index', status='Available') }}" class="text-decoration-none text-dark">
             <div class="card-stat h-100 dashboard-clickable">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="stat-label">Available Assets</span>
-
                     <div class="icon-box bg-success bg-opacity-10 text-success">
                         <i class="fas fa-box-open"></i>
                     </div>
                 </div>
-
-                <div class="stat-value text-success" id="card-available-assets">
-                    {{ available_assets }}
-                </div>
-
+                <div class="stat-value text-success" id="card-available-assets">{{ available_assets }}</div>
                 <div class="small text-muted mt-1">
-                    <i class="fas fa-check-circle me-1"></i>
-                    Ready for Assignment
+                    <i class="fas fa-check-circle me-1"></i>Ready for Assignment
                 </div>
             </div>
         </a>
     </div>
 
-
-    <!-- Repair Assets -->
     <div class="col-12 col-sm-6 col-xl-3">
-        <a href="{{ url_for('assets.index', status='Repair') }}"
-           class="text-decoration-none text-dark">
+        <a href="{{ url_for('assets.index', status='Repair') }}" class="text-decoration-none text-dark">
             <div class="card-stat h-100 dashboard-clickable">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="stat-label">Under Repair</span>
-
                     <div class="icon-box bg-warning bg-opacity-10 text-warning">
                         <i class="fas fa-wrench"></i>
                     </div>
                 </div>
-
-                <div class="stat-value text-warning" id="card-repair-assets">
-                    {{ repair_assets }}
-                </div>
-
+                <div class="stat-value text-warning" id="card-repair-assets">{{ repair_assets }}</div>
                 <div class="small text-muted mt-1">
-                    <i class="fas fa-truck-repair me-1"></i>
-                    Vendor Service
+                    <i class="fas fa-truck-repair me-1"></i>Vendor Service
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Employee and ticket metric cards -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{{ url_for('employees.index', status='Active') }}" class="text-decoration-none text-dark">
+            <div class="card-stat border-start border-4 border-success dashboard-clickable h-100">
+                <div class="stat-label">Active Employees</div>
+                <div class="stat-value text-success" id="card-active-emp">{{ active_employees }}</div>
+                <div class="small text-muted mt-1">
+                    <i class="fas fa-users me-2"></i>Entra Directory
                 </div>
             </div>
         </a>
     </div>
 
-</div>
-
-<!-- 2. Metric Cards Row 2: Entra ID Employees & Tickets -->
-
-<div class="row g-3 mb-4">
-
-<!-- Active Employees -->
-<a href="{{ url_for('employees.index', status='Active') }}"
-   class="text-decoration-none d-block"
-   style="cursor: pointer;">
-
-    <div class="stat-card border-success"
-         style="cursor: pointer;">
-
-        <div class="stat-content">
-
-            <div class="stat-label">
-                Active Employees
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{{ url_for('employees.index', status='Blocked,Disabled') }}" class="text-decoration-none text-dark">
+            <div class="card-stat border-start border-4 border-warning dashboard-clickable h-100">
+                <div class="stat-label">Blocked / Disabled</div>
+                <div class="stat-value text-warning" id="card-blocked-emp">
+                    {{ blocked_employees + disabled_employees }}
+                </div>
+                <div class="small text-muted mt-1">Account Flagged</div>
             </div>
-
-            <div class="stat-value text-success" id="card-active-emp">
-                {{ active_employees }}
-            </div>
-
-            <div class="stat-subtext">
-                <i class="fas fa-users me-2"></i>
-                Entra Directory
-            </div>
-
-        </div>
-
+        </a>
     </div>
 
-</a>
-
-<!-- Blocked / Disabled -->
-<div class="col-6 col-md-3">
-   <a href="{{ url_for('employees.index', status='Blocked,Disabled') }}"
-   class="text-decoration-none text-reset">
-    <div class="card-stat border-start border-4 border-warning">
-        <div class="stat-label">Blocked / Disabled</div>
-        <div class="stat-value text-warning" id="card-blocked-emp">
-            {{ blocked_employees + disabled_employees }}
-        </div>
-        <div class="small text-muted">Account Flagged</div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{{ url_for('employees.index', status='Offboarded') }}" class="text-decoration-none text-dark">
+            <div class="card-stat border-start border-4 border-danger dashboard-clickable h-100">
+                <div class="stat-label">Offboarded Staff</div>
+                <div class="stat-value text-danger" id="card-offboarded-emp">{{ offboarded_employees }}</div>
+                <div class="small text-muted mt-1">Auto Laptop Return</div>
+            </div>
+        </a>
     </div>
-</a>
-</div>
 
-<!-- Offboarded Employees -->
-<div class="col-6 col-md-3">
-   <a href="{{ url_for('employees.index', status='Offboarded') }}"
-   class="text-decoration-none text-reset">
-    <div class="card-stat border-start border-4 border-danger">
-        <div class="stat-label">Offboarded Staff</div>
-        <div class="stat-value text-danger" id="card-offboarded-emp">
-            {{ offboarded_employees }}
-        </div>
-        <div class="small text-muted">Auto Laptop Return</div>
-    </div>
-</a>
-</div>
-
-    <!-- Open Tickets -->
-    <div class="col-6 col-md-3">
-        <a href="{{ url_for('tickets.index') }}"
-           class="text-decoration-none text-dark">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <a href="{{ url_for('tickets.index') }}" class="text-decoration-none text-dark">
             <div class="card-stat border-start border-4 border-primary dashboard-clickable h-100">
                 <div class="stat-label">Open Helpdesk Tickets</div>
-
-                <div class="stat-value text-primary" id="card-open-tickets">
-                    {{ open_tickets }}
-                </div>
-
-                <div class="small text-muted">
-                    <i class="fas fa-ticket-alt me-1"></i>
-                    Pending Support
+                <div class="stat-value text-primary" id="card-open-tickets">{{ open_tickets }}</div>
+                <div class="small text-muted mt-1">
+                    <i class="fas fa-ticket-alt me-1"></i>Pending Support
                 </div>
             </div>
         </a>
     </div>
-
 </div>
-<!-- 3. Charts Row -->
+
+<!-- Charts -->
 <div class="row g-4 mb-4">
     <div class="col-12 col-lg-6">
         <div class="card border-0 shadow-sm h-100">
@@ -221,6 +151,7 @@
             </div>
         </div>
     </div>
+
     <div class="col-12 col-lg-6">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-transparent fw-bold d-flex justify-content-between align-items-center">
@@ -234,9 +165,8 @@
     </div>
 </div>
 
-<!-- 4. Widgets & Activity Feeds Row -->
+<!-- Recent activity -->
 <div class="row g-4">
-    <!-- Recent Tickets Widget -->
     <div class="col-12 col-xl-6">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-transparent fw-bold d-flex justify-content-between align-items-center">
@@ -257,7 +187,11 @@
                     <tbody>
                         {% for tkt in recent_tickets %}
                         <tr>
-                            <td><a href="{{ url_for('tickets.detail', ticket_id=tkt.ticket_id) }}" class="fw-bold text-decoration-none">{{ tkt.ticket_id }}</a></td>
+                            <td>
+                                <a href="{{ url_for('tickets.detail', ticket_id=tkt.ticket_id) }}" class="fw-bold text-decoration-none">
+                                    {{ tkt.ticket_id }}
+                                </a>
+                            </td>
                             <td class="text-truncate" style="max-width: 180px;">{{ tkt.subject }}</td>
                             <td>{{ tkt.employee.name if tkt.employee else 'N/A' }}</td>
                             <td>
@@ -265,10 +199,14 @@
                                     {{ tkt.priority }}
                                 </span>
                             </td>
-                            <td><span class="badge bg-info bg-opacity-10 text-info fw-semibold">{{ tkt.status }}</span></td>
+                            <td>
+                                <span class="badge bg-info bg-opacity-10 text-info fw-semibold">{{ tkt.status }}</span>
+                            </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="5" class="text-center text-muted py-3">No tickets submitted yet.</td></tr>
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-3">No tickets submitted yet.</td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -276,24 +214,29 @@
         </div>
     </div>
 
-    <!-- Recent Audit Logs Feed -->
     <div class="col-12 col-xl-6">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-transparent fw-bold d-flex justify-content-between align-items-center">
                 <span><i class="fas fa-history me-2 text-secondary"></i>Recent System Activity Logs</span>
                 {% if current_user.is_super_admin %}
-                <a href="{{ url_for('audit.index') }}" class="btn btn-link btn-sm p-0 text-decoration-none">Full Audit Trail &rarr;</a>
+                <a href="{{ url_for('audit.index') }}" class="btn btn-link btn-sm p-0 text-decoration-none">
+                    Full Audit Trail &rarr;
+                </a>
                 {% endif %}
             </div>
             <div class="card-body p-0">
                 <ul class="list-group list-group-flush small">
                     {% for log in recent_activities %}
-                    <li class="list-group-item d-flex align-items-center justify-content-between py-2.5">
+                    <li class="list-group-item d-flex align-items-center justify-content-between py-2">
                         <div>
-                            <strong class="text-dark">{{ log.user_name }}</strong> &bull; <span class="text-primary fw-semibold">{{ log.action }}</span>
+                            <strong class="text-dark">{{ log.user_name }}</strong>
+                            &bull;
+                            <span class="text-primary fw-semibold">{{ log.action }}</span>
                             <div class="text-muted text-truncate" style="max-width: 320px;">{{ log.details }}</div>
                         </div>
-                        <span class="text-muted" style="font-size: 0.75rem;">{{ log.timestamp.strftime('%H:%M:%S') }}</span>
+                        <span class="text-muted" style="font-size: 0.75rem;">
+                            {{ log.timestamp.strftime('%H:%M:%S') }}
+                        </span>
                     </li>
                     {% else %}
                     <li class="list-group-item text-center text-muted py-3">No recent activities logged.</li>
@@ -307,50 +250,62 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Render Charts
+document.addEventListener('DOMContentLoaded', function () {
     fetch('/dashboard/api/metrics')
         .then(res => res.json())
         .then(data => {
-            // 1. Asset Distribution Pie Chart
-            const ctxAsset = document.getElementById('assetStatusChart').getContext('2d');
-            new Chart(ctxAsset, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(data.charts.asset_distribution),
-                    datasets: [{
-                        data: Object.values(data.charts.asset_distribution),
-                        backgroundColor: ['#10b981', '#2563eb', '#f59e0b']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
+            const assetCanvas = document.getElementById('assetStatusChart');
 
-            // 2. Department Assets Bar Chart
-            const ctxDept = document.getElementById('deptAssetsChart').getContext('2d');
-            new Chart(ctxDept, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(data.charts.dept_assets),
-                    datasets: [{
-                        label: 'Assigned Laptops',
-                        data: Object.values(data.charts.dept_assets),
-                        backgroundColor: '#06b6d4'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-                }
-            });
-        });
+            if (assetCanvas) {
+                new Chart(assetCanvas.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(data.charts.asset_distribution),
+                        datasets: [{
+                            data: Object.values(data.charts.asset_distribution),
+                            backgroundColor: ['#10b981', '#2563eb', '#f59e0b']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+            }
+
+            const deptCanvas = document.getElementById('deptAssetsChart');
+
+            if (deptCanvas) {
+                new Chart(deptCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(data.charts.dept_assets),
+                        datasets: [{
+                            label: 'Assigned Laptops',
+                            data: Object.values(data.charts.dept_assets),
+                            backgroundColor: '#06b6d4'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { stepSize: 1 }
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => console.error('Dashboard chart loading error:', error));
 });
 </script>
+
 <style>
 .dashboard-clickable {
     cursor: pointer;
@@ -360,6 +315,16 @@ document.addEventListener('DOMContentLoaded', function() {
 .dashboard-clickable:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.card-stat {
+    min-height: 170px;
+}
+
+@media (max-width: 767.98px) {
+    .card-stat {
+        min-height: 150px;
+    }
 }
 </style>
 {% endblock %}
