@@ -131,6 +131,8 @@ def index():
 
     repair_start_dates = {}
     repair_completion_dates = {}
+    repair_descriptions = {}
+    available_returned_by = {}
 
     for asset in assets:
 
@@ -158,22 +160,19 @@ def index():
         if repair_completion_history and repair_completion_history.event_date:
             repair_completion_dates[asset.id] = repair_completion_history.event_date
 
-    # =====================================================
-    # AVAILABLE DATE
-    # =====================================================
-    available_dates = {}
-
-    for asset in assets:
-        # Latest Stock event
-        stock_history = AssetAssignmentHistory.query.filter_by(
-            asset_id=asset.id,
-            action='Stock'
+        # Latest repair description / notes
+        repair_history = AssetAssignmentHistory.query.filter(
+            AssetAssignmentHistory.asset_id == asset.id,
+            AssetAssignmentHistory.action.in_(['Sent to Repair', 'Repair Completed'])
         ).order_by(
             AssetAssignmentHistory.event_date.desc(),
             AssetAssignmentHistory.timestamp.desc()
         ).first()
 
-        # Latest Returned event
+        if repair_history and repair_history.notes:
+            repair_descriptions[asset.id] = repair_history.notes
+
+        # Latest employee who returned an asset to stock
         returned_history = AssetAssignmentHistory.query.filter_by(
             asset_id=asset.id,
             action='Returned'
@@ -182,32 +181,13 @@ def index():
             AssetAssignmentHistory.timestamp.desc()
         ).first()
 
-        # Latest Repair Completed event
-        repair_completed_history = AssetAssignmentHistory.query.filter_by(
-            asset_id=asset.id,
-            action='Repair Completed'
-        ).order_by(
-            AssetAssignmentHistory.event_date.desc(),
-            AssetAssignmentHistory.timestamp.desc()
-        ).first()
-
-        # Pick the latest event that made the asset available.
-        available_history = None
-
-        for history in (
-            stock_history,
-            returned_history,
-            repair_completed_history
-        ):
-            if history and history.event_date:
-                if (
-                    available_history is None
-                    or history.event_date > available_history.event_date
-                ):
-                    available_history = history
-
-        if available_history:
-            available_dates[asset.id] = available_history.event_date
+        if returned_history:
+            returned_by = (
+                returned_history.employee_name
+                or returned_history.performed_by
+            )
+            if returned_by:
+                available_returned_by[asset.id] = returned_by
 
     vendors = Vendor.query.order_by(
         Vendor.name.asc()
@@ -244,7 +224,8 @@ def index():
         assigned_assets=assigned_assets,
         repair_start_dates=repair_start_dates,
         repair_completion_dates=repair_completion_dates,
-        available_dates=available_dates
+        repair_descriptions=repair_descriptions,
+        available_returned_by=available_returned_by
     )
 
 
