@@ -487,12 +487,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     <option value="Non-Repairable"
                             {% if status_filter == 'Non-Repairable' %}selected{% endif %}>
-                        Non-Repairable
+                        Unassigned Non-Repairable
                     </option>
 
                     <option value="Donated Assets"
                             {% if status_filter == 'Donated Assets' %}selected{% endif %}>
-                        Donated Assets
+                        Unassigned Donated
                     </option>
 
                 </select>
@@ -593,14 +593,14 @@ document.addEventListener("DOMContentLoaded", function () {
     <a href="{{ url_for('assets.index', status='Non-Repairable') }}"
        class="btn btn-outline-secondary btn-non-repairable {% if status_filter == 'Non-Repairable' %}active{% endif %}">
         <i class="fas fa-ban me-1"></i>
-        Non-Repairable
+        Unassigned Non-Repairable
     </a>
 
     <!-- Donated Assets -->
     <a href="{{ url_for('assets.index', status='Donated Assets') }}"
        class="btn btn-donated btn-outline-dark {% if status_filter == 'Donated Assets' %}active{% endif %}">
         <i class="fas fa-hand-holding-heart me-1"></i>
-        Donated Assets
+        Unassigned Donated
     </a>
 
 </div>
