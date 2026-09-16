@@ -1,11 +1,13 @@
 from datetime import datetime
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from flask_login import login_required, current_user
+
 from app.extensions import db
 from app.models.asset import Asset, AssetStatus, AssetAssignmentHistory
 from app.models.employee import Employee, AccountStatus
 from app.models.vendor import Vendor, VendorRepairTicket, RepairStatus
 from app.services.audit_service import AuditService
+
 
 assets_bp = Blueprint('assets', __name__, url_prefix='/assets')
 
@@ -13,9 +15,6 @@ assets_bp = Blueprint('assets', __name__, url_prefix='/assets')
 # ---------------------------------------------------------
 # ALLOWED VENDORS FOR VENDOR RETURN
 # ---------------------------------------------------------
-# Keep vendor names in one shared constant so the same list
-# can be reused anywhere vendor-return validation is required.
-# Matching is case-insensitive and ignores leading/trailing spaces.
 ALLOWED_VENDOR_RETURN_NAMES = {
     'Techvity',
     'Spurge',
@@ -35,19 +34,32 @@ ALLOWED_VENDOR_RETURN_NAMES_NORMALIZED = {
     for name in ALLOWED_VENDOR_RETURN_NAMES
 }
 
+
+# ---------------------------------------------------------
+# ASSET ID GENERATION
+# ---------------------------------------------------------
 def generate_asset_id():
     year = datetime.utcnow().strftime('%Y')
     count = Asset.query.count() + 1
     return f"AST-{year}-{count:04d}"
 
+
+# ---------------------------------------------------------
+# VENDOR TICKET NUMBER GENERATION
+# ---------------------------------------------------------
 def generate_vendor_ticket_num():
     year = datetime.utcnow().strftime('%Y')
     count = VendorRepairTicket.query.count() + 1
     return f"VNR-{year}-{count:04d}"
 
+
+# =========================================================
+# ASSET INVENTORY
+# =========================================================
 @assets_bp.route('/')
 @login_required
 def index():
+
     search_q = request.args.get('q', '').strip()
     status_filter = request.args.get('status', '').strip()
     vendor_filter = request.args.get('vendor_id', type=int)
@@ -55,8 +67,15 @@ def index():
 
     query = Asset.query
 
+    # -----------------------------------------------------
+    # SEARCH
+    # -----------------------------------------------------
     if search_q:
-        query = query.join(Employee, Asset.assigned_employee_id == Employee.id, isouter=True).filter(
+        query = query.join(
+            Employee,
+            Asset.assigned_employee_id == Employee.id,
+            isouter=True
+        ).filter(
             (Asset.asset_id.ilike(f'%{search_q}%')) |
             (Asset.brand.ilike(f'%{search_q}%')) |
             (Asset.model.ilike(f'%{search_q}%')) |
@@ -64,63 +83,234 @@ def index():
             (Employee.name.ilike(f'%{search_q}%'))
         )
 
+    # -----------------------------------------------------
+    # STATUS FILTER
+    # -----------------------------------------------------
     if status_filter:
-        query = query.filter(Asset.status == status_filter)
+        query = query.filter(
+            Asset.status == status_filter
+        )
 
+    # -----------------------------------------------------
+    # VENDOR FILTER
+    # -----------------------------------------------------
     if vendor_filter:
-        query = query.filter(Asset.vendor_id == vendor_filter)
+        query = query.filter(
+            Asset.vendor_id == vendor_filter
+        )
 
-    pagination = query.order_by(Asset.id.desc()).paginate(page=page, per_page=10, error_out=False)
+    # -----------------------------------------------------
+    # PAGINATION
+    # -----------------------------------------------------
+    pagination = (
+        query
+        .order_by(Asset.id.desc())
+        .paginate(
+            page=page,
+            per_page=10,
+            error_out=False
+        )
+    )
+
     assets = pagination.items
 
-    vendors = Vendor.query.order_by(Vendor.name.asc()).all()
-    active_employees = Employee.query.filter(Employee.account_status != AccountStatus.OFFBOARDED).order_by(Employee.name.asc()).all()
-    available_assets = Asset.query.filter_by(status=AssetStatus.AVAILABLE).order_by(Asset.brand.asc()).all()
-    assigned_assets = Asset.query.filter_by(status=AssetStatus.ASSIGNED).order_by(Asset.asset_id.asc()).all()
+    # -----------------------------------------------------
+    # DROPDOWN DATA
+    # -----------------------------------------------------
+    vendors = (
+        Vendor.query
+        .order_by(Vendor.name.asc())
+        .all()
+    )
 
-    # Repair dates used by the asset table
+    active_employees = (
+        Employee.query
+        .filter(
+            Employee.account_status != AccountStatus.OFFBOARDED
+        )
+        .order_by(Employee.name.asc())
+        .all()
+    )
+
+    available_assets = (
+        Asset.query
+        .filter_by(status=AssetStatus.AVAILABLE)
+        .order_by(Asset.brand.asc())
+        .all()
+    )
+
+    assigned_assets = (
+        Asset.query
+        .filter_by(status=AssetStatus.ASSIGNED)
+        .order_by(Asset.asset_id.asc())
+        .all()
+    )
+
+    # =====================================================
+    # DATE TRACKING
+    # =====================================================
+
     repair_start_dates = {}
     repair_completion_dates = {}
+    available_dates = {}
 
     if assets:
+
+        page_asset_ids = [
+            asset.id
+            for asset in assets
+        ]
+
         history_rows = (
             AssetAssignmentHistory.query
-            .filter(AssetAssignmentHistory.asset_id.in_([a.id for a in assets]))
-            .order_by(AssetAssignmentHistory.timestamp.asc(), AssetAssignmentHistory.id.asc())
+            .filter(
+                AssetAssignmentHistory.asset_id.in_(
+                    page_asset_ids
+                )
+            )
+            .order_by(
+                AssetAssignmentHistory.timestamp.asc(),
+                AssetAssignmentHistory.id.asc()
+            )
             .all()
         )
-        for history in history_rows:
-            if history.action == 'Sent to Repair':
-                repair_start_dates.setdefault(history.asset_id, history.timestamp)
-            elif history.action == 'Repair Completed':
-                repair_completion_dates[history.asset_id] = history.timestamp
 
-    # Latest repair description for assets currently under repair
+        for history in history_rows:
+
+            # -------------------------------------------------
+            # SENT TO REPAIR
+            # -------------------------------------------------
+            if history.action == 'Sent to Repair':
+
+                repair_start_dates.setdefault(
+                    history.asset_id,
+                    history.timestamp
+                )
+
+            # -------------------------------------------------
+            # REPAIR COMPLETED
+            # -------------------------------------------------
+            elif history.action == 'Repair Completed':
+
+                repair_completion_dates[
+                    history.asset_id
+                ] = history.timestamp
+
+                # Once repair is completed the laptop becomes
+                # Available, so this is the Available date.
+                available_dates[
+                    history.asset_id
+                ] = history.timestamp
+
+            # -------------------------------------------------
+            # RETURNED FROM EMPLOYEE
+            # -------------------------------------------------
+            elif history.action in [
+                'Returned',
+                'Returned (Auto Offboarded)'
+            ]:
+
+                # Once returned from an employee the laptop
+                # becomes Available.
+                available_dates[
+                    history.asset_id
+                ] = history.timestamp
+
+        # -----------------------------------------------------
+        # NEW STOCK LAPTOPS
+        # -----------------------------------------------------
+        #
+        # If an Available laptop has never been assigned,
+        # returned, or repaired, use its created_at date.
+        #
+        # getattr() is used so this will not crash if an older
+        # Asset model does not have created_at.
+        #
+        for asset in assets:
+
+            if asset.status == AssetStatus.AVAILABLE:
+
+                if asset.id not in available_dates:
+
+                    created_date = getattr(
+                        asset,
+                        'created_at',
+                        None
+                    )
+
+                    if created_date:
+                        available_dates[
+                            asset.id
+                        ] = created_date
+
+    # =====================================================
+    # REPAIR DESCRIPTIONS
+    # =====================================================
+
     repair_descriptions = {}
+
     repair_asset_ids = [
-        a.id for a in assets
-        if str(a.status.value if hasattr(a.status, 'value') else a.status) in ('Repair', 'Under Repair')
+        asset.id
+        for asset in assets
+        if str(
+            asset.status.value
+            if hasattr(asset.status, 'value')
+            else asset.status
+        ) in (
+            'Repair',
+            'Under Repair'
+        )
     ]
 
     if repair_asset_ids:
+
+        # -------------------------------------------------
+        # FIRST: CHECK REPAIR TICKETS
+        # -------------------------------------------------
         repair_tickets = (
             VendorRepairTicket.query
-            .filter(VendorRepairTicket.asset_id.in_(repair_asset_ids))
-            .order_by(VendorRepairTicket.sent_date.desc(), VendorRepairTicket.id.desc())
+            .filter(
+                VendorRepairTicket.asset_id.in_(
+                    repair_asset_ids
+                )
+            )
+            .order_by(
+                VendorRepairTicket.sent_date.desc(),
+                VendorRepairTicket.id.desc()
+            )
             .all()
         )
-        for ticket in repair_tickets:
-            if ticket.asset_id not in repair_descriptions and (ticket.notes or '').strip():
-                repair_descriptions[ticket.asset_id] = ticket.notes.strip()
 
-        # Fallback for older records where the ticket does not contain notes.
-        missing_ids = [a_id for a_id in repair_asset_ids if a_id not in repair_descriptions]
+        for ticket in repair_tickets:
+
+            if (
+                ticket.asset_id not in repair_descriptions
+                and (ticket.notes or '').strip()
+            ):
+
+                repair_descriptions[
+                    ticket.asset_id
+                ] = ticket.notes.strip()
+
+        # -------------------------------------------------
+        # FALLBACK TO REPAIR HISTORY
+        # -------------------------------------------------
+        missing_ids = [
+            asset_id
+            for asset_id in repair_asset_ids
+            if asset_id not in repair_descriptions
+        ]
+
         if missing_ids:
+
             repair_history = (
                 AssetAssignmentHistory.query
                 .filter(
-                    AssetAssignmentHistory.asset_id.in_(missing_ids),
-                    AssetAssignmentHistory.action == 'Sent to Repair'
+                    AssetAssignmentHistory.asset_id.in_(
+                        missing_ids
+                    ),
+                    AssetAssignmentHistory.action
+                    == 'Sent to Repair'
                 )
                 .order_by(
                     AssetAssignmentHistory.timestamp.desc(),
@@ -128,58 +318,169 @@ def index():
                 )
                 .all()
             )
+
             for history in repair_history:
+
                 if history.asset_id in repair_descriptions:
                     continue
-                notes = (history.notes or '').strip()
+
+                notes = (
+                    history.notes or ''
+                ).strip()
+
                 if 'Notes:' in notes:
-                    notes = notes.rsplit('Notes:', 1)[1].strip()
+
+                    notes = notes.rsplit(
+                        'Notes:',
+                        1
+                    )[1].strip()
+
                 if notes:
-                    repair_descriptions[history.asset_id] = notes
+
+                    repair_descriptions[
+                        history.asset_id
+                    ] = notes
+
+    # =====================================================
+    # RENDER ASSET INVENTORY
+    # =====================================================
 
     return render_template(
         'assets/index.html',
+
         assets=assets,
+
         pagination=pagination,
+
         search_q=search_q,
+
         status_filter=status_filter,
+
         vendor_filter=vendor_filter,
+
         vendors=vendors,
+
         active_employees=active_employees,
+
         available_assets=available_assets,
+
         assigned_assets=assigned_assets,
+
+        # Repair dates
         repair_start_dates=repair_start_dates,
+
         repair_completion_dates=repair_completion_dates,
+
+        # Available / Stock dates
+        available_dates=available_dates,
+
+        # Repair descriptions
         repair_descriptions=repair_descriptions
     )
 
 
+# =========================================================
+# ADD ASSET
+# =========================================================
 @assets_bp.route('/add', methods=['POST'])
 @login_required
 def add_asset():
+
     if not current_user.is_it_admin:
-        flash('Permission denied. Only IT Admins can add assets.', 'danger')
-        return redirect(url_for('assets.index'))
 
-    brand = request.form.get('brand', '').strip()
-    model = request.form.get('model', '').strip()
-    serial_number = request.form.get('serial_number', '').strip()
-    processor = request.form.get('processor', '').strip()
-    ram = request.form.get('ram', '').strip()
-    ssd = request.form.get('ssd', '').strip()
-    vendor_id = request.form.get('vendor_id', type=int)
+        flash(
+            'Permission denied. Only IT Admins can add assets.',
+            'danger'
+        )
 
-    if not all([brand, model, serial_number, processor, ram, ssd, vendor_id]):
-        flash('All asset specification fields are required.', 'danger')
-        return redirect(url_for('assets.index'))
+        return redirect(
+            url_for('assets.index')
+        )
 
-    # Check serial number uniqueness
-    existing = Asset.query.filter_by(serial_number=serial_number).first()
+    brand = request.form.get(
+        'brand',
+        ''
+    ).strip()
+
+    model = request.form.get(
+        'model',
+        ''
+    ).strip()
+
+    serial_number = request.form.get(
+        'serial_number',
+        ''
+    ).strip()
+
+    processor = request.form.get(
+        'processor',
+        ''
+    ).strip()
+
+    ram = request.form.get(
+        'ram',
+        ''
+    ).strip()
+
+    ssd = request.form.get(
+        'ssd',
+        ''
+    ).strip()
+
+    vendor_id = request.form.get(
+        'vendor_id',
+        type=int
+    )
+
+    # -----------------------------------------------------
+    # REQUIRED FIELDS
+    # -----------------------------------------------------
+    if not all([
+        brand,
+        model,
+        serial_number,
+        processor,
+        ram,
+        ssd,
+        vendor_id
+    ]):
+
+        flash(
+            'All asset specification fields are required.',
+            'danger'
+        )
+
+        return redirect(
+            url_for('assets.index')
+        )
+
+    # -----------------------------------------------------
+    # SERIAL NUMBER UNIQUENESS
+    # -----------------------------------------------------
+    existing = (
+        Asset.query
+        .filter_by(
+            serial_number=serial_number
+        )
+        .first()
+    )
+
     if existing:
-        flash(f'Asset with Serial Number "{serial_number}" already exists.', 'danger')
-        return redirect(url_for('assets.index'))
 
+        flash(
+            f'Asset with Serial Number "{serial_number}" already exists.',
+            'danger'
+        )
+
+        return redirect(
+            url_for('assets.index')
+        )
+
+    # -----------------------------------------------------
+    # CREATE ASSET
+    # -----------------------------------------------------
     asset_id = generate_asset_id()
+
     new_asset = Asset(
         asset_id=asset_id,
         brand=brand,
@@ -191,35 +492,85 @@ def add_asset():
         vendor_id=vendor_id,
         status=AssetStatus.AVAILABLE
     )
+
     db.session.add(new_asset)
+
     db.session.commit()
 
     AuditService.log(
         action='Asset Created',
         entity_type='Asset',
         entity_id=new_asset.asset_id,
-        details=f'Added new asset {new_asset.brand} {new_asset.model} (SN: {new_asset.serial_number})'
+        details=(
+            f'Added new asset '
+            f'{new_asset.brand} '
+            f'{new_asset.model} '
+            f'(SN: {new_asset.serial_number})'
+        )
     )
 
-    flash(f'Asset {new_asset.asset_id} added successfully!', 'success')
-    return redirect(url_for('assets.index'))
+    flash(
+        f'Asset {new_asset.asset_id} added successfully!',
+        'success'
+    )
+
+    return redirect(
+        url_for('assets.index')
+    )
 
 
+# =========================================================
+# EDIT ASSET
+# =========================================================
 @assets_bp.route('/edit/<int:asset_id>', methods=['POST'])
 @login_required
 def edit_asset(asset_id):
+
     if not current_user.is_it_admin:
-        flash('Permission denied. Only IT Admins can edit assets.', 'danger')
-        return redirect(url_for('assets.index'))
 
-    asset = Asset.query.get_or_404(asset_id)
+        flash(
+            'Permission denied. Only IT Admins can edit assets.',
+            'danger'
+        )
 
-    asset.brand = request.form.get('brand', asset.brand).strip()
-    asset.model = request.form.get('model', asset.model).strip()
-    asset.serial_number = request.form.get('serial_number', asset.serial_number).strip()
-    asset.processor = request.form.get('processor', asset.processor).strip()
-    asset.ram = request.form.get('ram', asset.ram).strip()
-    asset.ssd = request.form.get('ssd', asset.ssd).strip()
+        return redirect(
+            url_for('assets.index')
+        )
+
+    asset = Asset.query.get_or_404(
+        asset_id
+    )
+
+    asset.brand = request.form.get(
+        'brand',
+        asset.brand
+    ).strip()
+
+    asset.model = request.form.get(
+        'model',
+        asset.model
+    ).strip()
+
+    asset.serial_number = request.form.get(
+        'serial_number',
+        asset.serial_number
+    ).strip()
+
+    asset.processor = request.form.get(
+        'processor',
+        asset.processor
+    ).strip()
+
+    asset.ram = request.form.get(
+        'ram',
+        asset.ram
+    ).strip()
+
+    asset.ssd = request.form.get(
+        'ssd',
+        asset.ssd
+    ).strip()
+
     asset.vendor_id = request.form.get(
         'vendor_id',
         asset.vendor_id,
@@ -232,28 +583,59 @@ def edit_asset(asset_id):
         action='Asset Updated',
         entity_type='Asset',
         entity_id=asset.asset_id,
-        details=f'Updated specifications for asset {asset.asset_id}'
+        details=(
+            f'Updated specifications '
+            f'for asset {asset.asset_id}'
+        )
     )
 
-    flash(f'Asset {asset.asset_id} updated successfully!', 'success')
-    return redirect(url_for('assets.index'))
+    flash(
+        f'Asset {asset.asset_id} updated successfully!',
+        'success'
+    )
+
+    return redirect(
+        url_for('assets.index')
+    )
 
 
-
+# =========================================================
+# DELETE ASSET
+# =========================================================
 @assets_bp.route('/delete/<int:asset_id>', methods=['POST'])
 @login_required
 def delete_asset(asset_id):
-    if not current_user.can_delete_assets():
-        flash('Permission denied. IT Engineers cannot delete assets.', 'danger')
-        return redirect(url_for('assets.index'))
 
-    asset = Asset.query.get_or_404(asset_id)
+    if not current_user.can_delete_assets():
+
+        flash(
+            'Permission denied. IT Engineers cannot delete assets.',
+            'danger'
+        )
+
+        return redirect(
+            url_for('assets.index')
+        )
+
+    asset = Asset.query.get_or_404(
+        asset_id
+    )
+
     if asset.status == AssetStatus.ASSIGNED:
-        flash(f'Cannot delete asset {asset.asset_id} while it is assigned to an employee. Return it first.', 'warning')
-        return redirect(url_for('assets.index'))
+
+        flash(
+            f'Cannot delete asset {asset.asset_id} while it is assigned to an employee. Return it first.',
+            'warning'
+        )
+
+        return redirect(
+            url_for('assets.index')
+        )
 
     aid = asset.asset_id
+
     db.session.delete(asset)
+
     db.session.commit()
 
     AuditService.log(
@@ -263,142 +645,336 @@ def delete_asset(asset_id):
         details=f'Deleted asset {aid}'
     )
 
-    flash(f'Asset {aid} deleted.', 'success')
-    return redirect(url_for('assets.index'))
+    flash(
+        f'Asset {aid} deleted.',
+        'success'
+    )
+
+    return redirect(
+        url_for('assets.index')
+    )
 
 
+# =========================================================
+# ASSIGN ASSET
+# =========================================================
 @assets_bp.route('/assign', methods=['POST'])
 @login_required
 def assign_asset():
+
     if not current_user.is_it_admin:
-        flash('Permission denied. Only IT Admins can assign assets.', 'danger')
-        return redirect(url_for('assets.index'))
 
-    asset_id = request.form.get('asset_id', type=int)
-    employee_id = request.form.get('employee_id', type=int)
-    notes = request.form.get('notes', '').strip()
+        flash(
+            'Permission denied. Only IT Admins can assign assets.',
+            'danger'
+        )
 
-    asset = Asset.query.get_or_404(asset_id)
-    employee = Employee.query.get_or_404(employee_id)
+        return redirect(
+            url_for('assets.index')
+        )
+
+    asset_id = request.form.get(
+        'asset_id',
+        type=int
+    )
+
+    employee_id = request.form.get(
+        'employee_id',
+        type=int
+    )
+
+    notes = request.form.get(
+        'notes',
+        ''
+    ).strip()
+
+    asset = Asset.query.get_or_404(
+        asset_id
+    )
+
+    employee = Employee.query.get_or_404(
+        employee_id
+    )
 
     if asset.status != AssetStatus.AVAILABLE:
-        flash(f'Asset {asset.asset_id} is currently {asset.status} and cannot be assigned.', 'warning')
-        return redirect(url_for('assets.index'))
+
+        flash(
+            f'Asset {asset.asset_id} is currently {asset.status} and cannot be assigned.',
+            'warning'
+        )
+
+        return redirect(
+            url_for('assets.index')
+        )
 
     if employee.account_status == AccountStatus.OFFBOARDED:
-        flash(f'Cannot assign asset to offboarded employee {employee.name}.', 'danger')
-        return redirect(url_for('assets.index'))
 
+        flash(
+            f'Cannot assign asset to offboarded employee {employee.name}.',
+            'danger'
+        )
+
+        return redirect(
+            url_for('assets.index')
+        )
+
+    # -----------------------------------------------------
+    # ASSIGN
+    # -----------------------------------------------------
     asset.status = AssetStatus.ASSIGNED
+
     asset.assigned_employee_id = employee.id
+
     asset.assignment_date = datetime.utcnow()
 
-    # Log assignment history
+    # -----------------------------------------------------
+    # HISTORY
+    # -----------------------------------------------------
     hist = AssetAssignmentHistory(
         asset_id=asset.id,
         employee_id=employee.id,
         employee_name=employee.name,
         action='Assigned',
-        notes=notes or f'Assigned to {employee.name} ({employee.employee_id})',
+        notes=(
+            notes
+            or
+            f'Assigned to {employee.name} '
+            f'({employee.employee_id})'
+        ),
         performed_by=current_user.full_name
     )
+
     db.session.add(hist)
+
     db.session.commit()
 
+    # -----------------------------------------------------
+    # AUDIT
+    # -----------------------------------------------------
     AuditService.log(
         action='Asset Assigned',
         entity_type='Asset',
         entity_id=asset.asset_id,
-        details=f'Assigned {asset.asset_id} ({asset.brand} {asset.model}) to employee {employee.name} ({employee.employee_id})'
+        details=(
+            f'Assigned {asset.asset_id} '
+            f'({asset.brand} {asset.model}) '
+            f'to employee {employee.name} '
+            f'({employee.employee_id})'
+        )
     )
 
-    flash(f'Asset {asset.asset_id} assigned to {employee.name}!', 'success')
-    return redirect(url_for('assets.index'))
+    flash(
+        f'Asset {asset.asset_id} assigned to {employee.name}!',
+        'success'
+    )
+
+    return redirect(
+        url_for('assets.index')
+    )
 
 
+# =========================================================
+# RETURN ASSET FROM EMPLOYEE
+# =========================================================
 @assets_bp.route('/return/<int:asset_id>', methods=['POST'])
 @login_required
 def return_asset(asset_id):
-    if not current_user.is_it_admin:
-        flash('Permission denied. Only IT Admins can return assets.', 'danger')
-        return redirect(url_for('assets.index'))
 
-    asset = Asset.query.get_or_404(asset_id)
-    if asset.status != AssetStatus.ASSIGNED or not asset.assigned_employee:
-        flash(f'Asset {asset.asset_id} is not currently assigned.', 'warning')
-        return redirect(url_for('assets.index'))
+    if not current_user.is_it_admin:
+
+        flash(
+            'Permission denied. Only IT Admins can return assets.',
+            'danger'
+        )
+
+        return redirect(
+            url_for('assets.index')
+        )
+
+    asset = Asset.query.get_or_404(
+        asset_id
+    )
+
+    if (
+        asset.status != AssetStatus.ASSIGNED
+        or not asset.assigned_employee
+    ):
+
+        flash(
+            f'Asset {asset.asset_id} is not currently assigned.',
+            'warning'
+        )
+
+        return redirect(
+            url_for('assets.index')
+        )
 
     emp_name = asset.assigned_employee.name
-    emp_id = asset.assigned_employee.id
-    notes = request.form.get('notes', '').strip()
 
+    emp_id = asset.assigned_employee.id
+
+    notes = request.form.get(
+        'notes',
+        ''
+    ).strip()
+
+    # -----------------------------------------------------
+    # MOVE TO AVAILABLE
+    # -----------------------------------------------------
     asset.status = AssetStatus.AVAILABLE
+
     asset.assigned_employee_id = None
+
     asset.assignment_date = None
 
+    # -----------------------------------------------------
+    # HISTORY
+    # -----------------------------------------------------
     hist = AssetAssignmentHistory(
         asset_id=asset.id,
         employee_id=emp_id,
         employee_name=emp_name,
         action='Returned',
-        notes=notes or f'Returned from {emp_name}',
+        notes=(
+            notes
+            or
+            f'Returned from {emp_name}'
+        ),
         performed_by=current_user.full_name
     )
+
     db.session.add(hist)
+
     db.session.commit()
 
+    # -----------------------------------------------------
+    # AUDIT
+    # -----------------------------------------------------
     AuditService.log(
         action='Asset Returned',
         entity_type='Asset',
         entity_id=asset.asset_id,
-        details=f'Returned asset {asset.asset_id} from {emp_name}'
+        details=(
+            f'Returned asset {asset.asset_id} '
+            f'from {emp_name}'
+        )
     )
 
-    flash(f'Asset {asset.asset_id} returned to Available status.', 'success')
-    return redirect(url_for('assets.index'))
+    flash(
+        f'Asset {asset.asset_id} returned to Available status.',
+        'success'
+    )
+
+    return redirect(
+        url_for('assets.index')
+    )
 
 
+# =========================================================
+# REPLACE ASSET
+# =========================================================
 @assets_bp.route('/replace', methods=['POST'])
 @login_required
 def replace_asset():
+
     """
     Multi-replacement workflow:
-    Swaps an existing assigned laptop (old asset) with a new available laptop for an employee.
-    Logs explicit linked replacement history tracking old & new assets and replacement reason.
+    Swaps an existing assigned laptop with a new available laptop.
     """
+
     if not current_user.is_it_admin:
-        flash('Permission denied. Only IT Admins can replace assets.', 'danger')
-        return redirect(url_for('assets.index'))
 
-    old_asset_id = request.form.get('old_asset_id', type=int)
-    new_asset_id = request.form.get('new_asset_id', type=int)
-    reason = request.form.get('reason', '').strip()
-    return_to_repair = request.form.get('return_to_repair') == 'on'
+        flash(
+            'Permission denied. Only IT Admins can replace assets.',
+            'danger'
+        )
 
-    old_asset = Asset.query.get_or_404(old_asset_id)
-    new_asset = Asset.query.get_or_404(new_asset_id)
+        return redirect(
+            url_for('assets.index')
+        )
 
-    if old_asset.status != AssetStatus.ASSIGNED or not old_asset.assigned_employee:
-        flash(f'Old asset {old_asset.asset_id} must be currently assigned.', 'warning')
-        return redirect(url_for('assets.index'))
+    old_asset_id = request.form.get(
+        'old_asset_id',
+        type=int
+    )
+
+    new_asset_id = request.form.get(
+        'new_asset_id',
+        type=int
+    )
+
+    reason = request.form.get(
+        'reason',
+        ''
+    ).strip()
+
+    return_to_repair = (
+        request.form.get(
+            'return_to_repair'
+        )
+        == 'on'
+    )
+
+    old_asset = Asset.query.get_or_404(
+        old_asset_id
+    )
+
+    new_asset = Asset.query.get_or_404(
+        new_asset_id
+    )
+
+    if (
+        old_asset.status != AssetStatus.ASSIGNED
+        or not old_asset.assigned_employee
+    ):
+
+        flash(
+            f'Old asset {old_asset.asset_id} must be currently assigned.',
+            'warning'
+        )
+
+        return redirect(
+            url_for('assets.index')
+        )
 
     if new_asset.status != AssetStatus.AVAILABLE:
-        flash(f'Replacement asset {new_asset.asset_id} must be Available.', 'warning')
-        return redirect(url_for('assets.index'))
+
+        flash(
+            f'Replacement asset {new_asset.asset_id} must be Available.',
+            'warning'
+        )
+
+        return redirect(
+            url_for('assets.index')
+        )
 
     employee = old_asset.assigned_employee
 
-    # 1. Unassign old asset
-    old_asset.status = AssetStatus.REPAIR if return_to_repair else AssetStatus.AVAILABLE
+    # -----------------------------------------------------
+    # UNASSIGN OLD ASSET
+    # -----------------------------------------------------
+    old_asset.status = (
+        AssetStatus.REPAIR
+        if return_to_repair
+        else AssetStatus.AVAILABLE
+    )
+
     old_asset.assigned_employee_id = None
+
     old_asset.assignment_date = None
 
-    # 2. Assign new asset
+    # -----------------------------------------------------
+    # ASSIGN NEW ASSET
+    # -----------------------------------------------------
     new_asset.status = AssetStatus.ASSIGNED
+
     new_asset.assigned_employee_id = employee.id
+
     new_asset.assignment_date = datetime.utcnow()
 
-    # 3. Log linked replacement history
+    # -----------------------------------------------------
+    # HISTORY
+    # -----------------------------------------------------
     hist = AssetAssignmentHistory(
         asset_id=new_asset.id,
         employee_id=employee.id,
@@ -406,62 +982,119 @@ def replace_asset():
         action='Replaced',
         old_asset_id=old_asset.id,
         new_asset_id=new_asset.id,
-        replacement_reason=reason or 'Laptop replacement request',
-        notes=f'Replaced laptop {old_asset.asset_id} with {new_asset.asset_id} for {employee.name}. Reason: {reason or "N/A"}',
+        replacement_reason=(
+            reason
+            or
+            'Laptop replacement request'
+        ),
+        notes=(
+            f'Replaced laptop {old_asset.asset_id} '
+            f'with {new_asset.asset_id} '
+            f'for {employee.name}. '
+            f'Reason: {reason or "N/A"}'
+        ),
         performed_by=current_user.full_name
     )
+
     db.session.add(hist)
+
     db.session.commit()
 
+    # -----------------------------------------------------
+    # AUDIT
+    # -----------------------------------------------------
     AuditService.log(
         action='Asset Replaced',
         entity_type='Asset',
         entity_id=new_asset.asset_id,
-        details=f'Replaced asset {old_asset.asset_id} with {new_asset.asset_id} for employee {employee.name}'
+        details=(
+            f'Replaced asset {old_asset.asset_id} '
+            f'with {new_asset.asset_id} '
+            f'for employee {employee.name}'
+        )
     )
 
-    flash(f'Successfully replaced asset {old_asset.asset_id} with {new_asset.asset_id} for {employee.name}!', 'success')
-    return redirect(url_for('assets.index'))
+    flash(
+        f'Successfully replaced asset {old_asset.asset_id} '
+        f'with {new_asset.asset_id} '
+        f'for {employee.name}!',
+        'success'
+    )
+
+    return redirect(
+        url_for('assets.index')
+    )
 
 
-@assets_bp.route('/repair/complete/<int:asset_id>', methods=['POST'])
+# =========================================================
+# COMPLETE REPAIR
+# =========================================================
+@assets_bp.route(
+    '/repair/complete/<int:asset_id>',
+    methods=['POST']
+)
 @login_required
 def complete_repair(asset_id):
+
     if not current_user.is_it_admin:
+
         flash(
             'Permission denied. Only IT Admins can complete repairs.',
             'danger'
         )
-        return redirect(url_for('assets.index'))
 
-    asset = Asset.query.get_or_404(asset_id)
+        return redirect(
+            url_for('assets.index')
+        )
+
+    asset = Asset.query.get_or_404(
+        asset_id
+    )
 
     if asset.status != AssetStatus.REPAIR:
+
         flash(
             f'Asset {asset.asset_id} is not currently under repair.',
             'warning'
         )
-        return redirect(url_for('assets.index'))
 
-    notes = request.form.get('notes', '').strip()
+        return redirect(
+            url_for('assets.index')
+        )
 
-    # Change Repair -> Available
+    notes = request.form.get(
+        'notes',
+        ''
+    ).strip()
+
+    # -----------------------------------------------------
+    # REPAIR -> AVAILABLE
+    # -----------------------------------------------------
     asset.status = AssetStatus.AVAILABLE
 
-    # Make sure the repaired laptop is unassigned
     asset.assigned_employee_id = None
+
     asset.assignment_date = None
 
-    # Add repair completion history
+    # -----------------------------------------------------
+    # HISTORY
+    # -----------------------------------------------------
     hist = AssetAssignmentHistory(
         asset_id=asset.id,
         action='Repair Completed',
-        notes=notes or 'Repair completed and laptop moved to Available.',
+        notes=(
+            notes
+            or
+            'Repair completed and laptop moved to Available.'
+        ),
         performed_by=current_user.full_name
     )
+
     db.session.add(hist)
 
-    # Audit log
+    # -----------------------------------------------------
+    # AUDIT
+    # -----------------------------------------------------
     AuditService.log(
         action='Asset Repair Completed',
         entity_type='Asset',
@@ -479,51 +1112,111 @@ def complete_repair(asset_id):
         'success'
     )
 
-    return redirect(url_for('assets.index'))
+    return redirect(
+        url_for('assets.index')
+    )
 
 
+# =========================================================
+# SEND ASSET TO REPAIR
+# =========================================================
 @assets_bp.route('/repair', methods=['POST'])
 @login_required
 def send_to_repair():
+
     if not current_user.is_it_admin:
+
         flash(
             'Permission denied. Only IT Admins can send assets to repair.',
             'danger'
         )
-        return redirect(url_for('assets.index'))
 
-    asset_id = request.form.get('asset_id', type=int)
-    vendor_id = request.form.get('vendor_id', type=int)
-    notes = request.form.get('notes', '').strip()
+        return redirect(
+            url_for('assets.index')
+        )
+
+    asset_id = request.form.get(
+        'asset_id',
+        type=int
+    )
+
+    vendor_id = request.form.get(
+        'vendor_id',
+        type=int
+    )
+
+    notes = request.form.get(
+        'notes',
+        ''
+    ).strip()
 
     if not asset_id:
-        flash('Asset ID is missing.', 'danger')
-        return redirect(url_for('assets.index'))
+
+        flash(
+            'Asset ID is missing.',
+            'danger'
+        )
+
+        return redirect(
+            url_for('assets.index')
+        )
 
     if not vendor_id:
-        flash('Please select a vendor.', 'danger')
-        return redirect(url_for('assets.index'))
 
-    asset = Asset.query.get_or_404(asset_id)
-    vendor = Vendor.query.get_or_404(vendor_id)
+        flash(
+            'Please select a vendor.',
+            'danger'
+        )
 
+        return redirect(
+            url_for('assets.index')
+        )
+
+    asset = Asset.query.get_or_404(
+        asset_id
+    )
+
+    vendor = Vendor.query.get_or_404(
+        vendor_id
+    )
+
+    # -----------------------------------------------------
+    # ASSIGNED ASSET CHECK
+    # -----------------------------------------------------
     if asset.status == AssetStatus.ASSIGNED:
+
         flash(
             f'Cannot send assigned asset {asset.asset_id} directly to repair. '
             'Return it or replace it first.',
             'warning'
         )
-        return redirect(url_for('assets.index'))
 
+        return redirect(
+            url_for('assets.index')
+        )
+
+    # -----------------------------------------------------
+    # VENDOR RETURN CHECK
+    # -----------------------------------------------------
     if asset.status == AssetStatus.RETURNED_TO_VENDOR:
+
         flash(
             f'Asset {asset.asset_id} has already been returned to vendor.',
             'warning'
         )
-        return redirect(url_for('assets.index'))
 
+        return redirect(
+            url_for('assets.index')
+        )
+
+    # -----------------------------------------------------
+    # MOVE TO REPAIR
+    # -----------------------------------------------------
     asset.status = AssetStatus.REPAIR
 
+    # -----------------------------------------------------
+    # CREATE REPAIR TICKET
+    # -----------------------------------------------------
     repair_ticket = VendorRepairTicket(
         vendor_ticket_number=generate_vendor_ticket_num(),
         asset_id=asset.id,
@@ -532,137 +1225,256 @@ def send_to_repair():
         sent_date=datetime.utcnow(),
         notes=notes
     )
-    db.session.add(repair_ticket)
 
+    db.session.add(
+        repair_ticket
+    )
+
+    # -----------------------------------------------------
+    # REPAIR HISTORY
+    # -----------------------------------------------------
     hist = AssetAssignmentHistory(
         asset_id=asset.id,
         action='Sent to Repair',
         notes=(
-            f'Sent to Vendor {vendor.name} under repair ticket '
-            f'#{repair_ticket.vendor_ticket_number}. Notes: {notes}'
+            f'Sent to Vendor {vendor.name} '
+            f'under repair ticket '
+            f'#{repair_ticket.vendor_ticket_number}. '
+            f'Notes: {notes}'
         ),
         performed_by=current_user.full_name
     )
+
     db.session.add(hist)
 
     db.session.commit()
 
+    # -----------------------------------------------------
+    # AUDIT
+    # -----------------------------------------------------
     AuditService.log(
         action='Asset Sent to Repair',
         entity_type='Asset',
         entity_id=asset.asset_id,
         details=(
-            f'Dispatched asset {asset.asset_id} to vendor {vendor.name} '
-            f'(Repair Ticket: {repair_ticket.vendor_ticket_number})'
+            f'Dispatched asset {asset.asset_id} '
+            f'to vendor {vendor.name} '
+            f'(Repair Ticket: '
+            f'{repair_ticket.vendor_ticket_number})'
         )
     )
 
     flash(
-        f'Asset {asset.asset_id} sent to Vendor {vendor.name} for repair. '
+        f'Asset {asset.asset_id} sent to Vendor '
+        f'{vendor.name} for repair. '
         f'(Ticket: {repair_ticket.vendor_ticket_number})',
         'success'
     )
 
-    return redirect(url_for('assets.index'))
+    return redirect(
+        url_for('assets.index')
+    )
 
 
+# =========================================================
+# ASSET HISTORY
+# =========================================================
 @assets_bp.route('/<int:asset_id>/history')
 @login_required
 def get_asset_history(asset_id):
-    asset = Asset.query.get_or_404(asset_id)
-    history = AssetAssignmentHistory.query.filter_by(asset_id=asset.id).order_by(AssetAssignmentHistory.timestamp.desc()).all()
+
+    asset = Asset.query.get_or_404(
+        asset_id
+    )
+
+    history = (
+        AssetAssignmentHistory.query
+        .filter_by(
+            asset_id=asset.id
+        )
+        .order_by(
+            AssetAssignmentHistory.timestamp.desc()
+        )
+        .all()
+    )
 
     h_data = []
+
     for h in history:
+
         h_data.append({
+
             'id': h.id,
+
             'action': h.action,
-            'employee_name': h.employee_name or '-',
-            'old_asset': h.old_asset.asset_id if h.old_asset else None,
-            'new_asset': h.new_asset.asset_id if h.new_asset else None,
-            'replacement_reason': h.replacement_reason or '-',
-            'notes': h.notes or '-',
-            'performed_by': h.performed_by or 'System',
-            'timestamp': h.timestamp.strftime('%Y-%m-%d %H:%M')
+
+            'employee_name': (
+                h.employee_name
+                or
+                '-'
+            ),
+
+            'old_asset': (
+                h.old_asset.asset_id
+                if h.old_asset
+                else None
+            ),
+
+            'new_asset': (
+                h.new_asset.asset_id
+                if h.new_asset
+                else None
+            ),
+
+            'replacement_reason': (
+                h.replacement_reason
+                or
+                '-'
+            ),
+
+            'notes': (
+                h.notes
+                or
+                '-'
+            ),
+
+            'performed_by': (
+                h.performed_by
+                or
+                'System'
+            ),
+
+            'timestamp': (
+                h.timestamp.strftime(
+                    '%Y-%m-%d %H:%M'
+                )
+            )
         })
 
     return jsonify({
+
         'asset_id': asset.asset_id,
-        'brand_model': f"{asset.brand} {asset.model}",
+
+        'brand_model': (
+            f"{asset.brand} "
+            f"{asset.model}"
+        ),
+
         'serial_number': asset.serial_number,
+
         'assigned_user': asset.assigned_user_name,
+
         'history': h_data
     })
 
 
-@assets_bp.route('/return-to-vendor', methods=['POST'])
+# =========================================================
+# RETURN ASSET TO VENDOR
+# =========================================================
+@assets_bp.route(
+    '/return-to-vendor',
+    methods=['POST']
+)
 @login_required
 def return_to_vendor():
 
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     # IT ADMIN PERMISSION
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     if not current_user.is_it_admin:
+
         flash(
             'Permission denied. Only IT Admins can return assets to vendors.',
             'danger'
         )
-        return redirect(url_for('assets.index'))
 
+        return redirect(
+            url_for('assets.index')
+        )
 
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     # GET FORM DATA
-    # ---------------------------------------------------------
-    asset_id = request.form.get('asset_id', type=int)
-    vendor_id = request.form.get('vendor_id', type=int)
+    # -----------------------------------------------------
+    asset_id = request.form.get(
+        'asset_id',
+        type=int
+    )
 
-    reason = request.form.get('reason', '').strip()
+    vendor_id = request.form.get(
+        'vendor_id',
+        type=int
+    )
+
+    reason = request.form.get(
+        'reason',
+        ''
+    ).strip()
 
     vendor_return_date_str = request.form.get(
         'vendor_return_date',
         ''
     ).strip()
 
-
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     # VALIDATE ASSET
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     if not asset_id:
-        flash('Asset ID is missing.', 'danger')
-        return redirect(url_for('assets.index'))
 
-    asset = Asset.query.get_or_404(asset_id)
+        flash(
+            'Asset ID is missing.',
+            'danger'
+        )
 
+        return redirect(
+            url_for('assets.index')
+        )
 
-    # ---------------------------------------------------------
+    asset = Asset.query.get_or_404(
+        asset_id
+    )
+
+    # -----------------------------------------------------
     # VALIDATE VENDOR
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     if not vendor_id:
-        flash('Please select a vendor.', 'danger')
-        return redirect(url_for('assets.index'))
 
-    vendor = Vendor.query.get_or_404(vendor_id)
+        flash(
+            'Please select a vendor.',
+            'danger'
+        )
 
+        return redirect(
+            url_for('assets.index')
+        )
 
-    # ---------------------------------------------------------
-    # ALLOWED VENDORS FOR VENDOR RETURN
-    # ---------------------------------------------------------
-    # Compare normalized names so differences such as
-    # "techvity", "TECHVITY", or extra spaces do not fail
-    # validation.
-    normalized_vendor_name = normalize_vendor_name(vendor.name)
+    vendor = Vendor.query.get_or_404(
+        vendor_id
+    )
 
-    if normalized_vendor_name not in ALLOWED_VENDOR_RETURN_NAMES_NORMALIZED:
+    # -----------------------------------------------------
+    # ALLOWED VENDOR VALIDATION
+    # -----------------------------------------------------
+    normalized_vendor_name = normalize_vendor_name(
+        vendor.name
+    )
+
+    if (
+        normalized_vendor_name
+        not in ALLOWED_VENDOR_RETURN_NAMES_NORMALIZED
+    ):
+
         flash(
             f'Vendor "{vendor.name}" is not allowed for vendor return.',
             'danger'
         )
-        return redirect(url_for('assets.index'))
 
+        return redirect(
+            url_for('assets.index')
+        )
 
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     # CHECK ASSET STATUS
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     if asset.status == AssetStatus.ASSIGNED:
 
         flash(
@@ -671,8 +1483,9 @@ def return_to_vendor():
             'warning'
         )
 
-        return redirect(url_for('assets.index'))
-
+        return redirect(
+            url_for('assets.index')
+        )
 
     if asset.status == AssetStatus.RETURNED_TO_VENDOR:
 
@@ -681,12 +1494,13 @@ def return_to_vendor():
             'warning'
         )
 
-        return redirect(url_for('assets.index'))
+        return redirect(
+            url_for('assets.index')
+        )
 
-
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     # VALIDATE RETURN DATE
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     if not vendor_return_date_str:
 
         flash(
@@ -694,8 +1508,9 @@ def return_to_vendor():
             'danger'
         )
 
-        return redirect(url_for('assets.index'))
-
+        return redirect(
+            url_for('assets.index')
+        )
 
     try:
 
@@ -711,12 +1526,13 @@ def return_to_vendor():
             'danger'
         )
 
-        return redirect(url_for('assets.index'))
+        return redirect(
+            url_for('assets.index')
+        )
 
-
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     # VALIDATE REASON
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     if not reason:
 
         flash(
@@ -724,18 +1540,18 @@ def return_to_vendor():
             'danger'
         )
 
-        return redirect(url_for('assets.index'))
+        return redirect(
+            url_for('assets.index')
+        )
 
-
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     # UPDATE ASSET
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     asset.vendor_id = vendor.id
 
     asset.status = AssetStatus.RETURNED_TO_VENDOR
 
-    # IMPORTANT:
-    # Save the DATE selected in the HTML form
+    # Save selected vendor return date
     asset.vendor_return_date = vendor_return_date
 
     asset.vendor_return_reason = reason
@@ -744,10 +1560,9 @@ def return_to_vendor():
 
     asset.assignment_date = None
 
-
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     # HISTORY
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     hist = AssetAssignmentHistory(
 
         asset_id=asset.id,
@@ -755,8 +1570,10 @@ def return_to_vendor():
         action='Send Back to Vendor',
 
         notes=(
-            f'Asset returned to Vendor {vendor.name}. '
-            f'Return Date: {vendor_return_date_str}. '
+            f'Asset returned to Vendor '
+            f'{vendor.name}. '
+            f'Return Date: '
+            f'{vendor_return_date_str}. '
             f'Reason: {reason}'
         ),
 
@@ -765,10 +1582,9 @@ def return_to_vendor():
 
     db.session.add(hist)
 
-
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     # AUDIT LOG
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     AuditService.log(
 
         action='Asset Returned to Vendor',
@@ -778,27 +1594,28 @@ def return_to_vendor():
         entity_id=asset.asset_id,
 
         details=(
-            f'Asset {asset.asset_id} returned to vendor '
-            f'{vendor.name} on {vendor_return_date_str}. '
+            f'Asset {asset.asset_id} '
+            f'returned to vendor '
+            f'{vendor.name} '
+            f'on {vendor_return_date_str}. '
             f'Reason: {reason}'
         )
     )
 
-
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     # SAVE DATABASE
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
     db.session.commit()
 
-
-    # ---------------------------------------------------------
-    # SUCCESS MESSAGE
-    # ---------------------------------------------------------
+    # -----------------------------------------------------
+    # SUCCESS
+    # -----------------------------------------------------
     flash(
         f'Asset {asset.asset_id} successfully returned to '
         f'{vendor.name} on {vendor_return_date_str}.',
         'success'
     )
 
-
-    return redirect(url_for('assets.index'))
+    return redirect(
+        url_for('assets.index')
+    )
