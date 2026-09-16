@@ -1,3 +1,3957 @@
+
+{% extends "base.html" %}
+
+{% block title %}Asset Inventory | Enterprise ITAM{% endblock %}
+
+{% block content %}
+<style>
+/* =========================================================
+   SEARCHABLE DROPDOWNS
+========================================================= */
+.ts-wrapper { width: 100%; }
+.ts-control {
+    min-height: 38px !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: .375rem !important;
+    background: #f8f9fa !important;
+    box-shadow: none !important;
+    padding: 6px 12px !important;
+    font-size: .95rem;
+}
+.ts-control.focus {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12) !important;
+}
+.ts-dropdown {
+    border: 1px solid #dee2e6 !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15) !important;
+    z-index: 3000 !important;
+}
+.ts-dropdown .ts-dropdown-content {
+    max-height: 280px;
+    overflow-y: auto;
+}
+.ts-dropdown .option {
+    padding: 10px 12px !important;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+}
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+    background: #f0f6ff !important;
+    color: #212529 !important;
+}
+.ts-control input { font-size: .95rem !important; }
+.ts-control .item { color: #212529; }
+
+/* =========================================================
+   EMPLOYEE NAME-ONLY POPUP
+========================================================= */
+.employee-picker { width: 100%; }
+.employee-search-input {
+    height: 42px;
+    font-size: 16px;
+}
+.employee-search-input:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12);
+}
+.employee-search-results {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 2px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 10px 10px;
+    max-height: 315px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    z-index: 3050;
+    display: none;
+}
+.employee-search-option {
+    width: 100%;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #fff;
+    border: 0;
+    border-bottom: 1px solid #edf0f2;
+    text-align: left;
+    cursor: pointer;
+}
+.employee-search-option:hover,
+.employee-search-option.active {
+    background: #f0f6ff;
+}
+.employee-option-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 50%;
+    background: #eaf3ff;
+    color: #0d6efd;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.employee-option-content {
+    min-width: 0;
+    display: block;
+}
+.employee-option-name {
+    display: block;
+    color: #212529;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.25;
+}
+.employee-search-results::-webkit-scrollbar { width: 8px; }
+.employee-search-results::-webkit-scrollbar-thumb {
+    background: #adb5bd;
+    border-radius: 10px;
+}
+</style>
+
+<script>
+/* =========================================================
+   UNIVERSAL SEARCHABLE DROPDOWNS
+   Applies Tom Select to every normal <select> except the
+   model dropdowns, which already have their own logic.
+========================================================= */
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("select.searchable-dropdown").forEach(function (select) {
+        if (select.tomselect) return;
+
+        new TomSelect(select, {
+            create: false,
+            allowEmptyOption: true,
+            closeAfterSelect: true,
+            maxOptions: 1000,
+            searchField: ["text", "value"],
+            plugins: ["clear_button"],
+            placeholder: select.options[0]?.text?.trim() || "Search or select...",
+            dropdownParent: "body",
+            render: {
+                option: function (data, escape) {
+                    return '<div class="searchable-option">' + escape(data.text) + '</div>';
+                },
+                item: function (data, escape) {
+                    return '<div class="searchable-item">' + escape(data.text) + '</div>';
+                }
+            }
+        });
+    });
+
+    /* =========================================================
+       EMPLOYEE NAME-ONLY SEARCH POPUP
+    ========================================================= */
+    document.querySelectorAll(".employee-picker").forEach(function (picker) {
+        const searchInput = picker.querySelector(".employee-search-input");
+        const hiddenInput = picker.querySelector(".employee-id-input");
+        const resultsBox = picker.querySelector(".employee-search-results");
+        const options = Array.from(picker.querySelectorAll(".employee-search-option"));
+        const noResults = picker.querySelector(".employee-no-results");
+
+        if (!searchInput || !hiddenInput || !resultsBox) return;
+
+        function showResults() {
+            const search = searchInput.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            options.forEach(function (option) {
+                const name = (option.dataset.name || "").toLowerCase();
+                const matches = search === "" || name.includes(search);
+                option.style.display = matches ? "flex" : "none";
+                if (matches) visibleCount++;
+            });
+
+            if (noResults) {
+                noResults.style.display = visibleCount === 0 ? "block" : "none";
+            }
+
+            resultsBox.style.display = "block";
+        }
+
+        function hideResults() {
+            resultsBox.style.display = "none";
+        }
+
+        searchInput.addEventListener("focus", showResults);
+        searchInput.addEventListener("input", function () {
+            hiddenInput.value = "";
+            showResults();
+        });
+
+        options.forEach(function (option) {
+            option.addEventListener("click", function () {
+                hiddenInput.value = this.dataset.employeeId || "";
+                searchInput.value = this.dataset.name || "";
+                searchInput.classList.remove("is-invalid");
+                hideResults();
+            });
+        });
+
+        searchInput.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                hideResults();
+                searchInput.blur();
+            }
+        });
+
+        document.addEventListener("click", function (event) {
+            if (!picker.contains(event.target)) {
+                hideResults();
+            }
+        });
+
+        const form = picker.closest("form");
+        if (form) {
+            form.addEventListener("submit", function (event) {
+                if (!hiddenInput.value) {
+                    event.preventDefault();
+                    searchInput.classList.add("is-invalid");
+                    searchInput.focus();
+                    showResults();
+                }
+            });
+        }
+    });
+});
+</script>
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">
+            <i class="fas fa-laptop-code text-primary me-2"></i>
+            Enterprise Asset Inventory
+        </h3>
+
+        <p class="text-muted small mb-0">
+            Manage hardware assets, user assignments, multi-laptop replacements,
+            vendor repairs, and complete audit history logs.
+        </p>
+    </div>
+
+    {% if current_user.is_it_admin %}
+    <div class="d-flex gap-2">
+
+        <button class="btn btn-warning btn-sm rounded-pill px-3 shadow-sm text-dark fw-semibold"
+                data-bs-toggle="modal"
+                data-bs-target="#replaceAssetModal">
+            <i class="fas fa-sync me-1"></i>
+            Replace Laptop
+        </button>
+
+        <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm fw-semibold"
+                data-bs-toggle="modal"
+                data-bs-target="#addAssetModal">
+            <i class="fas fa-plus me-1"></i>
+            Add New Asset
+        </button>
+
+    </div>
+    {% endif %}
+</div>
+
+
+<!-- =========================================================
+     SEARCH & FILTER
+========================================================= -->
+
+<div class="card border-0 shadow-sm mb-4">
+
+    <div class="card-body p-3">
+
+        <form action="{{ url_for('assets.index') }}"
+              method="GET"
+              class="row g-2">
+
+            <div class="col-12 col-md-5">
+
+                <div class="input-group">
+
+                    <span class="input-group-text bg-light border-end-0">
+                        <i class="fas fa-search text-muted"></i>
+                    </span>
+
+                    <input type="text"
+                           name="q"
+                           value="{{ search_q }}"
+                           class="form-control border-start-0 bg-light"
+                           placeholder="Search Asset ID, brand, model, serial number, user name...">
+
+                </div>
+
+            </div>
+
+
+            <div class="col-6 col-md-3">
+
+                <select name="status"
+                        class="form-select searchable-dropdown bg-light">
+
+                    <option value="">All Asset Statuses</option>
+
+                    <option value="Available"
+                            {% if status_filter == 'Available' %}selected{% endif %}>
+                        Available
+                    </option>
+
+                    <option value="Assigned"
+                            {% if status_filter == 'Assigned' %}selected{% endif %}>
+                        Assigned
+                    </option>
+
+                    <option value="Repair"
+                            {% if status_filter == 'Repair' %}selected{% endif %}>
+                        Under Repair
+                    </option>
+
+                    <option value="Returned to Vendor"
+                            {% if status_filter == 'Returned to Vendor' %}selected{% endif %}>
+                        Returned to Vendor
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="col-6 col-md-2">
+
+                <select name="vendor_id"
+                        class="form-select searchable-dropdown bg-light">
+
+                    <option value="">All Vendors</option>
+
+                    {% for v in vendors %}
+
+                    <option value="{{ v.id }}"
+                            {% if vendor_filter == v.id %}selected{% endif %}>
+                        {{ v.name }}
+                    </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <div class="col-12 col-md-2 d-flex gap-2">
+
+                <button type="submit"
+                        class="btn btn-dark flex-grow-1">
+
+                    <i class="fas fa-filter me-1"></i>
+                    Filter
+
+                </button>
+
+                <a href="{{ url_for('assets.index') }}"
+                   class="btn btn-outline-secondary"
+                   title="Reset Filters">
+
+                    <i class="fas fa-undo"></i>
+
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     ASSET VIEW TABS
+========================================================= -->
+
+<div class="d-flex gap-2 mb-4">
+
+    <!-- All Assets -->
+    <a href="{{ url_for('assets.index') }}"
+       class="btn {% if not status_filter %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        <i class="fas fa-laptop me-1"></i>
+        All Assets
+    </a>
+
+
+    <!-- Stock Laptops -->
+    <a href="{{ url_for('assets.index', status='Available') }}"
+       class="btn {% if status_filter == 'Available' %}btn-success{% else %}btn-outline-success{% endif %}">
+        <i class="fas fa-box-open me-1"></i>
+        Stock Laptops
+    </a>
+
+
+    <!-- Assigned -->
+    <a href="{{ url_for('assets.index', status='Assigned') }}"
+       class="btn {% if status_filter == 'Assigned' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        <i class="fas fa-user-check me-1"></i>
+        Assigned
+    </a>
+
+
+    <!-- Repair -->
+    <a href="{{ url_for('assets.index', status='Repair') }}"
+       class="btn {% if status_filter == 'Repair' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %}">
+        <i class="fas fa-wrench me-1"></i>
+        Under Repair
+    </a>
+
+
+    <!-- Returned To Vendor -->
+    <a href="{{ url_for('assets.index', status='Returned to Vendor') }}"
+       class="btn {% if status_filter == 'Returned to Vendor' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+        <i class="fas fa-truck me-1"></i>
+        Returned to Vendor
+    </a>
+
+</div>
+
+
+<!-- =========================================================
+     ASSETS TABLE
+========================================================= -->
+
+<div class="card border-0 shadow-sm">
+
+    <div class="table-responsive">
+
+        <style>
+            .asset-table {
+                min-width: 1450px;
+            }
+
+            .asset-table th,
+            .asset-table td {
+                vertical-align: middle !important;
+            }
+
+            .asset-table .status-column {
+                width: 155px;
+                min-width: 155px;
+                text-align: center !important;
+                white-space: nowrap;
+            }
+
+            .asset-table .date-column {
+                width: 150px;
+                min-width: 150px;
+                text-align: center !important;
+                white-space: nowrap;
+            }
+
+            .asset-table .status-badge {
+                min-width: 135px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                padding: 7px 12px;
+                border-radius: 6px;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+
+            .asset-table .asset-date {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                min-width: 125px;
+            }
+
+            .asset-table .badge-available {
+                background-color: #198754 !important;
+                color: #ffffff !important;
+            }
+
+            .asset-table .badge-assigned {
+                background-color: #0d6efd !important;
+                color: #ffffff !important;
+            }
+
+            .asset-table .badge-repair,
+            .asset-table .badge-under-repair {
+                background-color: #ffc107 !important;
+                color: #212529 !important;
+            }
+
+            .asset-table .badge-returned-to-vendor,
+            .asset-table .badge-sent-to-vendor {
+                background-color: #6f42c1 !important;
+                color: #ffffff !important;
+            }
+        </style>
+
+        <table class="table table-custom mb-0 asset-table">
+
+            <thead>
+
+                <tr>
+
+                    <th>Asset ID</th>
+                    <th>Brand & Model</th>
+                    <th>Serial Number</th>
+                    <th>Specifications</th>
+                    <th>Vendor</th>
+                    <th class="status-column">Status</th>
+                    <th class="date-column">Date</th>
+                    <th>Assigned User Name</th>
+                    <th class="text-end">Actions</th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for ast in assets %}
+
+                <tr>
+
+                    <!-- Asset ID -->
+                    <td>
+                        <strong class="text-primary">
+                            {{ ast.asset_id }}
+                        </strong>
+                    </td>
+
+
+                    <!-- Brand & Model -->
+                    <td>
+
+                        <div class="fw-bold">
+                            {{ ast.brand }} {{ ast.model }}
+                        </div>
+
+                    </td>
+
+
+                    <!-- Serial -->
+                    <td>
+                        <code>{{ ast.serial_number }}</code>
+                    </td>
+
+
+                    <!-- Specifications -->
+                    <td>
+
+                        <small class="text-muted">
+
+                            <i class="fas fa-microchip me-1"></i>
+                            {{ ast.processor }}
+
+                            <br>
+
+                            <i class="fas fa-memory me-1"></i>
+                            {{ ast.ram }}
+
+                            |
+
+                            <i class="fas fa-hard-drive me-1"></i>
+                            {{ ast.ssd }}
+
+                        </small>
+
+                    </td>
+
+
+                    <!-- Vendor -->
+                    <td>
+
+                        <span class="badge bg-light text-dark border">
+                            {{ ast.vendor.name if ast.vendor else 'N/A' }}
+                        </span>
+
+                    </td>
+
+
+                    <!-- Status -->
+                    {% set status_value = ast.status.value if ast.status.value is defined else ast.status|string %}
+
+                    <td class="status-column">
+
+                        {% if status_value == 'Available' %}
+
+                            <span class="badge status-badge badge-available">
+                                <i class="fas fa-box-open"></i>
+                                Available
+                            </span>
+
+                        {% elif status_value == 'Assigned' %}
+
+                            <span class="badge status-badge badge-assigned">
+                                <i class="fas fa-user-check"></i>
+                                Assigned
+                            </span>
+
+                        {% elif status_value in ['Repair', 'Under Repair'] %}
+
+                            <span class="badge status-badge badge-repair">
+                                <i class="fas fa-wrench"></i>
+                                Under Repair
+                            </span>
+
+                        {% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] %}
+
+                            <span class="badge status-badge badge-returned-to-vendor">
+                                <i class="fas fa-truck"></i>
+                                Sent to Vendor
+                            </span>
+
+                        {% else %}
+
+                            <span class="badge status-badge bg-secondary text-white">
+                                {{ status_value }}
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+
+                    <!-- Date - shown for every asset -->
+                    <td class="date-column">
+
+                        {% if status_value == 'Assigned' and ast.assignment_date %}
+
+                            <span class="asset-date fw-semibold text-dark">
+                                <i class="fas fa-calendar-check text-primary"></i>
+                                {{ ast.assignment_date.strftime('%d-%m-%Y') }}
+                            </span>
+
+                        {% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] and ast.vendor_return_date %}
+
+                            <span class="asset-date fw-semibold text-dark">
+                                <i class="fas fa-calendar-check" style="color:#6f42c1;"></i>
+                                {{ ast.vendor_return_date.strftime('%d-%m-%Y') }}
+                            </span>
+
+                        {% elif ast.purchase_date %}
+
+                            <span class="asset-date fw-semibold text-dark">
+                                <i class="fas fa-calendar-alt text-secondary"></i>
+                                {{ ast.purchase_date.strftime('%d-%m-%Y') }}
+                            </span>
+
+                        {% else %}
+
+                            <span class="asset-date text-muted">
+                                <i class="fas fa-calendar-alt"></i>
+                                —
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+
+                    <!-- Assigned Employee -->
+                    <td>
+
+                        {% if ast.assigned_employee %}
+
+                        <div class="fw-bold text-dark">
+
+                            <i class="fas fa-user me-1 text-primary"></i>
+
+                            {{ ast.assigned_employee.name }}
+
+                        </div>
+
+                        <small class="text-muted">
+
+                            {{ ast.assigned_employee.employee_id }}
+
+                            &bull;
+
+                            {{ ast.assigned_employee.department }}
+
+                        </small>
+
+                        {% else %}
+
+                        <span class="text-muted fs-7">
+
+                            <em>Unassigned (In Stock)</em>
+
+                        </span>
+
+                        {% endif %}
+
+                    </td>
+
+
+                    <!-- Actions -->
+                    <td class="text-end">
+
+                        <div class="dropdown">
+
+                            <button class="btn btn-light btn-sm rounded-circle p-2"
+                                    type="button"
+                                    data-bs-toggle="dropdown">
+
+                                <i class="fas fa-ellipsis-v text-secondary"></i>
+
+                            </button>
+
+
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+
+                                <!-- History -->
+                                <li>
+
+                                    <button class="dropdown-item btn-view-asset-history"
+                                            data-asset-id="{{ ast.id }}">
+
+                                        <i class="fas fa-history text-info me-2"></i>
+
+                                        View Replacement History
+
+                                    </button>
+
+                                </li>
+
+
+                                {% if current_user.is_it_admin %}
+
+                                <!-- Edit -->
+                                <li>
+
+                                    <button class="dropdown-item text-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editAssetModal{{ ast.id }}">
+
+                                        <i class="fas fa-edit me-2"></i>
+
+                                        Edit Asset
+
+                                    </button>
+
+                                </li>
+
+
+                                {% if ast.status == 'Available' %}
+
+                                <!-- Assign -->
+                                <li>
+
+                                    <button class="dropdown-item text-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#assignModal{{ ast.id }}">
+
+                                        <i class="fas fa-user-plus me-2"></i>
+
+                                        Assign to Employee
+
+                                    </button>
+
+                                </li>
+
+
+                                <!-- Repair -->
+                                <li>
+
+                                    <button class="dropdown-item text-warning"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#repairModal{{ ast.id }}">
+
+                                        <i class="fas fa-wrench me-2"></i>
+
+                                        Send to Repair
+
+                                    </button>
+
+                                </li>
+
+
+                                <!-- Send Back to Vendor -->
+                                <li>
+
+                                    <button type="button"
+                                            class="dropdown-item text-warning"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#returnVendorModal"
+                                            data-asset-id="{{ ast.id }}"
+                                            data-asset-name="{{ ast.asset_id }} - {{ ast.brand }} {{ ast.model }}">
+
+                                        <i class="fas fa-truck me-2"></i>
+
+                                        Send Back to Vendor
+
+                                    </button>
+
+                                </li>
+
+
+                                {% elif ast.status == 'Assigned' %}
+
+                                <!-- Replace Laptop -->
+                                <li>
+
+                                    <button type="button"
+                                            class="dropdown-item text-warning"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#replaceAssetModal"
+                                            data-old-asset-id="{{ ast.id }}">
+
+                                        <i class="fas fa-sync me-2"></i>
+
+                                        Replace Laptop
+
+                                    </button>
+
+                                </li>
+
+
+                                <!-- Return -->
+                                <li>
+
+                                    <form action="{{ url_for('assets.return_asset', asset_id=ast.id) }}"
+                                          method="POST">
+
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+
+                                        <button type="submit"
+                                                class="dropdown-item text-success"
+                                                onclick="return confirm('Return this laptop from employee back to available stock?')">
+
+                                            <i class="fas fa-undo me-2"></i>
+
+                                            Return to Available
+
+                                        </button>
+
+                                    </form>
+
+                                </li>
+
+                                {% endif %}
+
+                                {% endif %}
+
+
+                                <!-- Delete -->
+                                {% if current_user.can_delete_assets() %}
+
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+
+                                <li>
+
+                                    <form action="{{ url_for('assets.delete_asset', asset_id=ast.id) }}"
+                                          method="POST">
+
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+
+                                        <button type="submit"
+                                                class="dropdown-item text-danger"
+                                                onclick="return confirm('Are you sure you want to delete asset {{ ast.asset_id }}?')">
+
+                                            <i class="fas fa-trash me-2"></i>
+
+                                            Delete Asset
+
+                                        </button>
+
+                                    </form>
+
+                                </li>
+
+                                {% endif %}
+
+                            </ul>
+
+                        </div>
+
+
+                        <!-- =====================================================
+                             ASSIGN MODAL
+                        ====================================================== -->
+
+                        {% if ast.status == 'Available' and current_user.is_it_admin %}
+
+                        <div class="modal fade text-start"
+                             id="assignModal{{ ast.id }}"
+                             tabindex="-1">
+
+                            <div class="modal-dialog modal-dialog-centered">
+
+                                <div class="modal-content border-0 shadow-lg">
+
+                                    <div class="modal-header bg-primary text-white">
+
+                                        <h5 class="modal-title fw-bold">
+
+                                            <i class="fas fa-user-check me-2"></i>
+
+                                            Assign Asset {{ ast.asset_id }}
+
+                                        </h5>
+
+                                        <button type="button"
+                                                class="btn-close btn-close-white"
+                                                data-bs-dismiss="modal">
+                                        </button>
+
+                                    </div>
+
+
+                                    <form action="{{ url_for('assets.assign_asset') }}"
+                                          method="POST">
+
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+
+                                        <input type="hidden"
+                                               name="asset_id"
+                                               value="{{ ast.id }}">
+
+
+                                        <div class="modal-body p-4">
+
+                                            <div class="mb-3">
+
+                                                <label class="form-label fw-semibold">
+                                                    Select Employee
+                                                </label>
+
+                                                <div class="employee-picker position-relative">
+
+                                                    <div class="input-group">
+                                                        <span class="input-group-text bg-light">
+                                                            <i class="fas fa-search text-muted"></i>
+                                                        </span>
+                                                        <input type="text"
+                                                               class="form-control employee-search-input"
+                                                               placeholder="Type employee name..."
+                                                               autocomplete="off"
+                                                               required>
+                                                    </div>
+
+                                                    <input type="hidden"
+                                                           name="employee_id"
+                                                           class="employee-id-input">
+
+                                                    <div class="employee-search-results">
+                                                        {% for emp in active_employees %}
+                                                        <button type="button"
+                                                                class="employee-search-option"
+                                                                data-employee-id="{{ emp.id }}"
+                                                                data-name="{{ emp.name|e }}">
+                                                            <span class="employee-option-icon">
+                                                                <i class="fas fa-user"></i>
+                                                            </span>
+                                                            <span class="employee-option-content">
+                                                                <span class="employee-option-name">{{ emp.name }}</span>
+                                                            </span>
+                                                        </button>
+                                                        {% endfor %}
+
+                                                        <div class="employee-no-results text-muted text-center py-3" style="display:none;">
+                                                            No employee found
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+
+
+                                            <div class="mb-3">
+
+                                                <label class="form-label fw-semibold">
+                                                    Allocation Notes
+                                                </label>
+
+                                                <textarea name="notes"
+                                                          class="form-control"
+                                                          rows="2"
+                                                          placeholder="Reason for allocation..."></textarea>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <div class="modal-footer">
+
+                                            <button type="button"
+                                                    class="btn btn-secondary"
+                                                    data-bs-dismiss="modal">
+
+                                                Cancel
+
+                                            </button>
+
+                                            <button type="submit"
+                                                    class="btn btn-primary">
+
+                                                Confirm Assignment
+
+                                            </button>
+
+                                        </div>
+
+                                    </form>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- =====================================================
+                             REPAIR MODAL
+                        ====================================================== -->
+
+                        <div class="modal fade text-start"
+                             id="repairModal{{ ast.id }}"
+                             tabindex="-1">
+
+                            <div class="modal-dialog modal-dialog-centered">
+
+                                <div class="modal-content border-0 shadow-lg">
+
+                                    <div class="modal-header bg-warning text-dark">
+
+                                        <h5 class="modal-title fw-bold">
+
+                                            <i class="fas fa-wrench me-2"></i>
+
+                                            Dispatch to Repair
+
+                                        </h5>
+
+                                        <button type="button"
+                                                class="btn-close"
+                                                data-bs-dismiss="modal">
+                                        </button>
+
+                                    </div>
+
+
+                                    <form action="{{ url_for('assets.send_to_repair') }}"
+                                          method="POST">
+
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+
+                                        <input type="hidden"
+                                               name="asset_id"
+                                               value="{{ ast.id }}">
+
+
+                                        <div class="modal-body p-4">
+
+                                            <div class="mb-3">
+
+                                                <label class="form-label fw-semibold">
+                                                    Select Repair Vendor
+                                                </label>
+
+                                                <select name="vendor_id"
+                                                        class="form-select searchable-dropdown"
+                                                        required>
+
+                                                    {% for v in vendors %}
+
+                                                    <option value="{{ v.id }}"
+                                                            {% if ast.vendor_id == v.id %}selected{% endif %}>
+
+                                                        {{ v.name }}
+
+                                                    </option>
+
+                                                    {% endfor %}
+
+                                                </select>
+
+                                            </div>
+
+
+                                            <div class="mb-3">
+
+                                                <label class="form-label fw-semibold">
+                                                    Hardware Fault Description
+                                                </label>
+
+                                                <textarea name="notes"
+                                                          class="form-control"
+                                                          rows="3"
+                                                          placeholder="Describe hardware issue..."
+                                                          required></textarea>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        <div class="modal-footer">
+
+                                            <button type="button"
+                                                    class="btn btn-secondary"
+                                                    data-bs-dismiss="modal">
+
+                                                Cancel
+
+                                            </button>
+
+                                            <button type="submit"
+                                                    class="btn btn-warning text-dark fw-bold">
+
+                                                Create Vendor Repair Ticket
+
+                                            </button>
+
+                                        </div>
+
+                                    </form>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        {% endif %}
+
+                    </td>
+
+                </tr>
+
+
+                {% else %}
+
+                <tr>
+
+                    <td colspan="9"
+                        class="text-center text-muted py-4">
+
+                        <i class="fas fa-laptop fa-2x mb-2 d-block text-secondary"></i>
+
+                        No assets found in inventory matching filter criteria.
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+    <!-- =========================================================
+         PAGINATION
+    ========================================================== -->
+
+    {% if pagination.pages > 1 %}
+
+    <div class="card-footer bg-transparent d-flex justify-content-between align-items-center">
+
+        <small class="text-muted">
+            Showing page {{ pagination.page }} of {{ pagination.pages }}
+        </small>
+
+
+        <ul class="pagination pagination-sm mb-0">
+
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+
+                <a class="page-link"
+                   href="{{ url_for(
+                       'assets.index',
+                       page=pagination.prev_num,
+                       q=search_q,
+                       status=status_filter,
+                       vendor_id=vendor_filter
+                   ) }}">
+
+                    Previous
+
+                </a>
+
+            </li>
+
+
+            {% for p in pagination.iter_pages() %}
+
+                {% if p %}
+
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+
+                    <a class="page-link"
+                       href="{{ url_for(
+                           'assets.index',
+                           page=p,
+                           q=search_q,
+                           status=status_filter,
+                           vendor_id=vendor_filter
+                       ) }}">
+
+                        {{ p }}
+
+                    </a>
+
+                </li>
+
+                {% else %}
+
+                <li class="page-item disabled">
+
+                    <span class="page-link">...</span>
+
+                </li>
+
+                {% endif %}
+
+            {% endfor %}
+
+
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+
+                <a class="page-link"
+                   href="{{ url_for(
+                       'assets.index',
+                       page=pagination.next_num,
+                       q=search_q,
+                       status=status_filter,
+                       vendor_id=vendor_filter
+                   ) }}">
+
+                    Next
+
+                </a>
+
+            </li>
+
+        </ul>
+
+    </div>
+
+    {% endif %}
+
+</div>
+
+
+<!-- =========================================================
+     EDIT ASSET MODALS
+========================================================= -->
+
+{% for ast in assets %}
+
+{% if current_user.is_it_admin %}
+
+<div class="modal fade"
+     id="editAssetModal{{ ast.id }}"
+     tabindex="-1">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+
+            <!-- Header -->
+
+            <div class="modal-header bg-primary text-white">
+
+                <h5 class="modal-title fw-bold">
+
+                    <i class="fas fa-edit me-2"></i>
+
+                    Edit Asset - {{ ast.asset_id }}
+
+                </h5>
+
+                <button type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+
+            <form action="{{ url_for('assets.edit_asset', asset_id=ast.id) }}"
+                  method="POST">
+
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+
+
+                <div class="modal-body p-4">
+
+
+                    <!-- Asset ID + Brand -->
+
+                    <div class="row g-3 mb-3">
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Asset ID
+                            </label>
+
+                            <input type="text"
+                                   name="asset_id"
+                                   class="form-control"
+                                   value="{{ ast.asset_id }}"
+                                   required>
+
+                        </div>
+
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Brand / Manufacturer
+                            </label>
+
+                            <select name="brand"
+                                    class="form-select searchable-dropdown edit-brand"
+                                    data-model-target="edit-model-{{ ast.id }}"
+                                    required>
+
+                                <option value="">
+                                    -- Select Brand --
+                                </option>
+
+                                <option value="HP"
+                                        {% if ast.brand == 'HP' %}selected{% endif %}>
+                                    HP
+                                </option>
+
+                                <option value="Dell"
+                                        {% if ast.brand == 'Dell' %}selected{% endif %}>
+                                    Dell
+                                </option>
+
+                                <option value="Lenovo"
+                                        {% if ast.brand == 'Lenovo' %}selected{% endif %}>
+                                    Lenovo
+                                </option>
+
+                                <option value="ASUS"
+                                        {% if ast.brand == 'ASUS' %}selected{% endif %}>
+                                    ASUS
+                                </option>
+
+                                <option value="Apple"
+                                        {% if ast.brand == 'Apple' %}selected{% endif %}>
+                                    Apple / Mac
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Model + Serial -->
+
+                    <div class="row g-3 mb-3">
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Model
+                            </label>
+
+                            <select name="model"
+                                    id="edit-model-{{ ast.id }}"
+                                    class="form-select edit-model"
+                                    data-current-model="{{ ast.model|e }}"
+                                    required>
+
+                                <option value="">
+                                    -- Select Model --
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Serial Number
+                            </label>
+
+                            <input type="text"
+                                   name="serial_number"
+                                   class="form-control"
+                                   value="{{ ast.serial_number }}"
+                                   required>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Processor -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Processor
+                        </label>
+
+                        <select name="processor"
+                                class="form-select searchable-dropdown"
+                                required>
+
+                            <option value="">
+                                -- Select Processor --
+                            </option>
+
+                            <option value="Intel Core i3"
+                                    {% if ast.processor == 'Intel Core i3' %}selected{% endif %}>
+                                Intel Core i3
+                            </option>
+
+                            <option value="Intel Core i5"
+                                    {% if ast.processor == 'Intel Core i5' %}selected{% endif %}>
+                                Intel Core i5
+                            </option>
+
+                            <option value="Intel Core i7"
+                                    {% if ast.processor == 'Intel Core i7' %}selected{% endif %}>
+                                Intel Core i7
+                            </option>
+
+                            <option value="Intel Core i9"
+                                    {% if ast.processor == 'Intel Core i9' %}selected{% endif %}>
+                                Intel Core i9
+                            </option>
+
+                            <option value="AMD Ryzen 3"
+                                    {% if ast.processor == 'AMD Ryzen 3' %}selected{% endif %}>
+                                AMD Ryzen 3
+                            </option>
+
+                            <option value="AMD Ryzen 5"
+                                    {% if ast.processor == 'AMD Ryzen 5' %}selected{% endif %}>
+                                AMD Ryzen 5
+                            </option>
+
+                            <option value="AMD Ryzen 7"
+                                    {% if ast.processor == 'AMD Ryzen 7' %}selected{% endif %}>
+                                AMD Ryzen 7
+                            </option>
+
+                            <option value="AMD Ryzen 9"
+                                    {% if ast.processor == 'AMD Ryzen 9' %}selected{% endif %}>
+                                AMD Ryzen 9
+                            </option>
+
+                            <option value="Apple M1"
+                                    {% if ast.processor == 'Apple M1' %}selected{% endif %}>
+                                Apple M1
+                            </option>
+
+                            <option value="Apple M2"
+                                    {% if ast.processor == 'Apple M2' %}selected{% endif %}>
+                                Apple M2
+                            </option>
+
+                            <option value="Apple M3"
+                                    {% if ast.processor == 'Apple M3' %}selected{% endif %}>
+                                Apple M3
+                            </option>
+
+                            <option value="Apple M4"
+                                    {% if ast.processor == 'Apple M4' %}selected{% endif %}>
+                                Apple M4
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- RAM + SSD -->
+
+                    <div class="row g-3 mb-3">
+
+
+                        <!-- RAM -->
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                RAM Capacity
+                            </label>
+
+                            <select name="ram"
+                                    class="form-select searchable-dropdown"
+                                    required>
+
+                                <option value="N/A"
+                                        {% if ast.ram == 'N/A' %}selected{% endif %}>
+                                    N/A
+                                </option>
+
+                                <option value="4 GB"
+                                        {% if ast.ram == '4 GB' %}selected{% endif %}>
+                                    4 GB
+                                </option>
+
+                                <option value="8 GB"
+                                        {% if ast.ram == '8 GB' %}selected{% endif %}>
+                                    8 GB
+                                </option>
+
+                                <option value="16 GB"
+                                        {% if ast.ram == '16 GB' %}selected{% endif %}>
+                                    16 GB
+                                </option>
+
+                                <option value="24 GB"
+                                        {% if ast.ram == '24 GB' %}selected{% endif %}>
+                                    24 GB
+                                </option>
+
+                                <option value="32 GB"
+                                        {% if ast.ram == '32 GB' %}selected{% endif %}>
+                                    32 GB
+                                </option>
+
+                                <option value="64 GB"
+                                        {% if ast.ram == '64 GB' %}selected{% endif %}>
+                                    64 GB
+                                </option>
+
+                                <option value="128 GB"
+                                        {% if ast.ram == '128 GB' %}selected{% endif %}>
+                                    128 GB
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <!-- SSD -->
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                SSD Storage Capacity
+                            </label>
+
+                            <select name="ssd"
+                                    class="form-select searchable-dropdown"
+                                    required>
+
+                                <option value="N/A"
+                                        {% if ast.ssd == 'N/A' %}selected{% endif %}>
+                                    N/A
+                                </option>
+
+                                <option value="128 GB"
+                                        {% if ast.ssd == '128 GB' %}selected{% endif %}>
+                                    128 GB
+                                </option>
+
+                                <option value="256 GB"
+                                        {% if ast.ssd == '256 GB' %}selected{% endif %}>
+                                    256 GB
+                                </option>
+
+                                <option value="512 GB"
+                                        {% if ast.ssd == '512 GB' %}selected{% endif %}>
+                                    512 GB
+                                </option>
+
+                                <option value="1 TB"
+                                        {% if ast.ssd == '1 TB' %}selected{% endif %}>
+                                    1 TB
+                                </option>
+
+                                <option value="2 TB"
+                                        {% if ast.ssd == '2 TB' %}selected{% endif %}>
+                                    2 TB
+                                </option>
+
+                                <option value="4 TB"
+                                        {% if ast.ssd == '4 TB' %}selected{% endif %}>
+                                    4 TB
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Vendor -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Vendor
+                        </label>
+
+                        <select name="vendor_id"
+                                class="form-select searchable-dropdown"
+                                required>
+
+                            {% for v in vendors %}
+
+                            <option value="{{ v.id }}"
+                                    {% if ast.vendor_id == v.id %}selected{% endif %}>
+
+                                {{ v.name }}
+
+                            </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Footer -->
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+
+                        Cancel
+
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+
+                        <i class="fas fa-save me-1"></i>
+
+                        Save Changes
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+{% endfor %}
+
+
+
+<!-- =========================================================
+     ADD NEW ASSET MODAL
+========================================================= -->
+
+<div class="modal fade"
+     id="addAssetModal"
+     tabindex="-1">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+
+            <div class="modal-header bg-dark text-white">
+
+                <h5 class="modal-title fw-bold">
+
+                    <i class="fas fa-plus me-2 text-primary"></i>
+
+                    Add New Enterprise Asset
+
+                </h5>
+
+                <button type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+
+            <form action="{{ url_for('assets.add_asset') }}"
+                  method="POST">
+
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+
+
+                <div class="modal-body p-4">
+
+
+                    <!-- Brand + Model -->
+
+                    <div class="row g-3 mb-3">
+
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Brand / Manufacturer
+                            </label>
+
+                            <select name="brand"
+                                    id="newAssetBrand"
+                                    class="form-select searchable-dropdown"
+                                    required>
+
+                                <option value="">
+                                    -- Select Brand --
+                                </option>
+
+                                <option value="HP">
+                                    HP
+                                </option>
+
+                                <option value="Dell">
+                                    Dell
+                                </option>
+
+                                <option value="Lenovo">
+                                    Lenovo
+                                </option>
+
+                                <option value="ASUS">
+                                    ASUS
+                                </option>
+
+                                <option value="Apple">
+                                    Apple / Mac
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Model Name / Number
+                            </label>
+
+                            <select name="model"
+                                    id="newAssetModel"
+                                    class="form-select"
+                                    required>
+
+                                <option value="">
+                                    -- Select Brand First --
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Serial + Vendor -->
+
+                    <div class="row g-3 mb-3">
+
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Hardware Serial Number
+                            </label>
+
+                            <input type="text"
+                                   name="serial_number"
+                                   class="form-control"
+                                   placeholder="Unique Manufacturer Serial No"
+                                   required>
+
+                        </div>
+
+
+                        <div class="col-md-6">
+
+                            <label class="form-label fw-semibold">
+                                Vendor Supplier
+                            </label>
+
+                            <select name="vendor_id"
+                                    class="form-select searchable-dropdown"
+                                    required>
+
+                                <option value="">
+                                    -- Select Vendor --
+                                </option>
+
+                                {% for v in vendors %}
+
+                                <option value="{{ v.id }}">
+                                    {{ v.name }}
+                                </option>
+
+                                {% endfor %}
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- Processor -->
+
+                    <div class="row g-3">
+
+
+                        <div class="col-md-4">
+
+                            <label class="form-label fw-semibold">
+                                Processor Specs
+                            </label>
+
+                            <select name="processor"
+                                    class="form-select searchable-dropdown"
+                                    required>
+
+                                <option value="">
+                                    -- Select Processor --
+                                </option>
+
+                                <option value="Intel Core i3">
+                                    Intel Core i3
+                                </option>
+
+                                <option value="Intel Core i5">
+                                    Intel Core i5
+                                </option>
+
+                                <option value="Intel Core i7">
+                                    Intel Core i7
+                                </option>
+
+                                <option value="Intel Core i9">
+                                    Intel Core i9
+                                </option>
+
+                                <option value="AMD Ryzen 3">
+                                    AMD Ryzen 3
+                                </option>
+
+                                <option value="AMD Ryzen 5">
+                                    AMD Ryzen 5
+                                </option>
+
+                                <option value="AMD Ryzen 7">
+                                    AMD Ryzen 7
+                                </option>
+
+                                <option value="AMD Ryzen 9">
+                                    AMD Ryzen 9
+                                </option>
+
+                                <option value="Apple M1">
+                                    Apple M1
+                                </option>
+
+                                <option value="Apple M2">
+                                    Apple M2
+                                </option>
+
+                                <option value="Apple M3">
+                                    Apple M3
+                                </option>
+
+                                <option value="Apple M4">
+                                    Apple M4
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <!-- RAM -->
+
+                        <div class="col-md-4">
+
+                            <label class="form-label fw-semibold">
+                                RAM Capacity
+                            </label>
+
+                            <select name="ram"
+                                    class="form-select searchable-dropdown"
+                                    required>
+
+                                <option value="">
+                                    -- Select RAM --
+                                </option>
+
+                                <option value="4 GB">4 GB</option>
+                                <option value="8 GB">8 GB</option>
+                                <option value="16 GB">16 GB</option>
+                                <option value="24 GB">24 GB</option>
+                                <option value="32 GB">32 GB</option>
+                                <option value="64 GB">64 GB</option>
+                                <option value="128 GB">128 GB</option>
+
+                            </select>
+
+                        </div>
+
+
+                        <!-- SSD -->
+
+                        <div class="col-md-4">
+
+                            <label class="form-label fw-semibold">
+                                SSD Storage Capacity
+                            </label>
+
+                            <select name="ssd"
+                                    class="form-select searchable-dropdown"
+                                    required>
+
+                                <option value="">
+                                    -- Select SSD --
+                                </option>
+
+                                <option value="128 GB">128 GB</option>
+                                <option value="256 GB">256 GB</option>
+                                <option value="512 GB">512 GB</option>
+                                <option value="1 TB">1 TB</option>
+                                <option value="2 TB">2 TB</option>
+                                <option value="4 TB">4 TB</option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+
+                        Cancel
+
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary px-4 fw-bold">
+
+                        Save Asset Record
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     REPLACE LAPTOP MODAL
+========================================================= -->
+
+<div class="modal fade"
+     id="replaceAssetModal"
+     tabindex="-1">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+
+            <div class="modal-header bg-warning text-dark">
+
+                <h5 class="modal-title fw-bold">
+
+                    <i class="fas fa-sync me-2"></i>
+
+                    Laptop Multi-Replacement Workflow
+
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+
+            <form action="{{ url_for('assets.replace_asset') }}"
+                  method="POST">
+
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+
+
+                <div class="modal-body p-4">
+
+
+                    <div class="alert alert-info py-2 small">
+
+                        <i class="fas fa-info-circle me-1"></i>
+
+                        Swapping an assigned laptop logs an explicit replacement
+                        history record linking old & new asset IDs.
+
+                    </div>
+
+
+                    <!-- OLD ASSET -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+
+                            Select Currently Assigned Laptop to Replace
+                            (Old Asset)
+
+                        </label>
+
+                        <select name="old_asset_id"
+                                id="old_asset_id"
+                                class="form-select searchable-dropdown"
+                                required>
+
+                            <option value="">
+                                -- Choose Assigned Laptop --
+                            </option>
+
+                            {% for a in assets %}
+
+                                {% if a.status == 'Assigned' and a.assigned_employee %}
+
+                                <option value="{{ a.id }}">
+
+                                    {{ a.asset_id }} -
+                                    {{ a.brand }} {{ a.model }}
+
+                                    (Assigned to:
+                                    {{ a.assigned_employee.name }})
+
+                                </option>
+
+                                {% endif %}
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- NEW ASSET -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+
+                            Select Replacement Laptop to Allocate
+                            (New Available Asset)
+
+                        </label>
+
+                        <select name="new_asset_id"
+                                class="form-select searchable-dropdown"
+                                required>
+
+                            <option value="">
+                                -- Choose Available Replacement Laptop --
+                            </option>
+
+                            {% for a in available_assets %}
+
+                            <option value="{{ a.id }}">
+
+                                {{ a.asset_id }} -
+                                {{ a.brand }} {{ a.model }}
+
+                                (SN: {{ a.serial_number }}
+                                &bull;
+                                {{ a.ram }}/{{ a.ssd }})
+
+                            </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- REASON -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+                            Replacement Reason / Notes
+                        </label>
+
+                        <textarea name="reason"
+                                  class="form-control"
+                                  rows="2"
+                                  placeholder="e.g. Hardware upgrade requested, motherboard defect, user role change..."
+                                  required></textarea>
+
+                    </div>
+
+
+                    <!-- REPAIR CHECKBOX -->
+
+                    <div class="form-check">
+
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="return_to_repair"
+                               id="return_to_repair"
+                               checked>
+
+                        <label class="form-check-label text-dark fw-semibold"
+                               for="return_to_repair">
+
+                            Send old replaced laptop directly to Repair status
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+
+                        Cancel
+
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-warning text-dark fw-bold">
+
+                        Execute Laptop Replacement
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     ASSET HISTORY MODAL
+========================================================= -->
+
+<div class="modal fade"
+     id="assetHistoryModal"
+     tabindex="-1">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+
+            <div class="modal-header bg-dark text-white">
+
+                <h5 class="modal-title fw-bold">
+
+                    <i class="fas fa-history me-2 text-info"></i>
+
+                    Asset History & Replacement Log
+
+                </h5>
+
+                <button type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+
+            <div class="modal-body p-4">
+
+
+                <div class="mb-3 p-3 bg-light rounded-3 border">
+
+                    <strong class="text-dark">
+                        Asset ID:
+                    </strong>
+
+                    <span id="modal-hist-asset-id"
+                          class="text-primary fw-bold">
+                        -
+                    </span>
+
+                    |
+
+                    <strong class="text-dark">
+                        Model:
+                    </strong>
+
+                    <span id="modal-hist-brand-model">
+                        -
+                    </span>
+
+                    |
+
+                    <strong class="text-dark">
+                        Serial:
+                    </strong>
+
+                    <span id="modal-hist-serial">
+                        -
+                    </span>
+
+                    |
+
+                    <strong class="text-dark">
+                        Current User:
+                    </strong>
+
+                    <span id="modal-hist-user">
+                        -
+                    </span>
+
+                </div>
+
+
+                <div class="table-responsive">
+
+                    <table class="table table-bordered table-striped align-middle small mb-0">
+
+                        <thead class="table-light">
+
+                            <tr>
+
+                                <th>Timestamp</th>
+                                <th>Action</th>
+                                <th>Employee Name</th>
+                                <th>Replacement / Notes</th>
+                                <th>Logged By</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="modal-asset-hist-body">
+
+                            <!-- Populated dynamically via JS -->
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+
+            <div class="modal-footer">
+
+                <button type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+
+                    Close
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     RETURN TO VENDOR MODAL
+========================================================= -->
+
+<div class="modal fade"
+     id="returnVendorModal"
+     tabindex="-1"
+     aria-labelledby="returnVendorModalLabel"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+
+            <!-- HEADER -->
+
+            <div class="modal-header bg-warning text-dark">
+
+                <h5 class="modal-title fw-bold"
+                    id="returnVendorModalLabel">
+
+                    <i class="fas fa-truck me-2"></i>
+
+                    Send Back to Vendor
+
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close">
+                </button>
+
+            </div>
+
+
+            <!-- FORM -->
+
+            <form action="{{ url_for('assets.return_to_vendor') }}"
+                  method="POST">
+
+                <!-- CSRF TOKEN -->
+
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+
+
+                <div class="modal-body p-4">
+
+
+                    <!-- ASSET -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+
+                            Asset
+
+                        </label>
+
+                        <input type="text"
+                               id="returnVendorAssetName"
+                               class="form-control bg-light"
+                               readonly>
+
+                        <input type="hidden"
+                               name="asset_id"
+                               id="returnVendorAssetId">
+
+                    </div>
+
+
+                    <!-- VENDOR -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+
+                            Select Vendor
+                            <span class="text-danger">*</span>
+
+                        </label>
+
+                        <select name="vendor_id"
+                                id="returnVendorVendorId"
+                                class="form-select searchable-dropdown"
+                                required>
+
+                            <option value="">
+                                -- Select Vendor --
+                            </option>
+
+                            {% for vendor in vendors %}
+
+                                {% if vendor.name in ['Techvity', 'Spurge'] %}
+
+                                    <option value="{{ vendor.id }}">
+                                        {{ vendor.name }}
+                                    </option>
+
+                                {% endif %}
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- RETURN DATE -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+
+                            Vendor Return Date
+                            <span class="text-danger">*</span>
+
+                        </label>
+
+                        <div class="input-group">
+
+                            <span class="input-group-text bg-light">
+                                <i class="fas fa-calendar-alt text-primary"></i>
+                            </span>
+
+                            <input type="date"
+                                   name="vendor_return_date"
+                                   id="vendorReturnDate"
+                                   class="form-control"
+                                   required>
+
+                        </div>
+
+                        <small class="text-muted">
+
+                            Select the date when the laptop was returned
+                            to the vendor.
+
+                        </small>
+
+                    </div>
+
+
+                    <!-- REASON -->
+
+                    <div class="mb-3">
+
+                        <label class="form-label fw-semibold">
+
+                            Reason
+                            <span class="text-danger">*</span>
+
+                        </label>
+
+                        <textarea name="reason"
+                                  id="vendorReturnReason"
+                                  class="form-control"
+                                  rows="4"
+                                  placeholder="Enter reason for returning the laptop to vendor..."
+                                  required></textarea>
+
+                    </div>
+
+
+                    <!-- WARNING -->
+
+                    <div class="alert alert-warning mb-0">
+
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+
+                        This asset will be marked as
+
+                        <strong>
+                            Returned to Vendor
+                        </strong>.
+
+                    </div>
+
+                </div>
+
+
+                <!-- FOOTER -->
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+
+                        Cancel
+
+                    </button>
+
+
+                    <button type="submit"
+                            class="btn btn-warning text-dark fw-bold">
+
+                        <i class="fas fa-truck me-1"></i>
+
+                        Send Back to Vendor
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     MODEL DATABASE + DEPENDENT DROPDOWN
+========================================================= -->
+
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.bootstrap5.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+
+
+<script>
+
+/* =========================================================
+   MODEL DATABASE
+========================================================= */
+
+const assetModels = {
+
+    "HP": [
+
+        "ProBook 430 G5",
+        "ProBook 430 G6",
+        "ProBook 430 G7",
+        "ProBook 430 G8",
+        "ProBook 430 G9",
+        "ProBook 430 G10",
+
+        "ProBook 440 G5",
+        "ProBook 440 G6",
+        "ProBook 440 G7",
+        "ProBook 440 G8",
+        "ProBook 440 G9",
+        "ProBook 440 G10",
+
+        "ProBook 450 G5",
+        "ProBook 450 G6",
+        "ProBook 450 G7",
+        "ProBook 450 G8",
+        "ProBook 450 G9",
+        "ProBook 450 G10",
+
+        "EliteBook 830 G5",
+        "EliteBook 830 G6",
+        "EliteBook 830 G7",
+        "EliteBook 830 G8",
+        "EliteBook 830 G9",
+        "EliteBook 830 G10",
+
+        "EliteBook 840 G5",
+        "EliteBook 840 G6",
+        "EliteBook 840 G7",
+        "EliteBook 840 G8",
+        "EliteBook 840 G9",
+        "EliteBook 840 G10",
+
+        "EliteBook 850 G5",
+        "EliteBook 850 G6",
+        "EliteBook 850 G7",
+        "EliteBook 850 G8",
+        "EliteBook 850 G9",
+        "EliteBook 850 G10",
+
+        "EliteBook 1040 G5",
+        "EliteBook 1040 G6",
+        "EliteBook 1040 G7",
+        "EliteBook 1040 G8",
+        "EliteBook 1040 G9",
+
+        "ZBook 15 G5",
+        "ZBook 15 G6",
+        "ZBook 15 G7",
+        "ZBook 15 G8",
+
+        "ZBook Firefly 14 G7",
+        "ZBook Firefly 14 G8",
+        "ZBook Firefly 14 G9",
+        "ZBook Firefly 14 G10",
+
+        "ZBook Firefly 15 G7",
+        "ZBook Firefly 15 G8",
+        "ZBook Firefly 15 G9",
+        "ZBook Firefly 15 G10",
+
+        "ZBook Power 15 G7",
+        "ZBook Power 15 G8",
+        "ZBook Power 15 G9",
+        "ZBook Power 15 G10",
+
+        "ZBook Fury 15 G7",
+        "ZBook Fury 15 G8",
+        "ZBook Fury 15 G9",
+
+        "Pavilion 14",
+        "Pavilion 15",
+        "Pavilion x360 14",
+        "Pavilion x360 15",
+
+        "Envy 13",
+        "Envy 14",
+        "Envy 15",
+        "Envy x360 13",
+        "Envy x360 14",
+        "Envy x360 15",
+
+        "Spectre x360 13",
+        "Spectre x360 14",
+        "Spectre x360 15",
+
+        "ProDesk 400 G5",
+        "ProDesk 400 G6",
+        "ProDesk 400 G7",
+        "ProDesk 600 G5",
+        "ProDesk 600 G6",
+        "ProDesk 600 G7",
+
+        "EliteDesk 800 G5",
+        "EliteDesk 800 G6",
+        "EliteDesk 800 G7",
+
+        "HP 240 G8",
+        "HP 240 G9",
+        "HP 240 G10",
+
+        "HP 250 G8",
+        "HP 250 G9",
+        "HP 250 G10"
+    ],
+
+
+    "Dell": [
+
+        "Latitude 3300",
+        "Latitude 3310",
+        "Latitude 3320",
+        "Latitude 3330",
+
+        "Latitude 3420",
+        "Latitude 3430",
+        "Latitude 3440",
+
+        "Latitude 3520",
+        "Latitude 3530",
+        "Latitude 3540",
+
+        "Latitude 5400",
+        "Latitude 5410",
+        "Latitude 5420",
+        "Latitude 5430",
+        "Latitude 5440",
+
+        "Latitude 5500",
+        "Latitude 5510",
+        "Latitude 5520",
+        "Latitude 5530",
+        "Latitude 5540",
+
+        "Latitude 7200",
+        "Latitude 7210",
+
+        "Latitude 7300",
+        "Latitude 7310",
+        "Latitude 7320",
+        "Latitude 7330",
+        "Latitude 7340",
+
+        "Latitude 7400",
+        "Latitude 7410",
+        "Latitude 7420",
+        "Latitude 7430",
+        "Latitude 7440",
+
+        "Latitude 7500",
+        "Latitude 7510",
+        "Latitude 7520",
+        "Latitude 7530",
+        "Latitude 7540",
+
+        "Latitude 9420",
+        "Latitude 9430",
+        "Latitude 9440",
+
+        "Vostro 3400",
+        "Vostro 3410",
+        "Vostro 3420",
+        "Vostro 3430",
+
+        "Vostro 3500",
+        "Vostro 3510",
+        "Vostro 3520",
+        "Vostro 3530",
+
+        "Inspiron 13",
+        "Inspiron 14",
+        "Inspiron 15",
+        "Inspiron 16",
+
+        "Inspiron 3511",
+        "Inspiron 3520",
+        "Inspiron 3530",
+
+        "Inspiron 5410",
+        "Inspiron 5420",
+        "Inspiron 5430",
+
+        "Inspiron 5518",
+        "Inspiron 5520",
+        "Inspiron 5530",
+
+        "Precision 3540",
+        "Precision 3550",
+        "Precision 3560",
+        "Precision 3570",
+        "Precision 3580",
+        "Precision 3581",
+
+        "Precision 5540",
+        "Precision 5550",
+        "Precision 5560",
+        "Precision 5570",
+        "Precision 5680",
+
+        "Precision 7540",
+        "Precision 7550",
+        "Precision 7560",
+        "Precision 7670",
+
+        "Precision 7740",
+        "Precision 7750",
+        "Precision 7760",
+
+        "XPS 13",
+        "XPS 13 9300",
+        "XPS 13 9310",
+        "XPS 13 9320",
+        "XPS 13 Plus",
+
+        "XPS 15",
+        "XPS 15 9500",
+        "XPS 15 9510",
+        "XPS 15 9520",
+        "XPS 15 9530",
+
+        "XPS 17",
+        "XPS 17 9700",
+        "XPS 17 9710",
+        "XPS 17 9720",
+
+        "OptiPlex 3080",
+        "OptiPlex 3090",
+        "OptiPlex 5080",
+        "OptiPlex 5090",
+        "OptiPlex 7080",
+        "OptiPlex 7090",
+
+        "Dell G15",
+        "Dell G16"
+    ],
+
+
+    "Lenovo": [
+
+        "ThinkPad T14",
+        "ThinkPad T14 Gen 2",
+        "ThinkPad T14 Gen 3",
+        "ThinkPad T14 Gen 4",
+        "ThinkPad T14 Gen 5",
+
+        "ThinkPad T15",
+        "ThinkPad T15 Gen 2",
+
+        "ThinkPad T16",
+        "ThinkPad T16 Gen 2",
+        "ThinkPad T16 Gen 3",
+
+        "ThinkPad E14",
+        "ThinkPad E14 Gen 2",
+        "ThinkPad E14 Gen 3",
+        "ThinkPad E14 Gen 4",
+        "ThinkPad E14 Gen 5",
+
+        "ThinkPad E15",
+        "ThinkPad E15 Gen 2",
+        "ThinkPad E15 Gen 3",
+        "ThinkPad E15 Gen 4",
+
+        "ThinkPad L14",
+        "ThinkPad L14 Gen 2",
+        "ThinkPad L14 Gen 3",
+        "ThinkPad L14 Gen 4",
+        "ThinkPad L14 Gen 5",
+
+        "ThinkPad L15",
+        "ThinkPad L15 Gen 2",
+        "ThinkPad L15 Gen 3",
+        "ThinkPad L15 Gen 4",
+
+        "ThinkPad X1 Carbon Gen 7",
+        "ThinkPad X1 Carbon Gen 8",
+        "ThinkPad X1 Carbon Gen 9",
+        "ThinkPad X1 Carbon Gen 10",
+        "ThinkPad X1 Carbon Gen 11",
+        "ThinkPad X1 Carbon Gen 12",
+
+        "ThinkPad X1 Yoga Gen 5",
+        "ThinkPad X1 Yoga Gen 6",
+        "ThinkPad X1 Yoga Gen 7",
+
+        "ThinkPad X13",
+        "ThinkPad X13 Gen 2",
+        "ThinkPad X13 Gen 3",
+        "ThinkPad X13 Gen 4",
+
+        "ThinkPad P14s",
+        "ThinkPad P14s Gen 2",
+        "ThinkPad P14s Gen 3",
+        "ThinkPad P14s Gen 4",
+
+        "ThinkPad P15",
+        "ThinkPad P15 Gen 2",
+
+        "ThinkPad P16",
+        "ThinkPad P16 Gen 2",
+
+        "ThinkBook 13s",
+        "ThinkBook 14",
+        "ThinkBook 14 Gen 2",
+        "ThinkBook 14 Gen 3",
+        "ThinkBook 14 Gen 4",
+        "ThinkBook 14 Gen 5",
+
+        "ThinkBook 15",
+        "ThinkBook 15 Gen 2",
+        "ThinkBook 15 Gen 3",
+
+        "ThinkBook 16",
+        "ThinkBook 16 Gen 2",
+
+        "IdeaPad 1",
+        "IdeaPad 3",
+        "IdeaPad 5",
+        "IdeaPad Slim 3",
+        "IdeaPad Slim 5",
+        "IdeaPad Flex 5",
+        "IdeaPad Gaming 3",
+
+        "Yoga Slim 6",
+        "Yoga Slim 7",
+        "Yoga 6",
+        "Yoga 7",
+        "Yoga 9i",
+
+        "V14",
+        "V15",
+        "V15 Gen 2",
+        "V15 Gen 3",
+
+        "Legion 5",
+        "Legion 5 Pro",
+        "Legion 7",
+        "Legion Slim 5",
+        "Legion Slim 7"
+    ],
+
+
+    "ASUS": [
+
+        "VivoBook 14",
+        "VivoBook 15",
+        "VivoBook 16",
+        "VivoBook S14",
+        "VivoBook S15",
+        "VivoBook S16",
+
+        "VivoBook Pro 14",
+        "VivoBook Pro 15",
+        "VivoBook Pro 16",
+
+        "ExpertBook B1",
+        "ExpertBook B1400",
+        "ExpertBook B1500",
+        "ExpertBook B5",
+        "ExpertBook B9",
+
+        "ZenBook 13",
+        "ZenBook 14",
+        "ZenBook 15",
+        "ZenBook 14 OLED",
+        "ZenBook S 13",
+        "ZenBook S 14",
+
+        "ZenBook Pro 14",
+        "ZenBook Pro 15",
+        "ZenBook Pro 16",
+
+        "TUF Gaming F15",
+        "TUF Gaming F17",
+        "TUF Gaming A15",
+        "TUF Gaming A17",
+        "TUF Gaming A16",
+
+        "ROG Zephyrus G14",
+        "ROG Zephyrus G15",
+        "ROG Zephyrus G16",
+        "ROG Zephyrus M16",
+
+        "ROG Strix G15",
+        "ROG Strix G16",
+        "ROG Strix G17",
+
+        "ASUS Laptop 14",
+        "ASUS Laptop 15",
+        "ASUS Laptop 16",
+
+        "Chromebook C202",
+        "Chromebook C214",
+        "Chromebook C425"
+    ],
+
+
+    "Apple": [
+
+        "MacBook Air 2018",
+        "MacBook Air 2019",
+        "MacBook Air 2020",
+        "MacBook Air M1",
+        "MacBook Air M2",
+        "MacBook Air M3",
+        "MacBook Air M4",
+
+        "MacBook Pro 13 2019",
+        "MacBook Pro 13 2020",
+        "MacBook Pro 13 M1",
+        "MacBook Pro 13 M2",
+
+        "MacBook Pro 14 M1 Pro",
+        "MacBook Pro 14 M1 Max",
+        "MacBook Pro 14 M2 Pro",
+        "MacBook Pro 14 M2 Max",
+        "MacBook Pro 14 M3",
+        "MacBook Pro 14 M3 Pro",
+        "MacBook Pro 14 M3 Max",
+        "MacBook Pro 14 M4",
+        "MacBook Pro 14 M4 Pro",
+        "MacBook Pro 14 M4 Max",
+
+        "MacBook Pro 16 M1 Pro",
+        "MacBook Pro 16 M1 Max",
+        "MacBook Pro 16 M2 Pro",
+        "MacBook Pro 16 M2 Max",
+        "MacBook Pro 16 M3 Pro",
+        "MacBook Pro 16 M3 Max",
+        "MacBook Pro 16 M4 Pro",
+        "MacBook Pro 16 M4 Max",
+
+        "Mac Mini",
+        "Mac Studio",
+        "iMac 21.5",
+        "iMac 24",
+        "iMac 27",
+        "Mac Pro"
+    ]
+
+};
+
+
+/* =========================================================
+   MAKE MODEL DROPDOWN SEARCHABLE
+========================================================= */
+
+function makeModelSearchable(modelSelect) {
+
+    if (!modelSelect) {
+        return;
+    }
+
+
+    /* Remove old TomSelect instance */
+
+    if (modelSelect.tomselect) {
+
+        modelSelect.tomselect.destroy();
+
+    }
+
+
+    new TomSelect(modelSelect, {
+
+        create: false,
+
+        maxOptions: 1000,
+
+        allowEmptyOption: true,
+
+        searchField: [
+            "text",
+            "value"
+        ],
+
+        placeholder: "Type model number or name...",
+
+        closeAfterSelect: true,
+
+        hideSelected: false,
+
+        plugins: [
+            "clear_button"
+        ],
+
+        render: {
+
+            option: function(data, escape) {
+
+                return 
+                    <div>
+                        ${escape(data.text)}
+                    </div>
+                ;
+
+            },
+
+            item: function(data, escape) {
+
+                return 
+                    <div>
+                        ${escape(data.text)}
+                    </div>
+                ;
+
+            }
+
+        }
+
+    });
+
+}
+
+
+/* =========================================================
+   POPULATE MODEL DROPDOWN
+========================================================= */
+
+function populateModels(
+    brandSelect,
+    modelSelect,
+    currentModel = ""
+) {
+
+    if (!brandSelect || !modelSelect) {
+
+        return;
+
+    }
+
+
+    const brand = brandSelect.value;
+
+    const models = assetModels[brand] || [];
+
+
+    /* Destroy searchable dropdown */
+
+    if (modelSelect.tomselect) {
+
+        modelSelect.tomselect.destroy();
+
+    }
+
+
+    /* Clear options */
+
+    modelSelect.innerHTML = "";
+
+
+    /* Default option */
+
+    const defaultOption =
+        document.createElement("option");
+
+    defaultOption.value = "";
+
+    defaultOption.textContent =
+        "-- Select Model --";
+
+    modelSelect.appendChild(
+        defaultOption
+    );
+
+
+    /* Preserve existing model */
+
+    if (
+        currentModel &&
+        !models.includes(currentModel)
+    ) {
+
+        const existingOption =
+            document.createElement("option");
+
+        existingOption.value =
+            currentModel;
+
+        existingOption.textContent =
+            currentModel + " (Existing)";
+
+        existingOption.selected = true;
+
+        modelSelect.appendChild(
+            existingOption
+        );
+
+    }
+
+
+    /* Add models */
+
+    models.forEach(function(model) {
+
+        const option =
+            document.createElement("option");
+
+        option.value = model;
+
+        option.textContent = model;
+
+
+        if (model === currentModel) {
+
+            option.selected = true;
+
+        }
+
+
+        modelSelect.appendChild(option);
+
+    });
+
+
+    /* Activate searchable dropdown */
+
+    makeModelSearchable(modelSelect);
+
+}
+
+
+/* =========================================================
+   PAGE LOAD
+========================================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function() {
+
+
+        /* =================================================
+           ADD NEW ASSET
+        ================================================= */
+
+        const newBrand =
+            document.getElementById(
+                "newAssetBrand"
+            );
+
+        const newModel =
+            document.getElementById(
+                "newAssetModel"
+            );
+
+
+        if (newBrand && newModel) {
+
+
+            /* Initial state */
+
+            newModel.innerHTML = "";
+
+            const option =
+                document.createElement("option");
+
+            option.value = "";
+
+            option.textContent =
+                "-- Select Brand First --";
+
+            newModel.appendChild(option);
+
+
+            /* Make searchable */
+
+            makeModelSearchable(newModel);
+
+
+            /* Brand change */
+
+            newBrand.addEventListener(
+                "change",
+                function() {
+
+                    populateModels(
+                        newBrand,
+                        newModel
+                    );
+
+                }
+            );
+
+        }
+
+
+        /* =================================================
+           EDIT ASSETS
+        ================================================= */
+
+        document
+            .querySelectorAll(".edit-brand")
+            .forEach(
+                function(brandSelect) {
+
+
+                    const modelId =
+                        brandSelect.dataset.modelTarget;
+
+
+                    const modelSelect =
+                        document.getElementById(
+                            modelId
+                        );
+
+
+                    if (!modelSelect) {
+
+                        return;
+
+                    }
+
+
+                    /* Existing model */
+
+                    const currentModel =
+                        modelSelect.dataset.currentModel ||
+                        "";
+
+
+                    /* Populate */
+
+                    populateModels(
+                        brandSelect,
+                        modelSelect,
+                        currentModel
+                    );
+
+
+                    /* Brand changed */
+
+                    brandSelect.addEventListener(
+                        "change",
+                        function() {
+
+                            populateModels(
+                                brandSelect,
+                                modelSelect
+                            );
+
+                        }
+                    );
+
+                }
+            );
+
+    }
+);
+
+</script>
+
+
+
+<!-- =========================================================
+     REPLACEMENT ASSET AUTO-SELECT
+========================================================= -->
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const replaceButtons = document.querySelectorAll(
+        '[data-bs-target="#replaceAssetModal"][data-old-asset-id]'
+    );
+
+
+    replaceButtons.forEach(function (button) {
+
+        button.addEventListener("click", function () {
+
+            const oldAssetId =
+                this.getAttribute("data-old-asset-id");
+
+
+            const oldAssetSelect =
+                document.getElementById("old_asset_id");
+
+
+            if (!oldAssetSelect || !oldAssetId) {
+
+                return;
+
+            }
+
+
+            oldAssetSelect.value =
+                oldAssetId;
+
+
+            /*
+             * If Tom Select is used,
+             * update it as well.
+             */
+
+            if (oldAssetSelect.tomselect) {
+
+                oldAssetSelect.tomselect.setValue(
+                    oldAssetId
+                );
+
+            }
+
+        });
+
+    });
+
+});
+
+</script>
+
+
+
+<!-- =========================================================
+     VENDOR RETURN MODAL JAVASCRIPT
+========================================================= -->
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+
+
+    const vendorButtons = document.querySelectorAll(
+        '[data-bs-target="#returnVendorModal"][data-asset-id]'
+    );
+
+
+    vendorButtons.forEach(function (button) {
+
+
+        button.addEventListener("click", function () {
+
+
+            const assetId =
+                this.getAttribute("data-asset-id");
+
+
+            const assetName =
+                this.getAttribute("data-asset-name");
+
+
+            const assetIdInput =
+                document.getElementById(
+                    "returnVendorAssetId"
+                );
+
+
+            const assetNameInput =
+                document.getElementById(
+                    "returnVendorAssetName"
+                );
+
+
+            const dateInput =
+                document.getElementById(
+                    "vendorReturnDate"
+                );
+
+
+            const vendorSelect =
+                document.getElementById(
+                    "returnVendorVendorId"
+                );
+
+
+            const reasonInput =
+                document.getElementById(
+                    "vendorReturnReason"
+                );
+
+
+            /* Set asset */
+
+            if (assetIdInput) {
+
+                assetIdInput.value =
+                    assetId || "";
+
+            }
+
+
+            if (assetNameInput) {
+
+                assetNameInput.value =
+                    assetName || "";
+
+            }
+
+
+            /*
+             * Clear previous values
+             * whenever modal opens.
+             */
+
+            if (dateInput) {
+
+                dateInput.value = "";
+
+            }
+
+
+            if (vendorSelect) {
+
+                vendorSelect.value = "";
+
+            }
+
+
+            if (reasonInput) {
+
+                reasonInput.value = "";
+
+            }
+
+        });
+
+    });
+
+});
+
+</script>
+
+
+
+<style>
+/* =========================================================
+   SEARCHABLE DROPDOWNS
+========================================================= */
+.ts-wrapper { width: 100%; }
+.ts-control {
+    min-height: 38px !important;
+    border: 1px solid #dee2e6 !important;
+    border-radius: .375rem !important;
+    background: #f8f9fa !important;
+    box-shadow: none !important;
+    padding: 6px 12px !important;
+    font-size: .95rem;
+}
+.ts-control.focus {
+    border-color: #86b7fe !important;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12) !important;
+}
+.ts-dropdown {
+    border: 1px solid #dee2e6 !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15) !important;
+    z-index: 3000 !important;
+}
+.ts-dropdown .ts-dropdown-content {
+    max-height: 280px;
+    overflow-y: auto;
+}
+.ts-dropdown .option {
+    padding: 10px 12px !important;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+}
+.ts-dropdown .option:hover,
+.ts-dropdown .option.active {
+    background: #f0f6ff !important;
+    color: #212529 !important;
+}
+.ts-control input { font-size: .95rem !important; }
+.ts-control .item { color: #212529; }
+
+/* =========================================================
+   EMPLOYEE NAME-ONLY POPUP
+========================================================= */
+.employee-picker { width: 100%; }
+.employee-search-input {
+    height: 42px;
+    font-size: 16px;
+}
+.employee-search-input:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 .2rem rgba(13,110,253,.12);
+}
+.employee-search-results {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 2px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0 0 10px 10px;
+    max-height: 315px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    z-index: 3050;
+    display: none;
+}
+.employee-search-option {
+    width: 100%;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: #fff;
+    border: 0;
+    border-bottom: 1px solid #edf0f2;
+    text-align: left;
+    cursor: pointer;
+}
+.employee-search-option:hover,
+.employee-search-option.active {
+    background: #f0f6ff;
+}
+.employee-option-icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    border-radius: 50%;
+    background: #eaf3ff;
+    color: #0d6efd;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.employee-option-content {
+    min-width: 0;
+    display: block;
+}
+.employee-option-name {
+    display: block;
+    color: #212529;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 1.25;
+}
+.employee-search-results::-webkit-scrollbar { width: 8px; }
+.employee-search-results::-webkit-scrollbar-thumb {
+    background: #adb5bd;
+    border-radius: 10px;
+}
+</style>
+
+<script>
+/* =========================================================
+   UNIVERSAL SEARCHABLE DROPDOWNS
+   Applies Tom Select to every normal <select> except the
+   model dropdowns, which already have their own logic.
+========================================================= */
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("select.searchable-dropdown").forEach(function (select) {
+        if (select.tomselect) return;
+
+        new TomSelect(select, {
+            create: false,
+            allowEmptyOption: true,
+            closeAfterSelect: true,
+            maxOptions: 1000,
+            searchField: ["text", "value"],
+            plugins: ["clear_button"],
+            placeholder: select.options[0]?.text?.trim() || "Search or select...",
+            dropdownParent: "body",
+            render: {
+                option: function (data, escape) {
+                    return '<div class="searchable-option">' + escape(data.text) + '</div>';
+                },
+                item: function (data, escape) {
+                    return '<div class="searchable-item">' + escape(data.text) + '</div>';
+                }
+            }
+        });
+    });
+
+    /* =========================================================
+       EMPLOYEE NAME-ONLY SEARCH POPUP
+    ========================================================= */
+    document.querySelectorAll(".employee-picker").forEach(function (picker) {
+        const searchInput = picker.querySelector(".employee-search-input");
+        const hiddenInput = picker.querySelector(".employee-id-input");
+        const resultsBox = picker.querySelector(".employee-search-results");
+        const options = Array.from(picker.querySelectorAll(".employee-search-option"));
+        const noResults = picker.querySelector(".employee-no-results");
+
+        if (!searchInput || !hiddenInput || !resultsBox) return;
+
+        function showResults() {
+            const search = searchInput.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            options.forEach(function (option) {
+                const name = (option.dataset.name || "").toLowerCase();
+                const matches = search === "" || name.includes(search);
+                option.style.display = matches ? "flex" : "none";
+                if (matches) visibleCount++;
+            });
+
+            if (noResults) {
+                noResults.style.display = visibleCount === 0 ? "block" : "none";
+            }
+
+            resultsBox.style.display = "block";
+        }
+
+        function hideResults() {
+            resultsBox.style.display = "none";
+        }
+
+        searchInput.addEventListener("focus", showResults);
+        searchInput.addEventListener("input", function () {
+            hiddenInput.value = "";
+            showResults();
+        });
+
+        options.forEach(function (option) {
+            option.addEventListener("click", function () {
+                hiddenInput.value = this.dataset.employeeId || "";
+                searchInput.value = this.dataset.name || "";
+                searchInput.classList.remove("is-invalid");
+                hideResults();
+            });
+        });
+
+        searchInput.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                hideResults();
+                searchInput.blur();
+            }
+        });
+
+        document.addEventListener("click", function (event) {
+            if (!picker.contains(event.target)) {
+                hideResults();
+            }
+        });
+
+        const form = picker.closest("form");
+        if (form) {
+            form.addEventListener("submit", function (event) {
+                if (!hiddenInput.value) {
+                    event.preventDefault();
+                    searchInput.classList.add("is-invalid");
+                    searchInput.focus();
+                    showResults();
+                }
+            });
+        }
+    });
+});
+</script>
+
+{% endblock %}
+79adff1d-215a-44c5-a45a-382b1c12fed8.png
+dashboard not aligned properly in code
+
+The alignment needs to be fixed in your Dashboard HTML file, not in the asset index.html.
+
+1. Open this file
+app/templates/dashboard/index.html
+2. Find this section
+Search in the file for:
+
+Active Employees
+You will likely see something similar to:
+
+<div class="...">
+    Active Employees
+    ...
+</div>
+followed by:
+
+Blocked / Disabled
+Offboarded Staff
+Open Helpdesk Tickets
+3. The problem
+Active Employees is currently outside the Bootstrap row, which is why it appears by itself on the left.
+
+You need all four cards to be inside the same:
+
+<div class="row g-4">
+with each card using:
+
+<div class="col-12 col-md-6 col-xl-3">
+So the structure should be:
+
+<div class="row g-4 mb-4">
+
+    <div class="col-12 col-md-6 col-xl-3">
+        <!-- Active Employees -->
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3">
+        <!-- Blocked / Disabled -->
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3">
+        <!-- Offboarded Staff -->
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3">
+        <!-- Open Helpdesk Tickets -->
+    </div>
+
+</div>
+Important
+Do not change your Flask routes or database code.
+This is a dashboard HTML/CSS alignment issue.
+
+If you upload your actual dashboard/index.html, I can point out the exact lines to replace and give you the corrected section without changing the rest of your dashboard.
+
+
+
+Pasted text(20260916-043341).txt
+Document
+
+Yes. The alignment problem is in your dashboard HTML file, specifically the Active Employees card.
+
+In the file you uploaded, the problem is around lines 142–169. 
+
+
+What is wrong
+Your Active Employees card is missing the Bootstrap column wrapper:
+
+<div class="col-6 col-md-3">
+The other three cards have this wrapper, but Active Employees does not. That's why the dashboard row is not aligned properly.
+
+Fix this section
+In your dashboard template, find:
+
+<!-- Active Employees -->
+<a href="{{ url_for('employees.index', status='Active') }}"
+   class="text-decoration-none d-block"
+   style="cursor: pointer;">
+
+    <div class="stat-card border-success"
+         style="cursor: pointer;">
+Replace the entire Active Employees section with:
+
+<!-- Active Employees -->
+<div class="col-6 col-md-3">
+    <a href="{{ url_for('employees.index', status='Active') }}"
+       class="text-decoration-none text-reset">
+
+        <div class="card-stat border-start border-4 border-success dashboard-clickable h-100">
+
+            <div class="stat-label">
+                Active Employees
+            </div>
+
+            <div class="stat-value text-success" id="card-active-emp">
+                {{ active_employees }}
+            </div>
+
+            <div class="small text-muted">
+                <i class="fas fa-users me-2"></i>
+                Entra Directory
+            </div>
+
+        </div>
+    </a>
+</div>
+So your second row should become:
+
+<!-- 2. Metric Cards Row 2: Entra ID Employees & Tickets -->
+<div class="row g-3 mb-4">
+
+    <!-- Active Employees -->
+    <div class="col-6 col-md-3">
+        <a href="{{ url_for('employees.index', status='Active') }}"
+           class="text-decoration-none text-reset">
+
+            <div class="card-stat border-start border-4 border-success dashboard-clickable h-100">
+
+                <div class="stat-label">
+                    Active Employees
+                </div>
+
+                <div class="stat-value text-success" id="card-active-emp">
+                    {{ active_employees }}
+                </div>
+
+                <div class="small text-muted">
+                    <i class="fas fa-users me-2"></i>
+                    Entra Directory
+                </div>
+
+            </div>
+        </a>
+    </div>
+
+    <!-- Blocked / Disabled -->
+    <div class="col-6 col-md-3">
+        <a href="{{ url_for('employees.index', status='Blocked,Disabled') }}"
+           class="text-decoration-none text-reset">
+
+            <div class="card-stat border-start border-4 border-warning">
+                <div class="stat-label">Blocked / Disabled</div>
+
+                <div class="stat-value text-warning" id="card-blocked-emp">
+                    {{ blocked_employees + disabled_employees }}
+                </div>
+
+                <div class="small text-muted">
+                    Account Flagged
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Offboarded Employees -->
+    <div class="col-6 col-md-3">
+        <a href="{{ url_for('employees.index', status='Offboarded') }}"
+           class="text-decoration-none text-reset">
+
+            <div class="card-stat border-start border-4 border-danger">
+                <div class="stat-label">Offboarded Staff</div>
+
+                <div class="stat-value text-danger" id="card-offboarded-emp">
+                    {{ offboarded_employees }}
+                </div>
+
+                <div class="small text-muted">
+                    Auto Laptop Return
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Open Tickets -->
+    <div class="col-6 col-md-3">
+        <a href="{{ url_for('tickets.index') }}"
+           class="text-decoration-none text-dark">
+
+            <div class="card-stat border-start border-4 border-primary dashboard-clickable h-100">
+                <div class="stat-label">Open Helpdesk Tickets</div>
+
+                <div class="stat-value text-primary" id="card-open-tickets">
+                    {{ open_tickets }}
+                </div>
+
+                <div class="small text-muted">
+                    <i class="fas fa-ticket-alt me-1"></i>
+                    Pending Support
+                </div>
+            </div>
+        </a>
+    </div>
+
+</div>
+Where exactly
+Your file currently has:
+
+app/templates/dashboard/index.html
+or whatever dashboard template contains:
+
+Service Desk & IT Asset Dashboard
+The uploaded code confirms this is the section causing the alignment issue. 
+
+
+After this change, the four cards will be:
+
+Active Employees | Blocked/Disabled | Offboarded Staff | Open Helpdesk Tickets
+
+in one equal-width row, matching the first row of four asset cards.
+
+
+give full replacemnetfile
+
+Done. I fixed the dashboard alignment and kept the existing functionality.
+
+Replace your current dashboard template with this file:
+
+Download the full replacement dashboard file
+
+What I fixed
+Active Employees card now has the correct Bootstrap column wrapper.
+
+All 4 employee/ticket cards align equally.
+
+First row and second row use the same responsive structure.
+
+Cards have consistent height.
+
+Chart functionality is preserved.
+
+Existing Jinja variables and routes are preserved.
+
+Replace the file in your project, then restart Flask and refresh the browser with Ctrl + Shift + R. 
+
 {% extends "base.html" %}
 
 {% block title %}Dashboard | Enterprise ITAM & Helpdesk{% endblock %}
@@ -328,3 +4282,273 @@ document.addEventListener('DOMContentLoaded', function () {
 }
 </style>
 {% endblock %}
+
+dashboard_index_fixed.html
+HTML
+
+
+PS C:\Projects\Final-Assets-Project> git pull origin main
+remote: Enumerating objects: 20, done.
+remote: Counting objects: 100% (20/20), done.
+remote: Compressing objects: 100% (11/11), done.
+remote: Total 12 (delta 8), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (12/12), 3.42 KiB | 43.00 KiB/s, done.
+From antimkolambkar/Final-Assets-Project
+ * branch            main       -> FETCH_HEAD
+   ecadb78..dfbde2a  main       -> origin/main
+Updating ecadb78..dfbde2a
+error: Your local changes to the following files would be overwritten by merge:
+        app/blueprints/dashboard/routes.py
+Please commit your changes or stash them before you merge.
+Aborting
+
+This means your local app/blueprints/dashboard/routes.py has changes, and Git will not overwrite them during git pull.
+
+Since you have been modifying the project, don't delete the local changes. Safest option is to stash them, pull, then apply them back.
+
+Do this step by step
+You are already in:
+
+C:\Projects\Final-Assets-Project
+1. Save your local changes
+git stash push -m "my local dashboard changes"
+You should see something like:
+
+Saved working directory and index state On main: my local dashboard changes
+2. Pull the latest code
+git pull origin main
+This time it should pull successfully.
+
+3. Bring your local changes back
+git stash pop
+Important
+If git stash pop shows a merge conflict in:
+
+app/blueprints/dashboard/routes.py
+Stop there and don't delete anything. Send me the conflict output, and I'll tell you exactly which code to keep.
+
+If you don't want your local dashboard changes anymore
+If you are sure you don't need your modifications to dashboard/routes.py, you can instead discard them:
+
+git restore app/blueprints/dashboard/routes.py
+git pull origin main
+But for your project, I recommend the stash method because it protects your current work.
+
+
+{% extends "base.html" %}
+
+{% block title %}Dashboard | Enterprise ITAM & Helpdesk{% endblock %}
+
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-4"> <div> <h3 class="fw-bold mb-1">Service Desk & IT Asset Dashboard</h3> <p class="text-muted small mb-0">Real-time overview of Entra ID directory status, laptop inventory, and active helpdesk tickets.</p> </div> <div class="d-flex gap-2"> <form action="{{ url_for('employees.sync_employees') }}" method="POST"> <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <button type="submit" class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm"> <i class="fas fa-arrows-rotate me-2"></i>Sync Microsoft Entra ID </button> </form> </div> </div>
+
+<!-- 1. Metric Cards Row 1: Assets -->
+
+<div class="row g-3 mb-4">
+
+<!-- Total Assets -->
+<div class="col-12 col-sm-6 col-xl-3">
+    <a href="{{ url_for('assets.index') }}"
+       class="text-decoration-none text-dark">
+        <div class="card-stat h-100 dashboard-clickable">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="stat-label">Total Assets</span>
+
+                <div class="icon-box bg-primary bg-opacity-10 text-primary">
+                    <i class="fas fa-laptop"></i>
+                </div>
+            </div>
+
+            <div class="stat-value" id="card-total-assets">
+                {{ total_assets }}
+            </div>
+
+            <div class="small text-muted mt-1">
+                <i class="fas fa-cubes me-1"></i>
+                Hardware Inventory
+            </div>
+        </div>
+    </a>
+</div>
+
+
+<!-- Assigned Assets -->
+<div class="col-12 col-sm-6 col-xl-3">
+    <a href="{{ url_for('assets.index', status='Assigned') }}"
+       class="text-decoration-none text-dark">
+        <div class="card-stat h-100 dashboard-clickable">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="stat-label">Assigned Assets</span>
+
+                <div class="icon-box bg-info bg-opacity-10 text-info">
+                    <i class="fas fa-user-check"></i>
+                </div>
+            </div>
+
+            <div class="stat-value text-info" id="card-assigned-assets">
+                {{ assigned_assets }}
+            </div>
+
+            <div class="small text-muted mt-1">
+                <i class="fas fa-link me-1"></i>
+                Deployed to Staff
+            </div>
+        </div>
+    </a>
+</div>
+
+
+<!-- Available Assets -->
+<div class="col-12 col-sm-6 col-xl-3">
+    <a href="{{ url_for('assets.index', status='Available') }}"
+       class="text-decoration-none text-dark">
+        <div class="card-stat h-100 dashboard-clickable">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="stat-label">Available Assets</span>
+
+                <div class="icon-box bg-success bg-opacity-10 text-success">
+                    <i class="fas fa-box-open"></i>
+                </div>
+            </div>
+
+            <div class="stat-value text-success" id="card-available-assets">
+                {{ available_assets }}
+            </div>
+
+            <div class="small text-muted mt-1">
+                <i class="fas fa-check-circle me-1"></i>
+                Ready for Assignment
+            </div>
+        </div>
+    </a>
+</div>
+
+
+<!-- Repair Assets -->
+<div class="col-12 col-sm-6 col-xl-3">
+    <a href="{{ url_for('assets.index', status='Repair') }}"
+       class="text-decoration-none text-dark">
+        <div class="card-stat h-100 dashboard-clickable">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="stat-label">Under Repair</span>
+
+                <div class="icon-box bg-warning bg-opacity-10 text-warning">
+                    <i class="fas fa-wrench"></i>
+                </div>
+            </div>
+
+            <div class="stat-value text-warning" id="card-repair-assets">
+                {{ repair_assets }}
+            </div>
+
+            <div class="small text-muted mt-1">
+                <i class="fas fa-truck-repair me-1"></i>
+                Vendor Service
+            </div>
+        </div>
+    </a>
+</div>
+</div>
+
+<!-- 2. Metric Cards Row 2: Entra ID Employees & Tickets -->
+
+<div class="row g-3 mb-4">
+
+<!-- Active Employees -->
+
+<a href="{{ url_for('employees.index', status='Active') }}" class="text-decoration-none d-block" style="cursor: pointer;">
+
+<div class="stat-card border-success"
+     style="cursor: pointer;">
+
+    <div class="stat-content">
+
+        <div class="stat-label">
+            Active Employees
+        </div>
+
+        <div class="stat-value text-success" id="card-active-emp">
+            {{ active_employees }}
+        </div>
+
+        <div class="stat-subtext">
+            <i class="fas fa-users me-2"></i>
+            Entra Directory
+        </div>
+
+    </div>
+
+</div>
+</a>
+
+<!-- Blocked / Disabled -->
+
+<div class="col-6 col-md-3"> <a href="{{ url_for('employees.index', status='Blocked,Disabled') }}" class="text-decoration-none text-reset"> <div class="card-stat border-start border-4 border-warning"> <div class="stat-label">Blocked / Disabled</div> <div class="stat-value text-warning" id="card-blocked-emp"> {{ blocked_employees + disabled_employees }} </div> <div class="small text-muted">Account Flagged</div> </div> </a> </div>
+
+<!-- Offboarded Employees -->
+
+<div class="col-6 col-md-3"> <a href="{{ url_for('employees.index', status='Offboarded') }}" class="text-decoration-none text-reset"> <div class="card-stat border-start border-4 border-danger"> <div class="stat-label">Offboarded Staff</div> <div class="stat-value text-danger" id="card-offboarded-emp"> {{ offboarded_employees }} </div> <div class="small text-muted">Auto Laptop Return</div> </div> </a> </div>
+
+<!-- Open Tickets -->
+<div class="col-6 col-md-3">
+    <a href="{{ url_for('tickets.index') }}"
+       class="text-decoration-none text-dark">
+        <div class="card-stat border-start border-4 border-primary dashboard-clickable h-100">
+            <div class="stat-label">Open Helpdesk Tickets</div>
+
+            <div class="stat-value text-primary" id="card-open-tickets">
+                {{ open_tickets }}
+            </div>
+
+            <div class="small text-muted">
+                <i class="fas fa-ticket-alt me-1"></i>
+                Pending Support
+            </div>
+        </div>
+    </a>
+</div>
+</div> <!-- 3. Charts Row --> <div class="row g-4 mb-4"> <div class="col-12 col-lg-6"> <div class="card border-0 shadow-sm h-100"> <div class="card-header bg-transparent fw-bold d-flex justify-content-between align-items-center"> <span><i class="fas fa-chart-pie me-2 text-primary"></i>Asset Status Distribution</span> <span class="badge bg-light text-dark border">Live</span> </div> <div class="card-body"> <canvas id="assetStatusChart" height="230"></canvas> </div> </div> </div> <div class="col-12 col-lg-6"> <div class="card border-0 shadow-sm h-100"> <div class="card-header bg-transparent fw-bold d-flex justify-content-between align-items-center"> <span><i class="fas fa-chart-bar me-2 text-info"></i>Department-wise Asset Allocation</span> <span class="badge bg-light text-dark border">Live</span> </div> <div class="card-body"> <canvas id="deptAssetsChart" height="230"></canvas> </div> </div> </div> </div>
+
+<!-- 4. Widgets & Activity Feeds Row -->
+
+<div class="row g-4"> <!-- Recent Tickets Widget --> <div class="col-12 col-xl-6"> <div class="card border-0 shadow-sm h-100"> <div class="card-header bg-transparent fw-bold d-flex justify-content-between align-items-center"> <span><i class="fas fa-headset me-2 text-primary"></i>Recent Outlook Tickets</span> <a href="{{ url_for('tickets.index') }}" class="btn btn-link btn-sm p-0 text-decoration-none">View All &rarr;</a> </div> <div class="table-responsive"> <table class="table table-custom mb-0"> <thead> <tr> <th>Ticket ID</th> <th>Subject</th> <th>Employee</th> <th>Priority</th> <th>Status</th> </tr> </thead> <tbody> {% for tkt in recent_tickets %} <tr> <td><a href="{{ url_for('tickets.detail', ticket_id=tkt.ticket_id) }}" class="fw-bold text-decoration-none">{{ tkt.ticket_id }}</a></td> <td class="text-truncate" style="max-width: 180px;">{{ tkt.subject }}</td> <td>{{ tkt.employee.name if tkt.employee else 'N/A' }}</td> <td> <span class="badge {% if tkt.priority == 'Critical' %}bg-danger{% elif tkt.priority == 'High' %}bg-warning text-dark{% else %}bg-secondary{% endif %}"> {{ tkt.priority }} </span> </td> <td><span class="badge bg-info bg-opacity-10 text-info fw-semibold">{{ tkt.status }}</span></td> </tr> {% else %} <tr><td colspan="5" class="text-center text-muted py-3">No tickets submitted yet.</td></tr> {% endfor %} </tbody> </table> </div> </div> </div>
+
+<!-- Recent Audit Logs Feed -->
+<div class="col-12 col-xl-6">
+    <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-transparent fw-bold d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-history me-2 text-secondary"></i>Recent System Activity Logs</span>
+            {% if current_user.is_super_admin %}
+            <a href="{{ url_for('audit.index') }}" class="btn btn-link btn-sm p-0 text-decoration-none">Full Audit Trail &rarr;</a>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            <ul class="list-group list-group-flush small">
+                {% for log in recent_activities %}
+                <li class="list-group-item d-flex align-items-center justify-content-between py-2.5">
+                    <div>
+                        <strong class="text-dark">{{ log.user_name }}</strong> &bull; <span class="text-primary fw-semibold">{{ log.action }}</span>
+                        <div class="text-muted text-truncate" style="max-width: 320px;">{{ log.details }}</div>
+                    </div>
+                    <span class="text-muted" style="font-size: 0.75rem;">{{ log.timestamp.strftime('%H:%M:%S') }}</span>
+                </li>
+                {% else %}
+                <li class="list-group-item text-center text-muted py-3">No recent activities logged.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+</div> {% endblock %}
+
+{% block extra_js %}
+
+<script> document.addEventListener('DOMContentLoaded', function() { // Render Charts fetch('/dashboard/api/metrics') .then(res => res.json()) .then(data => { // 1. Asset Distribution Pie Chart const ctxAsset = document.getElementById('assetStatusChart').getContext('2d'); new Chart(ctxAsset, { type: 'doughnut', data: { labels: Object.keys(data.charts.asset_distribution), datasets: [{ data: Object.values(data.charts.asset_distribution), backgroundColor: ['#10b981', '#2563eb', '#f59e0b'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } }); // 2. Department Assets Bar Chart const ctxDept = document.getElementById('deptAssetsChart').getContext('2d'); new Chart(ctxDept, { type: 'bar', data: { labels: Object.keys(data.charts.dept_assets), datasets: [{ label: 'Assigned Laptops', data: Object.values(data.charts.dept_assets), backgroundColor: '#06b6d4' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } }); }); }); </script>
+
+<style> .dashboard-clickable { cursor: pointer; transition: all 0.2s ease-in-out; } .dashboard-clickable:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12); } </style>
+
+{% endblock %}
+
+
+Close
