@@ -7,6 +7,7 @@ class AccountStatus:
     ONBOARDED = 'Onboarded'
     ACTIVE = 'Active'
     BLOCKED = 'Blocked'
+    DISABLED = 'Disabled'
     OFFBOARDED = 'Offboarded'
 
 
@@ -69,16 +70,13 @@ class Employee(db.Model):
     # =========================================================
     # STATUS DATES
     # =========================================================
-    # Status dates are controlled by Entra ID synchronization.
+    # These dates record when the employee entered each status.
     #
     # Onboarded  -> onboarded_date
     # Active     -> active_date
     # Blocked    -> blocked_date
+    # Disabled   -> disabled_date
     # Offboarded -> offboarded_date
-    #
-    # The old disabled_date database column is intentionally NOT
-    # removed. Keeping it in SQLite avoids unnecessary database
-    # changes and protects existing data.
     # =========================================================
 
     onboarded_date = db.Column(
@@ -92,6 +90,11 @@ class Employee(db.Model):
     )
 
     blocked_date = db.Column(
+        db.Date,
+        nullable=True
+    )
+
+    disabled_date = db.Column(
         db.Date,
         nullable=True
     )
@@ -146,6 +149,10 @@ class Employee(db.Model):
     @property
     def is_blocked(self):
         return self.account_status == AccountStatus.BLOCKED
+
+    @property
+    def is_disabled(self):
+        return self.account_status == AccountStatus.DISABLED
 
     @property
     def is_offboarded(self):
