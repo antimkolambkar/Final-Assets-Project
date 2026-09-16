@@ -1132,6 +1132,49 @@ body > .asset-action-menu .dropdown-item i {
                                 </li>
 
 
+                                <!-- Mark as Non-Repairable -->
+                                <li>
+                                    <form action="{{ url_for('assets.mark_non_repairable', asset_id=ast.id) }}"
+                                          method="POST">
+
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+
+                                        <button type="submit"
+                                                class="dropdown-item"
+                                                style="color: #6c757d;"
+                                                onclick="return confirm('Are you sure you want to mark asset {{ ast.asset_id }} as Non-Repairable?')">
+
+                                            <i class="fas fa-ban me-2"></i>
+                                            Mark as Non-Repairable
+
+                                        </button>
+                                    </form>
+                                </li>
+
+                                <!-- Send to Charity -->
+                                <li>
+                                    <form action="{{ url_for('assets.send_to_charity', asset_id=ast.id) }}"
+                                          method="POST">
+
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+
+                                        <button type="submit"
+                                                class="dropdown-item"
+                                                style="color: #6f42c1;"
+                                                onclick="return confirm('Are you sure you want to send asset {{ ast.asset_id }} to charity?')">
+
+                                            <i class="fas fa-hand-holding-heart me-2"></i>
+                                            Send to Charity
+
+                                        </button>
+                                    </form>
+                                </li>
+
+
                                 {% elif ast.status == 'Assigned' %}
 
                                 <!-- Replace Laptop -->
