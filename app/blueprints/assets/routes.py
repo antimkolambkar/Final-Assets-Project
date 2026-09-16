@@ -505,6 +505,156 @@ def edit_asset(asset_id):
 
 
 # =========================================================
+# MARK AS NON-REPAIRABLE
+# =========================================================
+
+@assets_bp.route('/mark-non-repairable/<int:asset_id>', methods=['POST'])
+@login_required
+def mark_non_repairable(asset_id):
+    """Move an asset to Non-Repairable status."""
+
+    if not current_user.is_it_admin:
+        flash(
+            'Permission denied. Only IT Admins can mark assets '
+            'as non-repairable.',
+            'danger'
+        )
+        return redirect(url_for('assets.index'))
+
+    asset = Asset.query.get_or_404(asset_id)
+
+    if asset.status == AssetStatus.ASSIGNED:
+        flash(
+            f'Cannot mark assigned asset {asset.asset_id} '
+            'as non-repairable. Return it first.',
+            'warning'
+        )
+        return redirect(url_for('assets.index'))
+
+    if asset.status == 'Non-Repairable':
+        flash(
+            f'Asset {asset.asset_id} is already marked '
+            'as non-repairable.',
+            'warning'
+        )
+        return redirect(url_for('assets.index'))
+
+    if asset.status == 'Donated Assets':
+        flash(
+            f'Asset {asset.asset_id} has already been sent to charity.',
+            'warning'
+        )
+        return redirect(url_for('assets.index'))
+
+    previous_status = str(asset.status)
+
+    asset.status = 'Non-Repairable'
+    asset.assigned_employee_id = None
+    asset.assignment_date = None
+
+    history = AssetAssignmentHistory(
+        asset_id=asset.id,
+        action='Marked Non-Repairable',
+        event_date=datetime.utcnow(),
+        notes=(
+            f'Asset marked as Non-Repairable from '
+            f'{previous_status} status.'
+        ),
+        performed_by=current_user.full_name
+    )
+
+    db.session.add(history)
+    db.session.commit()
+
+    AuditService.log(
+        action='Asset Marked Non-Repairable',
+        entity_type='Asset',
+        entity_id=asset.asset_id,
+        details=(
+            f'Asset {asset.asset_id} marked as Non-Repairable '
+            f'by {current_user.full_name}.'
+        )
+    )
+
+    flash(
+        f'Asset {asset.asset_id} marked as Non-Repairable.',
+        'success'
+    )
+    return redirect(url_for('assets.index'))
+
+
+# =========================================================
+# SEND TO CHARITY
+# =========================================================
+
+@assets_bp.route('/send-to-charity/<int:asset_id>', methods=['POST'])
+@login_required
+def send_to_charity(asset_id):
+    """Move an asset to Donated Assets status."""
+
+    if not current_user.is_it_admin:
+        flash(
+            'Permission denied. Only IT Admins can send assets '
+            'to charity.',
+            'danger'
+        )
+        return redirect(url_for('assets.index'))
+
+    asset = Asset.query.get_or_404(asset_id)
+
+    if asset.status == AssetStatus.ASSIGNED:
+        flash(
+            f'Cannot send assigned asset {asset.asset_id} '
+            'to charity. Return it first.',
+            'warning'
+        )
+        return redirect(url_for('assets.index'))
+
+    if asset.status == 'Donated Assets':
+        flash(
+            f'Asset {asset.asset_id} has already been sent to charity.',
+            'warning'
+        )
+        return redirect(url_for('assets.index'))
+
+    previous_status = str(asset.status)
+
+    asset.status = 'Donated Assets'
+    asset.assigned_employee_id = None
+    asset.assignment_date = None
+
+    history = AssetAssignmentHistory(
+        asset_id=asset.id,
+        action='Sent to Charity',
+        event_date=datetime.utcnow(),
+        notes=(
+            f'Asset sent to charity from '
+            f'{previous_status} status.'
+        ),
+        performed_by=current_user.full_name
+    )
+
+    db.session.add(history)
+    db.session.commit()
+
+    AuditService.log(
+        action='Asset Sent to Charity',
+        entity_type='Asset',
+        entity_id=asset.asset_id,
+        details=(
+            f'Asset {asset.asset_id} sent to charity '
+            f'by {current_user.full_name}.'
+        )
+    )
+
+    flash(
+        f'Asset {asset.asset_id} sent to Charity.',
+        'success'
+    )
+    return redirect(url_for('assets.index'))
+
+
+# =========================================================
 # DELETE ASSET
 # =========================================================
 
