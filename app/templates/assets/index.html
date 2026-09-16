@@ -487,12 +487,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     <option value="Non-Repairable"
                             {% if status_filter == 'Non-Repairable' %}selected{% endif %}>
-                        Unassigned Non-Repairable
+                        Non-Repairable
                     </option>
 
                     <option value="Donated Assets"
                             {% if status_filter == 'Donated Assets' %}selected{% endif %}>
-                        Unassigned Donated
+                        Donated Assets
                     </option>
 
                 </select>
@@ -593,14 +593,14 @@ document.addEventListener("DOMContentLoaded", function () {
     <a href="{{ url_for('assets.index', status='Non-Repairable') }}"
        class="btn btn-outline-secondary btn-non-repairable {% if status_filter == 'Non-Repairable' %}active{% endif %}">
         <i class="fas fa-ban me-1"></i>
-        Unassigned Non-Repairable
+        Non-Repairable
     </a>
 
     <!-- Donated Assets -->
     <a href="{{ url_for('assets.index', status='Donated Assets') }}"
        class="btn btn-donated btn-outline-dark {% if status_filter == 'Donated Assets' %}active{% endif %}">
         <i class="fas fa-hand-holding-heart me-1"></i>
-        Unassigned Donated
+        Donated Assets
     </a>
 
 </div>
@@ -1001,6 +1001,18 @@ body > .asset-action-menu .dropdown-item i {
 
                         <span class="text-muted fs-7">
                             <em>Returned by {{ available_returned_by[ast.id] }}</em>
+                        </span>
+
+                        {% elif status_value == 'Non-Repairable' %}
+
+                        <span class="text-muted fs-7">
+                            <em>Unassigned (Non-Repairable)</em>
+                        </span>
+
+                        {% elif status_value == 'Donated Assets' %}
+
+                        <span class="text-muted fs-7">
+                            <em>Unassigned (Donated)</em>
                         </span>
 
                         {% else %}
