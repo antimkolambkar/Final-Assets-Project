@@ -896,37 +896,37 @@ body > .asset-action-menu .dropdown-item i {
                     </td>
 
 
-                    <!-- Assigned User Name / Description -->
+                    <!-- Assigned Employee -->
                     <td>
 
-                        {% if status_value == 'Assigned' and ast.assigned_employee %}
+                        {% if status_value in ['Repair', 'Under Repair'] %}
+
+                        <div class="fw-bold text-dark">
+                            DESCRIPTION
+                        </div>
+
+                        <small class="text-muted" style="white-space: normal; word-break: break-word;">
+                            {{ repair_descriptions.get(ast.id) or 'No repair description' }}
+                        </small>
+
+                        {% elif status_value == 'Returned to Vendor' %}
+
+                        <span class="text-muted fs-7">
+                            <em>Unassigned (Returned)</em>
+                        </span>
+
+                        {% elif ast.assigned_employee %}
 
                         <div class="fw-bold text-dark">
                             <i class="fas fa-user me-1 text-primary"></i>
                             {{ ast.assigned_employee.name }}
                         </div>
 
-                        <small class="text-muted d-block">
+                        <small class="text-muted">
                             {{ ast.assigned_employee.employee_id }}
                             &bull;
                             {{ ast.assigned_employee.department }}
                         </small>
-
-                        {% elif status_value in ['Repair', 'Under Repair'] %}
-
-                        <div class="fw-bold text-dark">
-                            DESCRIPTION
-                        </div>
-
-                        <small class="text-muted d-block" style="white-space: normal; word-break: break-word;">
-                            {{ repair_descriptions.get(ast.id) or 'No repair description' }}
-                        </small>
-
-                        {% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] %}
-
-                        <span class="text-muted fs-7">
-                            <em>Unassigned (Returned)</em>
-                        </span>
 
                         {% else %}
 
@@ -935,6 +935,7 @@ body > .asset-action-menu .dropdown-item i {
                         </span>
 
                         {% endif %}
+
                     </td>
 
 
@@ -2893,9 +2894,7 @@ body > .asset-action-menu .dropdown-item i {
 
                             {% for vendor in vendors %}
 
-                                {% set vendor_name = (vendor.name or '')|trim|lower %}
-
-                                {% if vendor_name in ['techvity', 'spurge', 'wbg', 'exalogic bangalore', 'exalogic dubai'] %}
+                                {% if vendor.name in ['Techvity', 'Spurge'] %}
 
                                     <option value="{{ vendor.id }}">
                                         {{ vendor.name }}
