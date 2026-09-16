@@ -725,15 +725,23 @@ body > .asset-action-menu .dropdown-item i {
                 <tr>
 
                     <th class="sortable-th" data-sort-type="text">Asset ID <span class="sort-icon">↕</span></th>
-                    <th class="sortable-th" data-sort-type="text">Brand & Model <span class="sort-icon">↕</span></th>
-                    <th class="sortable-th" data-sort-type="text">Serial Number <span class="sort-icon">↕</span></th>
-                    <th class="sortable-th" data-sort-type="text">Specifications <span class="sort-icon">↕</span></th>
-                    <th class="sortable-th" data-sort-type="text">Vendor <span class="sort-icon">↕</span></th>
-                    <th class="sortable-th status-column" data-sort-type="text">Status <span class="sort-icon">↕</span></th>
-                    <th class="sortable-th date-column" data-sort-type="date">Date <span class="sort-icon">↕</span></th>
-                    <th class="sortable-th" data-sort-type="text">Assigned User Name <span class="sort-icon">↕</span></th>
-                    <th class="text-end">Actions</th>
+<th class="sortable-th" data-sort-type="text">Brand & Model <span class="sort-icon">↕</span></th>
+<th class="sortable-th" data-sort-type="text">Serial Number <span class="sort-icon">↕</span></th>
+<th class="sortable-th" data-sort-type="text">Specifications <span class="sort-icon">↕</span></th>
+<th class="sortable-th" data-sort-type="text">Vendor <span class="sort-icon">↕</span></th>
+<th class="sortable-th status-column" data-sort-type="text">Status <span class="sort-icon">↕</span></th>
+<th class="sortable-th date-column" data-sort-type="date">Date <span class="sort-icon">↕</span></th>
 
+<th class="sortable-th" data-sort-type="text">
+    {% if status_filter in ['Repair', 'Under Repair'] %}
+        Description
+    {% else %}
+        Assigned User Name
+    {% endif %}
+    <span class="sort-icon">↕</span>
+</th>
+
+<th class="text-end">Actions</th>
                 </tr>
 
             </thead>
