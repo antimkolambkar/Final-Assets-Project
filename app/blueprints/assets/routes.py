@@ -120,6 +120,31 @@ def index():
                 if ticket.asset_id not in repair_descriptions and ticket.notes:
                     repair_descriptions[ticket.asset_id] = ticket.notes.strip()
 
+    # ---------------------------------------------------------
+    # REPAIR DATES USED BY THE ASSET TABLE
+    # ---------------------------------------------------------
+    repair_start_dates = {}
+    repair_completion_dates = {}
+
+    if assets:
+        page_asset_ids = [asset.id for asset in assets]
+
+        history_rows = (
+            AssetAssignmentHistory.query
+            .filter(AssetAssignmentHistory.asset_id.in_(page_asset_ids))
+            .order_by(
+                AssetAssignmentHistory.timestamp.asc(),
+                AssetAssignmentHistory.id.asc()
+            )
+            .all()
+        )
+
+        for history in history_rows:
+            if history.action == 'Sent to Repair':
+                repair_start_dates.setdefault(history.asset_id, history.timestamp)
+            elif history.action == 'Repair Completed':
+                repair_completion_dates[history.asset_id] = history.timestamp
+
     return render_template(
         'assets/index.html',
         assets=assets,
@@ -131,6 +156,8 @@ def index():
         active_employees=active_employees,
         available_assets=available_assets,
         assigned_assets=assigned_assets,
+        repair_start_dates=repair_start_dates,
+        repair_completion_dates=repair_completion_dates,
         repair_descriptions=repair_descriptions
     )
 
