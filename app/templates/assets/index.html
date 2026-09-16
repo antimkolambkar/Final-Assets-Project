@@ -444,6 +444,16 @@ document.addEventListener("DOMContentLoaded", function () {
                         Returned to Vendor
                     </option>
 
+                    <option value="Non-Repairable"
+                            {% if status_filter == 'Non-Repairable' %}selected{% endif %}>
+                        Non-Repairable
+                    </option>
+
+                    <option value="Donated Assets"
+                            {% if status_filter == 'Donated Assets' %}selected{% endif %}>
+                        Donated Assets
+                    </option>
+
                 </select>
 
             </div>
@@ -511,19 +521,19 @@ document.addEventListener("DOMContentLoaded", function () {
     </a>
 
 
-    <!-- Stock Laptops -->
+    <!-- Available Assets -->
     <a href="{{ url_for('assets.index', status='Available') }}"
        class="btn {% if status_filter == 'Available' %}btn-success{% else %}btn-outline-success{% endif %}">
         <i class="fas fa-box-open me-1"></i>
-        Stock Laptops
+        Available Assets
     </a>
 
 
-    <!-- Assigned -->
+    <!-- Assigned Assets -->
     <a href="{{ url_for('assets.index', status='Assigned') }}"
        class="btn {% if status_filter == 'Assigned' %}btn-primary{% else %}btn-outline-primary{% endif %}">
         <i class="fas fa-user-check me-1"></i>
-        Assigned
+        Assigned Assets
     </a>
 
 
@@ -540,6 +550,20 @@ document.addEventListener("DOMContentLoaded", function () {
        class="btn {% if status_filter == 'Returned to Vendor' %}btn-danger{% else %}btn-outline-danger{% endif %}">
         <i class="fas fa-truck me-1"></i>
         Returned to Vendor
+    </a>
+
+    <!-- Non-Repairable -->
+    <a href="{{ url_for('assets.index', status='Non-Repairable') }}"
+       class="btn {% if status_filter == 'Non-Repairable' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+        <i class="fas fa-ban me-1"></i>
+        Non-Repairable
+    </a>
+
+    <!-- Donated Assets -->
+    <a href="{{ url_for('assets.index', status='Donated Assets') }}"
+       class="btn {% if status_filter == 'Donated Assets' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+        <i class="fas fa-hand-holding-heart me-1"></i>
+        Donated Assets
     </a>
 
 </div>
