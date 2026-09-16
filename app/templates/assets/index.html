@@ -723,24 +723,16 @@ body > .asset-action-menu .dropdown-item i {
             <thead>
 
                 <tr>
-<th class="sortable-th" data-sort-type="text">Asset ID <span class="sort-icon">↕</span></th>
-<th class="sortable-th" data-sort-type="text">Brand & Model <span class="sort-icon">↕</span></th>
-<th class="sortable-th" data-sort-type="text">Serial Number <span class="sort-icon">↕</span></th>
-<th class="sortable-th" data-sort-type="text">Specifications <span class="sort-icon">↕</span></th>
-<th class="sortable-th" data-sort-type="text">Vendor <span class="sort-icon">↕</span></th>
-<th class="sortable-th status-column" data-sort-type="text">Status <span class="sort-icon">↕</span></th>
-<th class="sortable-th date-column" data-sort-type="date">Date <span class="sort-icon">↕</span></th>
 
-<th class="sortable-th" data-sort-type="text">
-    {% if status_filter in ['Repair', 'Under Repair'] %}
-        Description
-    {% else %}
-        Assigned User Name
-    {% endif %}
-    <span class="sort-icon">↕</span>
-</th>
-
-<th class="text-end">Actions</th>
+                    <th class="sortable-th" data-sort-type="text">Asset ID <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th" data-sort-type="text">Brand & Model <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th" data-sort-type="text">Serial Number <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th" data-sort-type="text">Specifications <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th" data-sort-type="text">Vendor <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th status-column" data-sort-type="text">Status <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th date-column" data-sort-type="date">Date <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th" data-sort-type="text">Assigned User Name <span class="sort-icon">↕</span></th>
+                    <th class="text-end">Actions</th>
 
                 </tr>
 
@@ -855,7 +847,7 @@ body > .asset-action-menu .dropdown-item i {
 
 
                     <!-- Date - shown for every asset -->
-                    <td class="date-column" data-sort-value="{% if status_value == 'Assigned' and ast.assignment_date %}{{ ast.assignment_date.strftime('%Y-%m-%d') }}{% elif status_value in ['Repair', 'Under Repair'] and repair_start_dates.get(ast.id) %}{{ repair_start_dates[ast.id].strftime('%Y-%m-%d') }}{% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] and ast.vendor_return_date %}{{ ast.vendor_return_date.strftime('%Y-%m-%d') }}{% elif status_value == 'Available' and repair_completion_dates.get(ast.id) %}{{ repair_completion_dates[ast.id].strftime('%Y-%m-%d') }}{% elif ast.purchase_date %}{{ ast.purchase_date.strftime('%Y-%m-%d') }}{% endif %}">
+                    <td class="date-column" data-sort-value="{% if status_value == 'Assigned' and ast.assignment_date %}{{ ast.assignment_date.strftime('%Y-%m-%d') }}{% elif status_value in ['Repair', 'Under Repair'] and repair_start_dates.get(ast.id) %}{{ repair_start_dates[ast.id].strftime('%Y-%m-%d') }}{% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] and ast.vendor_return_date %}{{ ast.vendor_return_date.strftime('%Y-%m-%d') }}{% elif status_value == 'Available' and available_dates.get(ast.id) %}{{ available_dates[ast.id].strftime('%Y-%m-%d') }}{% elif ast.purchase_date %}{{ ast.purchase_date.strftime('%Y-%m-%d') }}{% endif %}">
 
                         {% if status_value == 'Assigned' and ast.assignment_date %}
 
@@ -878,11 +870,11 @@ body > .asset-action-menu .dropdown-item i {
                                 {{ ast.vendor_return_date.strftime('%d-%m-%Y') }}
                             </span>
 
-                        {% elif status_value == 'Available' and repair_completion_dates.get(ast.id) %}
+                        {% elif status_value == 'Available' and available_dates.get(ast.id) %}
 
                             <span class="asset-date fw-semibold text-dark">
-                                <i class="fas fa-check-circle text-success"></i>
-                                {{ repair_completion_dates[ast.id].strftime('%d-%m-%Y') }}
+                                <i class="fas fa-calendar-check text-success"></i>
+                                {{ available_dates[ast.id].strftime('%d-%m-%Y') }}
                             </span>
 
                         {% elif ast.purchase_date %}
@@ -904,48 +896,49 @@ body > .asset-action-menu .dropdown-item i {
                     </td>
 
 
-                    <!-- Assigned Employee / Repair Description -->
+                    <!-- Assigned User Name / Description -->
                     <td>
-                        {% if status_value in ['Repair', 'Under Repair'] %}
 
-                            <div class="fw-bold text-dark">
-                                DESCRIPTION
-                            </div>
+                        {% if status_value == 'Assigned' and ast.assigned_employee %}
 
-                            <small class="text-muted" style="white-space: normal; word-break: break-word;">
-                                {{ repair_descriptions.get(ast.id) or 'No repair description' }}
-                            </small>
+                        <div class="fw-bold text-dark">
+                            <i class="fas fa-user me-1 text-primary"></i>
+                            {{ ast.assigned_employee.name }}
+                        </div>
 
-                        {% elif status_value == 'Assigned' %}
+                        <small class="text-muted d-block">
+                            {{ ast.assigned_employee.employee_id }}
+                            &bull;
+                            {{ ast.assigned_employee.department }}
+                        </small>
 
-                            {% if ast.assigned_employee %}
-                                <div class="fw-bold text-dark">
-                                    <i class="fas fa-user me-1 text-primary"></i>
-                                    {{ ast.assigned_employee.name }}
-                                </div>
+                        {% elif status_value in ['Repair', 'Under Repair'] %}
 
-                                <small class="text-muted">
-                                    {{ ast.assigned_employee.employee_id }}
-                                    &bull;
-                                    {{ ast.assigned_employee.department }}
-                                </small>
-                            {% else %}
-                                <span class="text-muted fs-7">
-                                    <em>Unassigned</em>
-                                </span>
-                            {% endif %}
+                        <div class="fw-bold text-dark">
+                            DESCRIPTION
+                        </div>
+
+                        <small class="text-muted d-block" style="white-space: normal; word-break: break-word;">
+                            {{ repair_descriptions.get(ast.id) or 'No repair description' }}
+                        </small>
 
                         {% elif status_value in ['Returned to Vendor', 'Sent to Vendor'] %}
 
-                            <span class="text-muted fs-7">
-                                <em>Unassigned (Returned)</em>
-                            </span>
+                        <span class="text-muted fs-7">
+                            <em>Unassigned (Returned)</em>
+                        </span>
+
+                        {% elif status_value == 'Available' and available_returned_by.get(ast.id) %}
+
+                        <span class="text-muted fs-7">
+                            <em>Returned by {{ available_returned_by[ast.id] }}</em>
+                        </span>
 
                         {% else %}
 
-                            <span class="text-muted fs-7">
-                                <em>Unassigned (In Stock)</em>
-                            </span>
+                        <span class="text-muted fs-7">
+                            <em>Unassigned (In Stock)</em>
+                        </span>
 
                         {% endif %}
                     </td>
@@ -2906,7 +2899,9 @@ body > .asset-action-menu .dropdown-item i {
 
                             {% for vendor in vendors %}
 
-                                {% if vendor.name in ['Techvity', 'Spurge'] %}
+                                {% set vendor_name = (vendor.name or '')|trim|lower %}
+
+                                {% if vendor_name in ['techvity', 'spurge', 'wbg', 'exalogic bangalore', 'exalogic dubai'] %}
 
                                     <option value="{{ vendor.id }}">
                                         {{ vendor.name }}
