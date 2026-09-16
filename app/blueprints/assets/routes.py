@@ -78,105 +78,64 @@ def index():
     available_assets = Asset.query.filter_by(status=AssetStatus.AVAILABLE).order_by(Asset.brand.asc()).all()
     assigned_assets = Asset.query.filter_by(status=AssetStatus.ASSIGNED).order_by(Asset.asset_id.asc()).all()
 
-    # Get the latest repair description for assets currently under repair.
-    # This is passed directly to the template so it does not depend on AJAX.
-    repair_descriptions = {}
-    repair_assigned_employees = {}
-    repair_asset_ids = [asset.id for asset in assets if str(asset.status.value if hasattr(asset.status, 'value') else asset.status) in ('Repair', 'Under Repair')]
-
-    if repair_asset_ids:
-        repair_history = (
-            AssetAssignmentHistory.query
-            .filter(
-                AssetAssignmentHistory.asset_id.in_(repair_asset_ids),
-                AssetAssignmentHistory.action == 'Sent to Repair'
-            )
-            .order_by(
-                AssetAssignmentHistory.timestamp.desc(),
-                AssetAssignmentHistory.id.desc()
-            )
-            .all()
-        )
-
-        # Find the employee who had the laptop before it went to repair.
-        # Repair normally clears assigned_employee_id, so the table needs
-        # the assignment history to continue showing the employee name.
-        employee_history = (
-            AssetAssignmentHistory.query
-            .filter(AssetAssignmentHistory.asset_id.in_(repair_asset_ids))
-            .filter(
-                (AssetAssignmentHistory.employee_id.isnot(None)) |
-                (AssetAssignmentHistory.employee_name.isnot(None))
-            )
-            .order_by(
-                AssetAssignmentHistory.timestamp.desc(),
-                AssetAssignmentHistory.id.desc()
-            )
-            .all()
-        )
-
-        for history in employee_history:
-            if history.asset_id in repair_assigned_employees:
-                continue
-
-            employee = None
-            if history.employee_id:
-                employee = db.session.get(Employee, history.employee_id)
-
-            if employee:
-                repair_assigned_employees[history.asset_id] = employee
-            elif history.employee_name:
-                # Keep the historical name available even if the employee
-                # record is no longer linked to the asset.
-                repair_assigned_employees[history.asset_id] = history.employee_name.strip()
-
-        for history in repair_history:
-            if history.asset_id in repair_descriptions:
-                continue
-
-            notes = (history.notes or '').strip()
-            if 'Notes:' in notes:
-                notes = notes.split('Notes:', 1)[1].strip()
-
-            repair_descriptions[history.asset_id] = notes
-
-        # Fallback for older records where the description exists only in the repair ticket.
-        missing_ids = [asset_id for asset_id in repair_asset_ids if not repair_descriptions.get(asset_id)]
-        if missing_ids:
-            repair_tickets = (
-                VendorRepairTicket.query
-                .filter(VendorRepairTicket.asset_id.in_(missing_ids))
-                .order_by(VendorRepairTicket.sent_date.desc(), VendorRepairTicket.id.desc())
-                .all()
-            )
-            for ticket in repair_tickets:
-                if ticket.asset_id not in repair_descriptions and ticket.notes:
-                    repair_descriptions[ticket.asset_id] = ticket.notes.strip()
-
-    # ---------------------------------------------------------
-    # REPAIR DATES USED BY THE ASSET TABLE
-    # ---------------------------------------------------------
+    # Repair dates used by the asset table
     repair_start_dates = {}
     repair_completion_dates = {}
 
     if assets:
-        page_asset_ids = [asset.id for asset in assets]
-
         history_rows = (
             AssetAssignmentHistory.query
-            .filter(AssetAssignmentHistory.asset_id.in_(page_asset_ids))
-            .order_by(
-                AssetAssignmentHistory.timestamp.asc(),
-                AssetAssignmentHistory.id.asc()
-            )
+            .filter(AssetAssignmentHistory.asset_id.in_([a.id for a in assets]))
+            .order_by(AssetAssignmentHistory.timestamp.asc(), AssetAssignmentHistory.id.asc())
             .all()
         )
-
         for history in history_rows:
             if history.action == 'Sent to Repair':
                 repair_start_dates.setdefault(history.asset_id, history.timestamp)
             elif history.action == 'Repair Completed':
                 repair_completion_dates[history.asset_id] = history.timestamp
+
+    # Latest repair description for assets currently under repair
+    repair_descriptions = {}
+    repair_asset_ids = [
+        a.id for a in assets
+        if str(a.status.value if hasattr(a.status, 'value') else a.status) in ('Repair', 'Under Repair')
+    ]
+
+    if repair_asset_ids:
+        repair_tickets = (
+            VendorRepairTicket.query
+            .filter(VendorRepairTicket.asset_id.in_(repair_asset_ids))
+            .order_by(VendorRepairTicket.sent_date.desc(), VendorRepairTicket.id.desc())
+            .all()
+        )
+        for ticket in repair_tickets:
+            if ticket.asset_id not in repair_descriptions and (ticket.notes or '').strip():
+                repair_descriptions[ticket.asset_id] = ticket.notes.strip()
+
+        # Fallback for older records where the ticket does not contain notes.
+        missing_ids = [a_id for a_id in repair_asset_ids if a_id not in repair_descriptions]
+        if missing_ids:
+            repair_history = (
+                AssetAssignmentHistory.query
+                .filter(
+                    AssetAssignmentHistory.asset_id.in_(missing_ids),
+                    AssetAssignmentHistory.action == 'Sent to Repair'
+                )
+                .order_by(
+                    AssetAssignmentHistory.timestamp.desc(),
+                    AssetAssignmentHistory.id.desc()
+                )
+                .all()
+            )
+            for history in repair_history:
+                if history.asset_id in repair_descriptions:
+                    continue
+                notes = (history.notes or '').strip()
+                if 'Notes:' in notes:
+                    notes = notes.rsplit('Notes:', 1)[1].strip()
+                if notes:
+                    repair_descriptions[history.asset_id] = notes
 
     return render_template(
         'assets/index.html',
@@ -191,8 +150,7 @@ def index():
         assigned_assets=assigned_assets,
         repair_start_dates=repair_start_dates,
         repair_completion_dates=repair_completion_dates,
-        repair_descriptions=repair_descriptions,
-        repair_assigned_employees=repair_assigned_employees
+        repair_descriptions=repair_descriptions
     )
 
 
