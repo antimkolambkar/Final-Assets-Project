@@ -731,7 +731,7 @@ body > .asset-action-menu .dropdown-item i {
                     <th class="sortable-th" data-sort-type="text">Vendor <span class="sort-icon">↕</span></th>
                     <th class="sortable-th status-column" data-sort-type="text">Status <span class="sort-icon">↕</span></th>
                     <th class="sortable-th date-column" data-sort-type="date">Date <span class="sort-icon">↕</span></th>
-                    <th class="sortable-th" data-sort-type="text">Description <span class="sort-icon">↕</span></th>
+                    <th class="sortable-th" data-sort-type="text">Assigned User Name <span class="sort-icon">↕</span></th>
                     <th class="text-end">Actions</th>
 
                 </tr>
@@ -896,29 +896,38 @@ body > .asset-action-menu .dropdown-item i {
                     </td>
 
 
-                    <!-- Assigned Employee / Description -->
+                    <!-- Assigned Employee / Repair Description -->
                     <td>
+
                         {% if status_value in ['Repair', 'Under Repair'] %}
 
-                        <div class="repair-description-cell" data-asset-id="{{ ast.id }}">
-                            <div class="fw-bold text-dark">
-                                <i class="fas fa-wrench me-1 text-warning"></i>
-                                Description
-                            </div>
-                            <small class="text-muted repair-description-text">No repair description</small>
+                        <div class="fw-bold text-dark">
+                            <i class="fas fa-wrench me-1 text-warning"></i>
+                            Repair Description
                         </div>
+
+                        <small class="text-muted" style="white-space: normal; word-break: break-word;">
+                            {{ repair_descriptions.get(ast.id) or 'No repair description' }}
+                        </small>
 
                         {% elif ast.assigned_employee %}
 
                         <div class="fw-bold text-dark">
+
                             <i class="fas fa-user me-1 text-primary"></i>
+
                             {{ ast.assigned_employee.name }}
+
                         </div>
 
                         <small class="text-muted">
+
                             {{ ast.assigned_employee.employee_id }}
+
                             &bull;
+
                             {{ ast.assigned_employee.department }}
+
                         </small>
 
                         {% else %}
@@ -928,6 +937,7 @@ body > .asset-action-menu .dropdown-item i {
                         </span>
 
                         {% endif %}
+
                     </td>
 
 
@@ -4386,31 +4396,3 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 {% endblock %}
-
-<script>
-/* Show the exact repair description saved when the laptop was sent to repair. */
-document.addEventListener("DOMContentLoaded", function () {
-    document.querySelectorAll(".repair-description-cell").forEach(function (cell) {
-        const assetId = cell.getAttribute("data-asset-id");
-        const textElement = cell.querySelector(".repair-description-text");
-        if (!assetId || !textElement) return;
-
-        fetch("/assets/" + encodeURIComponent(assetId) + "/repair-description", {
-            method: "GET",
-            headers: {"Accept": "application/json"},
-            credentials: "same-origin"
-        })
-        .then(function (response) {
-            if (!response.ok) throw new Error("Unable to load repair description");
-            return response.json();
-        })
-        .then(function (data) {
-            const description = (data.description || "").trim();
-            textElement.textContent = description || "No repair description";
-        })
-        .catch(function () {
-            textElement.textContent = "No repair description";
-        });
-    });
-});
-</script>
