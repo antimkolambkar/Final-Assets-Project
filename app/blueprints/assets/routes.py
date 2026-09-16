@@ -15,6 +15,7 @@ assets_bp = Blueprint('assets', __name__, url_prefix='/assets')
 # ---------------------------------------------------------
 # ALLOWED VENDORS FOR VENDOR RETURN
 # ---------------------------------------------------------
+
 ALLOWED_VENDOR_RETURN_NAMES = {
     'Techvity',
     'Spurge',
@@ -36,8 +37,9 @@ ALLOWED_VENDOR_RETURN_NAMES_NORMALIZED = {
 
 
 # ---------------------------------------------------------
-# ASSET ID GENERATION
+# GENERATE ASSET ID
 # ---------------------------------------------------------
+
 def generate_asset_id():
     year = datetime.utcnow().strftime('%Y')
     count = Asset.query.count() + 1
@@ -45,8 +47,9 @@ def generate_asset_id():
 
 
 # ---------------------------------------------------------
-# VENDOR TICKET NUMBER GENERATION
+# GENERATE VENDOR TICKET NUMBER
 # ---------------------------------------------------------
+
 def generate_vendor_ticket_num():
     year = datetime.utcnow().strftime('%Y')
     count = VendorRepairTicket.query.count() + 1
@@ -56,6 +59,7 @@ def generate_vendor_ticket_num():
 # =========================================================
 # ASSET INVENTORY
 # =========================================================
+
 @assets_bp.route('/')
 @login_required
 def index():
@@ -70,22 +74,27 @@ def index():
     # -----------------------------------------------------
     # SEARCH
     # -----------------------------------------------------
+
     if search_q:
+
         query = query.join(
             Employee,
             Asset.assigned_employee_id == Employee.id,
             isouter=True
         ).filter(
+
             (Asset.asset_id.ilike(f'%{search_q}%')) |
             (Asset.brand.ilike(f'%{search_q}%')) |
             (Asset.model.ilike(f'%{search_q}%')) |
             (Asset.serial_number.ilike(f'%{search_q}%')) |
             (Employee.name.ilike(f'%{search_q}%'))
+
         )
 
     # -----------------------------------------------------
     # STATUS FILTER
     # -----------------------------------------------------
+
     if status_filter:
         query = query.filter(
             Asset.status == status_filter
@@ -94,6 +103,7 @@ def index():
     # -----------------------------------------------------
     # VENDOR FILTER
     # -----------------------------------------------------
+
     if vendor_filter:
         query = query.filter(
             Asset.vendor_id == vendor_filter
@@ -102,6 +112,7 @@ def index():
     # -----------------------------------------------------
     # PAGINATION
     # -----------------------------------------------------
+
     pagination = (
         query
         .order_by(Asset.id.desc())
@@ -115,8 +126,9 @@ def index():
     assets = pagination.items
 
     # -----------------------------------------------------
-    # DROPDOWN DATA
+    # COMMON DATA
     # -----------------------------------------------------
+
     vendors = (
         Vendor.query
         .order_by(Vendor.name.asc())
@@ -147,16 +159,38 @@ def index():
     )
 
     # =====================================================
-    # DATE TRACKING
+    # DATE / RETURN HISTORY
     # =====================================================
 
     repair_start_dates = {}
     repair_completion_dates = {}
+
+    # -----------------------------------------------------
+    # IMPORTANT:
+    #
+    # available_dates:
+    #     Stores the date when the laptop became Available.
+    #
+    # available_returned_by:
+    #     Stores the employee who returned the laptop.
+    #
+    # Example:
+    #
+    # Employee Jonishh returns laptop
+    #
+    # Status  -> Available
+    # Date    -> Return history timestamp
+    # User    -> Returned by Jonishh
+    #
+    # This does NOT use Asset.created_at.
+    # -----------------------------------------------------
+
     available_dates = {}
+    available_returned_by = {}
 
     if assets:
 
-        page_asset_ids = [
+        asset_ids = [
             asset.id
             for asset in assets
         ]
@@ -164,9 +198,7 @@ def index():
         history_rows = (
             AssetAssignmentHistory.query
             .filter(
-                AssetAssignmentHistory.asset_id.in_(
-                    page_asset_ids
-                )
+                AssetAssignmentHistory.asset_id.in_(asset_ids)
             )
             .order_by(
                 AssetAssignmentHistory.timestamp.asc(),
@@ -175,11 +207,16 @@ def index():
             .all()
         )
 
+        # -------------------------------------------------
+        # PROCESS HISTORY
+        # -------------------------------------------------
+
         for history in history_rows:
 
-            # -------------------------------------------------
-            # SENT TO REPAIR
-            # -------------------------------------------------
+            # ---------------------------------------------
+            # LAPTOP SENT TO REPAIR
+            # ---------------------------------------------
+
             if history.action == 'Sent to Repair':
 
                 repair_start_dates.setdefault(
@@ -187,61 +224,52 @@ def index():
                     history.timestamp
                 )
 
-            # -------------------------------------------------
+            # ---------------------------------------------
             # REPAIR COMPLETED
-            # -------------------------------------------------
+            #
+            # Laptop becomes Available after repair.
+            # ---------------------------------------------
+
             elif history.action == 'Repair Completed':
 
                 repair_completion_dates[
                     history.asset_id
                 ] = history.timestamp
 
-                # Once repair is completed the laptop becomes
-                # Available, so this is the Available date.
                 available_dates[
                     history.asset_id
                 ] = history.timestamp
 
-            # -------------------------------------------------
-            # RETURNED FROM EMPLOYEE
-            # -------------------------------------------------
-            elif history.action in [
-                'Returned',
-                'Returned (Auto Offboarded)'
-            ]:
+                # It was not returned by an employee.
+                available_returned_by.pop(
+                    history.asset_id,
+                    None
+                )
 
-                # Once returned from an employee the laptop
-                # becomes Available.
+            # ---------------------------------------------
+            # EMPLOYEE RETURNED LAPTOP
+            #
+            # THIS IS THE IMPORTANT PART.
+            #
+            # Example:
+            # Jonishh returned laptop on 16-09-2026
+            #
+            # history.timestamp
+            #     = 16-09-2026
+            #
+            # history.employee_name
+            #     = Jonishh
+            # ---------------------------------------------
+
+            elif history.action == 'Returned':
+
                 available_dates[
                     history.asset_id
                 ] = history.timestamp
 
-        # -----------------------------------------------------
-        # NEW STOCK LAPTOPS
-        # -----------------------------------------------------
-        #
-        # If an Available laptop has never been assigned,
-        # returned, or repaired, use its created_at date.
-        #
-        # getattr() is used so this will not crash if an older
-        # Asset model does not have created_at.
-        #
-        for asset in assets:
-
-            if asset.status == AssetStatus.AVAILABLE:
-
-                if asset.id not in available_dates:
-
-                    created_date = getattr(
-                        asset,
-                        'created_at',
-                        None
-                    )
-
-                    if created_date:
-                        available_dates[
-                            asset.id
-                        ] = created_date
+                available_returned_by[
+                    history.asset_id
+                ] = history.employee_name or 'Unknown Employee'
 
     # =====================================================
     # REPAIR DESCRIPTIONS
@@ -262,11 +290,12 @@ def index():
         )
     ]
 
+    # -----------------------------------------------------
+    # GET DESCRIPTION FROM REPAIR TICKET
+    # -----------------------------------------------------
+
     if repair_asset_ids:
 
-        # -------------------------------------------------
-        # FIRST: CHECK REPAIR TICKETS
-        # -------------------------------------------------
         repair_tickets = (
             VendorRepairTicket.query
             .filter(
@@ -293,8 +322,9 @@ def index():
                 ] = ticket.notes.strip()
 
         # -------------------------------------------------
-        # FALLBACK TO REPAIR HISTORY
+        # FALLBACK TO HISTORY
         # -------------------------------------------------
+
         missing_ids = [
             asset_id
             for asset_id in repair_asset_ids
@@ -309,8 +339,7 @@ def index():
                     AssetAssignmentHistory.asset_id.in_(
                         missing_ids
                     ),
-                    AssetAssignmentHistory.action
-                    == 'Sent to Repair'
+                    AssetAssignmentHistory.action == 'Sent to Repair'
                 )
                 .order_by(
                     AssetAssignmentHistory.timestamp.desc(),
@@ -330,10 +359,11 @@ def index():
 
                 if 'Notes:' in notes:
 
-                    notes = notes.rsplit(
-                        'Notes:',
-                        1
-                    )[1].strip()
+                    notes = (
+                        notes
+                        .rsplit('Notes:', 1)[1]
+                        .strip()
+                    )
 
                 if notes:
 
@@ -342,7 +372,7 @@ def index():
                     ] = notes
 
     # =====================================================
-    # RENDER ASSET INVENTORY
+    # RENDER PAGE
     # =====================================================
 
     return render_template(
@@ -366,15 +396,20 @@ def index():
 
         assigned_assets=assigned_assets,
 
-        # Repair dates
         repair_start_dates=repair_start_dates,
 
         repair_completion_dates=repair_completion_dates,
 
-        # Available / Stock dates
+        # IMPORTANT:
+        # Used by Available/Stock Date column.
         available_dates=available_dates,
 
-        # Repair descriptions
+        # IMPORTANT:
+        # Used to show:
+        # "Returned by Jonishh"
+        available_returned_by=available_returned_by,
+
+        # Used for Under Repair description.
         repair_descriptions=repair_descriptions
     )
 
@@ -382,6 +417,7 @@ def index():
 # =========================================================
 # ADD ASSET
 # =========================================================
+
 @assets_bp.route('/add', methods=['POST'])
 @login_required
 def add_asset():
@@ -433,8 +469,9 @@ def add_asset():
     )
 
     # -----------------------------------------------------
-    # REQUIRED FIELDS
+    # VALIDATION
     # -----------------------------------------------------
+
     if not all([
         brand,
         model,
@@ -455,8 +492,9 @@ def add_asset():
         )
 
     # -----------------------------------------------------
-    # SERIAL NUMBER UNIQUENESS
+    # SERIAL NUMBER CHECK
     # -----------------------------------------------------
+
     existing = (
         Asset.query
         .filter_by(
@@ -479,34 +517,56 @@ def add_asset():
     # -----------------------------------------------------
     # CREATE ASSET
     # -----------------------------------------------------
+
     asset_id = generate_asset_id()
 
     new_asset = Asset(
+
         asset_id=asset_id,
+
         brand=brand,
+
         model=model,
+
         serial_number=serial_number,
+
         processor=processor,
+
         ram=ram,
+
         ssd=ssd,
+
         vendor_id=vendor_id,
+
         status=AssetStatus.AVAILABLE
+
     )
 
-    db.session.add(new_asset)
+    db.session.add(
+        new_asset
+    )
 
     db.session.commit()
 
+    # -----------------------------------------------------
+    # AUDIT
+    # -----------------------------------------------------
+
     AuditService.log(
+
         action='Asset Created',
+
         entity_type='Asset',
+
         entity_id=new_asset.asset_id,
+
         details=(
             f'Added new asset '
             f'{new_asset.brand} '
             f'{new_asset.model} '
             f'(SN: {new_asset.serial_number})'
         )
+
     )
 
     flash(
@@ -522,6 +582,7 @@ def add_asset():
 # =========================================================
 # EDIT ASSET
 # =========================================================
+
 @assets_bp.route('/edit/<int:asset_id>', methods=['POST'])
 @login_required
 def edit_asset(asset_id):
@@ -580,13 +641,18 @@ def edit_asset(asset_id):
     db.session.commit()
 
     AuditService.log(
+
         action='Asset Updated',
+
         entity_type='Asset',
+
         entity_id=asset.asset_id,
+
         details=(
             f'Updated specifications '
             f'for asset {asset.asset_id}'
         )
+
     )
 
     flash(
@@ -602,6 +668,7 @@ def edit_asset(asset_id):
 # =========================================================
 # DELETE ASSET
 # =========================================================
+
 @assets_bp.route('/delete/<int:asset_id>', methods=['POST'])
 @login_required
 def delete_asset(asset_id):
@@ -624,7 +691,9 @@ def delete_asset(asset_id):
     if asset.status == AssetStatus.ASSIGNED:
 
         flash(
-            f'Cannot delete asset {asset.asset_id} while it is assigned to an employee. Return it first.',
+            f'Cannot delete asset {asset.asset_id} '
+            'while it is assigned to an employee. '
+            'Return it first.',
             'warning'
         )
 
@@ -634,15 +703,22 @@ def delete_asset(asset_id):
 
     aid = asset.asset_id
 
-    db.session.delete(asset)
+    db.session.delete(
+        asset
+    )
 
     db.session.commit()
 
     AuditService.log(
+
         action='Asset Deleted',
+
         entity_type='Asset',
+
         entity_id=aid,
+
         details=f'Deleted asset {aid}'
+
     )
 
     flash(
@@ -658,6 +734,7 @@ def delete_asset(asset_id):
 # =========================================================
 # ASSIGN ASSET
 # =========================================================
+
 @assets_bp.route('/assign', methods=['POST'])
 @login_required
 def assign_asset():
@@ -699,7 +776,8 @@ def assign_asset():
     if asset.status != AssetStatus.AVAILABLE:
 
         flash(
-            f'Asset {asset.asset_id} is currently {asset.status} and cannot be assigned.',
+            f'Asset {asset.asset_id} is currently '
+            f'{asset.status} and cannot be assigned.',
             'warning'
         )
 
@@ -710,7 +788,8 @@ def assign_asset():
     if employee.account_status == AccountStatus.OFFBOARDED:
 
         flash(
-            f'Cannot assign asset to offboarded employee {employee.name}.',
+            f'Cannot assign asset to offboarded employee '
+            f'{employee.name}.',
             'danger'
         )
 
@@ -721,6 +800,7 @@ def assign_asset():
     # -----------------------------------------------------
     # ASSIGN
     # -----------------------------------------------------
+
     asset.status = AssetStatus.ASSIGNED
 
     asset.assigned_employee_id = employee.id
@@ -730,37 +810,49 @@ def assign_asset():
     # -----------------------------------------------------
     # HISTORY
     # -----------------------------------------------------
+
     hist = AssetAssignmentHistory(
+
         asset_id=asset.id,
+
         employee_id=employee.id,
+
         employee_name=employee.name,
+
         action='Assigned',
+
         notes=(
             notes
             or
             f'Assigned to {employee.name} '
             f'({employee.employee_id})'
         ),
+
         performed_by=current_user.full_name
+
     )
 
-    db.session.add(hist)
+    db.session.add(
+        hist
+    )
 
     db.session.commit()
 
-    # -----------------------------------------------------
-    # AUDIT
-    # -----------------------------------------------------
     AuditService.log(
+
         action='Asset Assigned',
+
         entity_type='Asset',
+
         entity_id=asset.asset_id,
+
         details=(
             f'Assigned {asset.asset_id} '
             f'({asset.brand} {asset.model}) '
             f'to employee {employee.name} '
             f'({employee.employee_id})'
         )
+
     )
 
     flash(
@@ -776,6 +868,7 @@ def assign_asset():
 # =========================================================
 # RETURN ASSET FROM EMPLOYEE
 # =========================================================
+
 @assets_bp.route('/return/<int:asset_id>', methods=['POST'])
 @login_required
 def return_asset(asset_id):
@@ -809,6 +902,10 @@ def return_asset(asset_id):
             url_for('assets.index')
         )
 
+    # -----------------------------------------------------
+    # SAVE EMPLOYEE INFORMATION BEFORE UNASSIGNING
+    # -----------------------------------------------------
+
     emp_name = asset.assigned_employee.name
 
     emp_id = asset.assigned_employee.id
@@ -819,8 +916,9 @@ def return_asset(asset_id):
     ).strip()
 
     # -----------------------------------------------------
-    # MOVE TO AVAILABLE
+    # RETURN LAPTOP
     # -----------------------------------------------------
+
     asset.status = AssetStatus.AVAILABLE
 
     asset.assigned_employee_id = None
@@ -829,35 +927,57 @@ def return_asset(asset_id):
 
     # -----------------------------------------------------
     # HISTORY
+    #
+    # timestamp is automatically recorded by
+    # AssetAssignmentHistory.
+    #
+    # This timestamp is later used as the
+    # Available/Stock Date.
     # -----------------------------------------------------
+
     hist = AssetAssignmentHistory(
+
         asset_id=asset.id,
+
         employee_id=emp_id,
+
         employee_name=emp_name,
+
         action='Returned',
+
         notes=(
             notes
             or
             f'Returned from {emp_name}'
         ),
+
         performed_by=current_user.full_name
+
     )
 
-    db.session.add(hist)
+    db.session.add(
+        hist
+    )
 
     db.session.commit()
 
     # -----------------------------------------------------
     # AUDIT
     # -----------------------------------------------------
+
     AuditService.log(
+
         action='Asset Returned',
+
         entity_type='Asset',
+
         entity_id=asset.asset_id,
+
         details=(
             f'Returned asset {asset.asset_id} '
             f'from {emp_name}'
         )
+
     )
 
     flash(
@@ -873,13 +993,16 @@ def return_asset(asset_id):
 # =========================================================
 # REPLACE ASSET
 # =========================================================
+
 @assets_bp.route('/replace', methods=['POST'])
 @login_required
 def replace_asset():
 
     """
     Multi-replacement workflow:
-    Swaps an existing assigned laptop with a new available laptop.
+
+    Existing assigned laptop is replaced
+    with a new available laptop.
     """
 
     if not current_user.is_it_admin:
@@ -909,10 +1032,7 @@ def replace_asset():
     ).strip()
 
     return_to_repair = (
-        request.form.get(
-            'return_to_repair'
-        )
-        == 'on'
+        request.form.get('return_to_repair') == 'on'
     )
 
     old_asset = Asset.query.get_or_404(
@@ -929,7 +1049,8 @@ def replace_asset():
     ):
 
         flash(
-            f'Old asset {old_asset.asset_id} must be currently assigned.',
+            f'Old asset {old_asset.asset_id} '
+            'must be currently assigned.',
             'warning'
         )
 
@@ -940,7 +1061,8 @@ def replace_asset():
     if new_asset.status != AssetStatus.AVAILABLE:
 
         flash(
-            f'Replacement asset {new_asset.asset_id} must be Available.',
+            f'Replacement asset {new_asset.asset_id} '
+            'must be Available.',
             'warning'
         )
 
@@ -951,8 +1073,9 @@ def replace_asset():
     employee = old_asset.assigned_employee
 
     # -----------------------------------------------------
-    # UNASSIGN OLD ASSET
+    # OLD LAPTOP
     # -----------------------------------------------------
+
     old_asset.status = (
         AssetStatus.REPAIR
         if return_to_repair
@@ -964,8 +1087,9 @@ def replace_asset():
     old_asset.assignment_date = None
 
     # -----------------------------------------------------
-    # ASSIGN NEW ASSET
+    # NEW LAPTOP
     # -----------------------------------------------------
+
     new_asset.status = AssetStatus.ASSIGNED
 
     new_asset.assigned_employee_id = employee.id
@@ -975,47 +1099,66 @@ def replace_asset():
     # -----------------------------------------------------
     # HISTORY
     # -----------------------------------------------------
+
     hist = AssetAssignmentHistory(
+
         asset_id=new_asset.id,
+
         employee_id=employee.id,
+
         employee_name=employee.name,
+
         action='Replaced',
+
         old_asset_id=old_asset.id,
+
         new_asset_id=new_asset.id,
+
         replacement_reason=(
             reason
             or
             'Laptop replacement request'
         ),
+
         notes=(
-            f'Replaced laptop {old_asset.asset_id} '
+            f'Replaced laptop '
+            f'{old_asset.asset_id} '
             f'with {new_asset.asset_id} '
             f'for {employee.name}. '
-            f'Reason: {reason or "N/A"}'
+            f'Reason: '
+            f'{reason or "N/A"}'
         ),
+
         performed_by=current_user.full_name
+
     )
 
-    db.session.add(hist)
+    db.session.add(
+        hist
+    )
 
     db.session.commit()
 
-    # -----------------------------------------------------
-    # AUDIT
-    # -----------------------------------------------------
     AuditService.log(
+
         action='Asset Replaced',
+
         entity_type='Asset',
+
         entity_id=new_asset.asset_id,
+
         details=(
-            f'Replaced asset {old_asset.asset_id} '
+            f'Replaced asset '
+            f'{old_asset.asset_id} '
             f'with {new_asset.asset_id} '
             f'for employee {employee.name}'
         )
+
     )
 
     flash(
-        f'Successfully replaced asset {old_asset.asset_id} '
+        f'Successfully replaced asset '
+        f'{old_asset.asset_id} '
         f'with {new_asset.asset_id} '
         f'for {employee.name}!',
         'success'
@@ -1029,10 +1172,8 @@ def replace_asset():
 # =========================================================
 # COMPLETE REPAIR
 # =========================================================
-@assets_bp.route(
-    '/repair/complete/<int:asset_id>',
-    methods=['POST']
-)
+
+@assets_bp.route('/repair/complete/<int:asset_id>', methods=['POST'])
 @login_required
 def complete_repair(asset_id):
 
@@ -1070,6 +1211,7 @@ def complete_repair(asset_id):
     # -----------------------------------------------------
     # REPAIR -> AVAILABLE
     # -----------------------------------------------------
+
     asset.status = AssetStatus.AVAILABLE
 
     asset.assigned_employee_id = None
@@ -1079,30 +1221,44 @@ def complete_repair(asset_id):
     # -----------------------------------------------------
     # HISTORY
     # -----------------------------------------------------
+
     hist = AssetAssignmentHistory(
+
         asset_id=asset.id,
+
         action='Repair Completed',
+
         notes=(
             notes
             or
             'Repair completed and laptop moved to Available.'
         ),
+
         performed_by=current_user.full_name
+
     )
 
-    db.session.add(hist)
+    db.session.add(
+        hist
+    )
 
     # -----------------------------------------------------
     # AUDIT
     # -----------------------------------------------------
+
     AuditService.log(
+
         action='Asset Repair Completed',
+
         entity_type='Asset',
+
         entity_id=asset.asset_id,
+
         details=(
             f'Asset {asset.asset_id} repair completed '
             'and moved to Available status.'
         )
+
     )
 
     db.session.commit()
@@ -1120,6 +1276,7 @@ def complete_repair(asset_id):
 # =========================================================
 # SEND ASSET TO REPAIR
 # =========================================================
+
 @assets_bp.route('/repair', methods=['POST'])
 @login_required
 def send_to_repair():
@@ -1150,6 +1307,10 @@ def send_to_repair():
         ''
     ).strip()
 
+    # -----------------------------------------------------
+    # VALIDATE ASSET ID
+    # -----------------------------------------------------
+
     if not asset_id:
 
         flash(
@@ -1160,6 +1321,10 @@ def send_to_repair():
         return redirect(
             url_for('assets.index')
         )
+
+    # -----------------------------------------------------
+    # VALIDATE VENDOR
+    # -----------------------------------------------------
 
     if not vendor_id:
 
@@ -1181,12 +1346,14 @@ def send_to_repair():
     )
 
     # -----------------------------------------------------
-    # ASSIGNED ASSET CHECK
+    # ASSIGNED CHECK
     # -----------------------------------------------------
+
     if asset.status == AssetStatus.ASSIGNED:
 
         flash(
-            f'Cannot send assigned asset {asset.asset_id} directly to repair. '
+            f'Cannot send assigned asset '
+            f'{asset.asset_id} directly to repair. '
             'Return it or replace it first.',
             'warning'
         )
@@ -1198,6 +1365,7 @@ def send_to_repair():
     # -----------------------------------------------------
     # VENDOR RETURN CHECK
     # -----------------------------------------------------
+
     if asset.status == AssetStatus.RETURNED_TO_VENDOR:
 
         flash(
@@ -1210,20 +1378,29 @@ def send_to_repair():
         )
 
     # -----------------------------------------------------
-    # MOVE TO REPAIR
+    # CHANGE STATUS
     # -----------------------------------------------------
+
     asset.status = AssetStatus.REPAIR
 
     # -----------------------------------------------------
     # CREATE REPAIR TICKET
     # -----------------------------------------------------
+
     repair_ticket = VendorRepairTicket(
+
         vendor_ticket_number=generate_vendor_ticket_num(),
+
         asset_id=asset.id,
+
         vendor_id=vendor.id,
+
         repair_status=RepairStatus.SENT,
+
         sent_date=datetime.utcnow(),
+
         notes=notes
+
     )
 
     db.session.add(
@@ -1233,42 +1410,61 @@ def send_to_repair():
     # -----------------------------------------------------
     # REPAIR HISTORY
     # -----------------------------------------------------
+
     hist = AssetAssignmentHistory(
+
         asset_id=asset.id,
+
         action='Sent to Repair',
+
         notes=(
             f'Sent to Vendor {vendor.name} '
             f'under repair ticket '
             f'#{repair_ticket.vendor_ticket_number}. '
             f'Notes: {notes}'
         ),
+
         performed_by=current_user.full_name
+
     )
 
-    db.session.add(hist)
+    db.session.add(
+        hist
+    )
 
     db.session.commit()
 
     # -----------------------------------------------------
     # AUDIT
     # -----------------------------------------------------
+
     AuditService.log(
+
         action='Asset Sent to Repair',
+
         entity_type='Asset',
+
         entity_id=asset.asset_id,
+
         details=(
-            f'Dispatched asset {asset.asset_id} '
+            f'Dispatched asset '
+            f'{asset.asset_id} '
             f'to vendor {vendor.name} '
             f'(Repair Ticket: '
             f'{repair_ticket.vendor_ticket_number})'
         )
+
     )
 
     flash(
+
         f'Asset {asset.asset_id} sent to Vendor '
         f'{vendor.name} for repair. '
-        f'(Ticket: {repair_ticket.vendor_ticket_number})',
+        f'(Ticket: '
+        f'{repair_ticket.vendor_ticket_number})',
+
         'success'
+
     )
 
     return redirect(
@@ -1279,6 +1475,7 @@ def send_to_repair():
 # =========================================================
 # ASSET HISTORY
 # =========================================================
+
 @assets_bp.route('/<int:asset_id>/history')
 @login_required
 def get_asset_history(asset_id):
@@ -1349,6 +1546,7 @@ def get_asset_history(asset_id):
                     '%Y-%m-%d %H:%M'
                 )
             )
+
         })
 
     return jsonify({
@@ -1356,8 +1554,7 @@ def get_asset_history(asset_id):
         'asset_id': asset.asset_id,
 
         'brand_model': (
-            f"{asset.brand} "
-            f"{asset.model}"
+            f"{asset.brand} {asset.model}"
         ),
 
         'serial_number': asset.serial_number,
@@ -1365,22 +1562,22 @@ def get_asset_history(asset_id):
         'assigned_user': asset.assigned_user_name,
 
         'history': h_data
+
     })
 
 
 # =========================================================
-# RETURN ASSET TO VENDOR
+# RETURN TO VENDOR
 # =========================================================
-@assets_bp.route(
-    '/return-to-vendor',
-    methods=['POST']
-)
+
+@assets_bp.route('/return-to-vendor', methods=['POST'])
 @login_required
 def return_to_vendor():
 
     # -----------------------------------------------------
     # IT ADMIN PERMISSION
     # -----------------------------------------------------
+
     if not current_user.is_it_admin:
 
         flash(
@@ -1395,6 +1592,7 @@ def return_to_vendor():
     # -----------------------------------------------------
     # GET FORM DATA
     # -----------------------------------------------------
+
     asset_id = request.form.get(
         'asset_id',
         type=int
@@ -1418,6 +1616,7 @@ def return_to_vendor():
     # -----------------------------------------------------
     # VALIDATE ASSET
     # -----------------------------------------------------
+
     if not asset_id:
 
         flash(
@@ -1436,6 +1635,7 @@ def return_to_vendor():
     # -----------------------------------------------------
     # VALIDATE VENDOR
     # -----------------------------------------------------
+
     if not vendor_id:
 
         flash(
@@ -1452,19 +1652,22 @@ def return_to_vendor():
     )
 
     # -----------------------------------------------------
-    # ALLOWED VENDOR VALIDATION
+    # ALLOWED VENDORS
     # -----------------------------------------------------
+
     normalized_vendor_name = normalize_vendor_name(
         vendor.name
     )
 
     if (
         normalized_vendor_name
-        not in ALLOWED_VENDOR_RETURN_NAMES_NORMALIZED
+        not in
+        ALLOWED_VENDOR_RETURN_NAMES_NORMALIZED
     ):
 
         flash(
-            f'Vendor "{vendor.name}" is not allowed for vendor return.',
+            f'Vendor "{vendor.name}" '
+            'is not allowed for vendor return.',
             'danger'
         )
 
@@ -1475,11 +1678,13 @@ def return_to_vendor():
     # -----------------------------------------------------
     # CHECK ASSET STATUS
     # -----------------------------------------------------
+
     if asset.status == AssetStatus.ASSIGNED:
 
         flash(
-            f'Cannot return assigned asset {asset.asset_id} '
-            'to vendor. Return it from the employee first.',
+            f'Cannot return assigned asset '
+            f'{asset.asset_id} to vendor. '
+            'Return it from the employee first.',
             'warning'
         )
 
@@ -1490,7 +1695,8 @@ def return_to_vendor():
     if asset.status == AssetStatus.RETURNED_TO_VENDOR:
 
         flash(
-            f'Asset {asset.asset_id} has already been returned to vendor.',
+            f'Asset {asset.asset_id} '
+            'has already been returned to vendor.',
             'warning'
         )
 
@@ -1501,6 +1707,7 @@ def return_to_vendor():
     # -----------------------------------------------------
     # VALIDATE RETURN DATE
     # -----------------------------------------------------
+
     if not vendor_return_date_str:
 
         flash(
@@ -1533,6 +1740,7 @@ def return_to_vendor():
     # -----------------------------------------------------
     # VALIDATE REASON
     # -----------------------------------------------------
+
     if not reason:
 
         flash(
@@ -1547,11 +1755,11 @@ def return_to_vendor():
     # -----------------------------------------------------
     # UPDATE ASSET
     # -----------------------------------------------------
+
     asset.vendor_id = vendor.id
 
     asset.status = AssetStatus.RETURNED_TO_VENDOR
 
-    # Save selected vendor return date
     asset.vendor_return_date = vendor_return_date
 
     asset.vendor_return_reason = reason
@@ -1563,6 +1771,7 @@ def return_to_vendor():
     # -----------------------------------------------------
     # HISTORY
     # -----------------------------------------------------
+
     hist = AssetAssignmentHistory(
 
         asset_id=asset.id,
@@ -1578,13 +1787,17 @@ def return_to_vendor():
         ),
 
         performed_by=current_user.full_name
+
     )
 
-    db.session.add(hist)
+    db.session.add(
+        hist
+    )
 
     # -----------------------------------------------------
     # AUDIT LOG
     # -----------------------------------------------------
+
     AuditService.log(
 
         action='Asset Returned to Vendor',
@@ -1600,20 +1813,28 @@ def return_to_vendor():
             f'on {vendor_return_date_str}. '
             f'Reason: {reason}'
         )
+
     )
 
     # -----------------------------------------------------
-    # SAVE DATABASE
+    # SAVE
     # -----------------------------------------------------
+
     db.session.commit()
 
     # -----------------------------------------------------
     # SUCCESS
     # -----------------------------------------------------
+
     flash(
-        f'Asset {asset.asset_id} successfully returned to '
-        f'{vendor.name} on {vendor_return_date_str}.',
+
+        f'Asset {asset.asset_id} '
+        f'successfully returned to '
+        f'{vendor.name} '
+        f'on {vendor_return_date_str}.',
+
         'success'
+
     )
 
     return redirect(
