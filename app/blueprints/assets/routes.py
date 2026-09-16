@@ -528,19 +528,46 @@ def send_to_repair():
 @assets_bp.route('/<int:asset_id>/repair-description')
 @login_required
 def get_repair_description(asset_id):
+    """Return the exact description entered when the asset was sent to repair."""
     asset = Asset.query.get_or_404(asset_id)
-    repair_ticket = (
-        VendorRepairTicket.query
-        .filter_by(asset_id=asset.id)
+
+    # The repair history stores the exact text entered in the Send to Repair form.
+    history = (
+        AssetAssignmentHistory.query
+        .filter_by(asset_id=asset.id, action='Sent to Repair')
         .order_by(
-            VendorRepairTicket.sent_date.desc(),
-            VendorRepairTicket.id.desc()
+            AssetAssignmentHistory.timestamp.desc(),
+            AssetAssignmentHistory.id.desc()
         )
         .first()
     )
+
+    description = ''
+
+    if history and history.notes:
+        history_notes = history.notes.strip()
+        if 'Notes:' in history_notes:
+            description = history_notes.split('Notes:', 1)[1].strip()
+        else:
+            description = history_notes
+
+    # Fallback to the repair ticket notes for records where history is unavailable.
+    if not description:
+        repair_ticket = (
+            VendorRepairTicket.query
+            .filter_by(asset_id=asset.id)
+            .order_by(
+                VendorRepairTicket.sent_date.desc(),
+                VendorRepairTicket.id.desc()
+            )
+            .first()
+        )
+        if repair_ticket and repair_ticket.notes:
+            description = repair_ticket.notes.strip()
+
     return jsonify({
         'asset_id': asset.asset_id,
-        'description': (repair_ticket.notes or '').strip() if repair_ticket else ''
+        'description': description
     })
 
 
