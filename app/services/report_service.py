@@ -44,10 +44,7 @@ class ReportService:
         'disabled_employee': 'Disabled Employee Report',
         'offboarded_employee': 'Offboarding & Return Asset Report',
         'asset_history': 'Asset History & Replacement Log',
-
-        # NEW REPORT
         'replacement': 'Replacement Report',
-
         'audit': 'Audit Log Report'
     }
 
@@ -184,10 +181,16 @@ class ReportService:
 
                 emp = ast.assigned_employee
 
-                if department and emp and emp.department != department:
+                if department and (
+                    not emp or
+                    emp.department != department
+                ):
                     continue
 
-                if employee_id and emp and emp.id != employee_id:
+                if employee_id and (
+                    not emp or
+                    emp.id != employee_id
+                ):
                     continue
 
                 rows.append([
@@ -271,9 +274,15 @@ class ReportService:
 
                 rows.append([
                     ast.asset_id if ast else '-',
-                    f"{ast.brand} {ast.model}" if ast else '-',
+                    (
+                        f"{ast.brand} {ast.model}"
+                        if ast else '-'
+                    ),
                     ast.serial_number if ast else '-',
-                    vrt.vendor.name if vrt.vendor else '-',
+                    (
+                        vrt.vendor.name
+                        if vrt.vendor else '-'
+                    ),
                     vrt.repair_status,
                     vrt.sent_date.strftime(
                         '%Y-%m-%d'
@@ -314,28 +323,71 @@ class ReportService:
                     department=dept_name
                 ).count()
 
-                active = Employee.query.filter_by(
-                    department=dept_name,
-                    account_status=AccountStatus.ACTIVE
+                # Active + Onboarded are treated as active employees.
+                active_statuses = [
+                    AccountStatus.ACTIVE
+                ]
+
+                onboarded_status = getattr(
+                    AccountStatus,
+                    'ONBOARDED',
+                    None
+                )
+
+                if onboarded_status is not None:
+                    active_statuses.append(
+                        onboarded_status
+                    )
+
+                active = Employee.query.filter(
+                    Employee.department == dept_name,
+                    Employee.account_status.in_(
+                        active_statuses
+                    )
                 ).count()
+
+                # --------------------------------------------------
+                # Blocked / Disabled
+                # --------------------------------------------------
+                blocked_statuses = [
+                    AccountStatus.BLOCKED
+                ]
+
+                disabled_status = getattr(
+                    AccountStatus,
+                    'DISABLED',
+                    None
+                )
+
+                if disabled_status is not None:
+                    blocked_statuses.append(
+                        disabled_status
+                    )
 
                 blocked_dis = Employee.query.filter(
                     Employee.department == dept_name,
-                    Employee.account_status.in_([
-                        AccountStatus.BLOCKED,
-                        AccountStatus.DISABLED
-                    ])
+                    Employee.account_status.in_(
+                        blocked_statuses
+                    )
                 ).count()
 
+                # --------------------------------------------------
+                # Offboarded
+                # --------------------------------------------------
                 offboarded = Employee.query.filter_by(
                     department=dept_name,
                     account_status=AccountStatus.OFFBOARDED
                 ).count()
 
+                # --------------------------------------------------
+                # Assigned assets
+                # --------------------------------------------------
                 assigned_count = Asset.query.join(
-                    Employee
+                    Employee,
+                    Asset.assigned_employee_id == Employee.id
                 ).filter(
-                    Employee.department == dept_name
+                    Employee.department == dept_name,
+                    Asset.status == AssetStatus.ASSIGNED
                 ).count()
 
                 rows.append([
@@ -393,10 +445,17 @@ class ReportService:
                     ast.brand or '-',
                     ast.model or '-',
                     ast.serial_number or '-',
-                    ast.vendor.name if ast.vendor else '-',
-                    ast.vendor_return_date.strftime(
-                        '%Y-%m-%d %H:%M'
-                    ) if ast.vendor_return_date else '-',
+                    (
+                        ast.vendor.name
+                        if ast.vendor else '-'
+                    ),
+                    (
+                        ast.vendor_return_date.strftime(
+                            '%Y-%m-%d %H:%M'
+                        )
+                        if ast.vendor_return_date
+                        else '-'
+                    ),
                     ast.vendor_return_reason or '-',
                     ast.status
                 ])
@@ -490,6 +549,11 @@ class ReportService:
                     department=department
                 )
 
+            if employee_id:
+                query = query.filter_by(
+                    employee_id=employee_id
+                )
+
             for tkt in query.all():
 
                 emp = tkt.employee
@@ -502,17 +566,30 @@ class ReportService:
                     tkt.department or '-',
                     tkt.category,
                     tkt.priority,
-                    eng.full_name if eng else 'Unassigned',
-                    tkt.status,
-                    tkt.created_at.strftime(
-                        '%Y-%m-%d %H:%M'
+                    (
+                        eng.full_name
+                        if eng else 'Unassigned'
                     ),
-                    tkt.closed_at.strftime(
-                        '%Y-%m-%d %H:%M'
-                    ) if tkt.closed_at else '-',
-                    tkt.resolution_time_hours
-                    if tkt.resolution_time_hours
-                    else '-'
+                    tkt.status,
+                    (
+                        tkt.created_at.strftime(
+                            '%Y-%m-%d %H:%M'
+                        )
+                        if tkt.created_at
+                        else '-'
+                    ),
+                    (
+                        tkt.closed_at.strftime(
+                            '%Y-%m-%d %H:%M'
+                        )
+                        if tkt.closed_at
+                        else '-'
+                    ),
+                    (
+                        tkt.resolution_time_hours
+                        if tkt.resolution_time_hours
+                        else '-'
+                    )
                 ])
 
         # ==========================================================
@@ -523,14 +600,6 @@ class ReportService:
             'disabled_employee',
             'offboarded_employee'
         ]:
-
-            status_map = {
-                'blocked_employee': AccountStatus.BLOCKED,
-                'disabled_employee': AccountStatus.DISABLED,
-                'offboarded_employee': AccountStatus.OFFBOARDED
-            }
-
-            target_status = status_map[report_type]
 
             headers = [
                 'Employee ID',
@@ -543,6 +612,36 @@ class ReportService:
                 'Last Synced Date'
             ]
 
+            # ------------------------------------------------------
+            # BLOCKED
+            # ------------------------------------------------------
+            if report_type == 'blocked_employee':
+
+                target_status = AccountStatus.BLOCKED
+
+            # ------------------------------------------------------
+            # OFFBOARDED
+            # ------------------------------------------------------
+            elif report_type == 'offboarded_employee':
+
+                target_status = AccountStatus.OFFBOARDED
+
+            # ------------------------------------------------------
+            # DISABLED
+            # ------------------------------------------------------
+            else:
+
+                # The current AccountStatus may not yet contain
+                # DISABLED. Do not crash if it is missing.
+                target_status = getattr(
+                    AccountStatus,
+                    'DISABLED',
+                    None
+                )
+
+                if target_status is None:
+                    return title, headers, []
+
             query = Employee.query.filter_by(
                 account_status=target_status
             )
@@ -550,6 +649,11 @@ class ReportService:
             if department:
                 query = query.filter_by(
                     department=department
+                )
+
+            if employee_id:
+                query = query.filter_by(
+                    id=employee_id
                 )
 
             for emp in query.all():
@@ -562,13 +666,17 @@ class ReportService:
                     emp.designation or '-',
                     emp.office_location or '-',
                     emp.account_status,
-                    emp.last_synced_at.strftime(
-                        '%Y-%m-%d'
-                    ) if emp.last_synced_at else '-'
+                    (
+                        emp.last_synced_at.strftime(
+                            '%Y-%m-%d'
+                        )
+                        if emp.last_synced_at
+                        else '-'
+                    )
                 ])
 
         # ==========================================================
-        # NEW - REPLACEMENT REPORT
+        # REPLACEMENT REPORT
         # ==========================================================
         elif report_type == 'replacement':
 
@@ -589,7 +697,6 @@ class ReportService:
                 'Performed By'
             ]
 
-            # Only replacement records
             query = AssetAssignmentHistory.query.filter(
                 AssetAssignmentHistory.action == 'Replaced'
             )
@@ -663,63 +770,89 @@ class ReportService:
                 # --------------------------------------------------
                 if department:
 
-                    if not employee or employee.department != department:
+                    if (
+                        not employee or
+                        employee.department != department
+                    ):
                         continue
 
                 # --------------------------------------------------
                 # ADD REPORT ROW
                 # --------------------------------------------------
                 rows.append([
-                    h.timestamp.strftime(
-                        '%Y-%m-%d %H:%M'
-                    ) if h.timestamp else '-',
+                    (
+                        h.timestamp.strftime(
+                            '%Y-%m-%d %H:%M'
+                        )
+                        if h.timestamp
+                        else '-'
+                    ),
 
-                    h.employee_name
-                    or (
+                    h.employee_name or (
                         employee.name
                         if employee
                         else '-'
                     ),
 
-                    employee.employee_id
-                    if employee
-                    else '-',
+                    (
+                        employee.employee_id
+                        if employee
+                        else '-'
+                    ),
 
-                    old_asset.asset_id
-                    if old_asset
-                    else '-',
+                    (
+                        old_asset.asset_id
+                        if old_asset
+                        else '-'
+                    ),
 
-                    old_asset.brand
-                    if old_asset
-                    else '-',
+                    (
+                        old_asset.brand
+                        if old_asset
+                        else '-'
+                    ),
 
-                    old_asset.model
-                    if old_asset
-                    else '-',
+                    (
+                        old_asset.model
+                        if old_asset
+                        else '-'
+                    ),
 
-                    old_asset.serial_number
-                    if old_asset
-                    else '-',
+                    (
+                        old_asset.serial_number
+                        if old_asset
+                        else '-'
+                    ),
 
-                    new_asset.asset_id
-                    if new_asset
-                    else '-',
+                    (
+                        new_asset.asset_id
+                        if new_asset
+                        else '-'
+                    ),
 
-                    new_asset.brand
-                    if new_asset
-                    else '-',
+                    (
+                        new_asset.brand
+                        if new_asset
+                        else '-'
+                    ),
 
-                    new_asset.model
-                    if new_asset
-                    else '-',
+                    (
+                        new_asset.model
+                        if new_asset
+                        else '-'
+                    ),
 
-                    new_asset.serial_number
-                    if new_asset
-                    else '-',
+                    (
+                        new_asset.serial_number
+                        if new_asset
+                        else '-'
+                    ),
 
-                    vendor.name
-                    if vendor
-                    else '-',
+                    (
+                        vendor.name
+                        if vendor
+                        else '-'
+                    ),
 
                     h.replacement_reason
                     or h.notes
@@ -748,7 +881,9 @@ class ReportService:
 
             query = AssetAssignmentHistory.query
 
-            # Vendor filter
+            # ------------------------------------------------------
+            # VENDOR FILTER
+            # ------------------------------------------------------
             if vendor_id:
 
                 query = query.join(
@@ -758,7 +893,9 @@ class ReportService:
                     Asset.vendor_id == vendor_id
                 )
 
-            # Date filter
+            # ------------------------------------------------------
+            # DATE FILTER
+            # ------------------------------------------------------
             if start_date:
 
                 query = query.filter(
@@ -798,10 +935,18 @@ class ReportService:
                     h.employee_name or '-',
                     old_a,
                     new_a,
-                    h.notes or h.replacement_reason or '-',
+                    (
+                        h.notes
+                        or h.replacement_reason
+                        or '-'
+                    ),
                     h.performed_by or 'System',
-                    h.timestamp.strftime(
-                        '%Y-%m-%d %H:%M'
+                    (
+                        h.timestamp.strftime(
+                            '%Y-%m-%d %H:%M'
+                        )
+                        if h.timestamp
+                        else '-'
                     )
                 ])
 
@@ -837,8 +982,12 @@ class ReportService:
                     a.entity_id or '-',
                     a.ip_address or '-',
                     a.details or '-',
-                    a.timestamp.strftime(
-                        '%Y-%m-%d %H:%M:%S'
+                    (
+                        a.timestamp.strftime(
+                            '%Y-%m-%d %H:%M:%S'
+                        )
+                        if a.timestamp
+                        else '-'
                     )
                 ])
 
@@ -933,7 +1082,10 @@ class ReportService:
         ws.cell(
             row=2,
             column=1,
-            value=f"Generated on: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            value=(
+                "Generated on: "
+                f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            )
         )
 
         ws.cell(
@@ -1105,7 +1257,10 @@ class ReportService:
         ])
 
         writer.writerow([
-            f"# Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            (
+                "# Generated: "
+                f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            )
         ])
 
         writer.writerow([])
@@ -1193,7 +1348,10 @@ class ReportService:
 
         elements.append(
             Paragraph(
-                f"Generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}",
+                (
+                    "Generated on "
+                    f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                ),
                 subtitle_style
             )
         )
