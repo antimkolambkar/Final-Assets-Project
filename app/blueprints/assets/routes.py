@@ -81,6 +81,7 @@ def index():
     # Get the latest repair description for assets currently under repair.
     # This is passed directly to the template so it does not depend on AJAX.
     repair_descriptions = {}
+    repair_assigned_employees = {}
     repair_asset_ids = [asset.id for asset in assets if str(asset.status.value if hasattr(asset.status, 'value') else asset.status) in ('Repair', 'Under Repair')]
 
     if repair_asset_ids:
@@ -96,6 +97,38 @@ def index():
             )
             .all()
         )
+
+        # Find the employee who had the laptop before it went to repair.
+        # Repair normally clears assigned_employee_id, so the table needs
+        # the assignment history to continue showing the employee name.
+        employee_history = (
+            AssetAssignmentHistory.query
+            .filter(AssetAssignmentHistory.asset_id.in_(repair_asset_ids))
+            .filter(
+                (AssetAssignmentHistory.employee_id.isnot(None)) |
+                (AssetAssignmentHistory.employee_name.isnot(None))
+            )
+            .order_by(
+                AssetAssignmentHistory.timestamp.desc(),
+                AssetAssignmentHistory.id.desc()
+            )
+            .all()
+        )
+
+        for history in employee_history:
+            if history.asset_id in repair_assigned_employees:
+                continue
+
+            employee = None
+            if history.employee_id:
+                employee = db.session.get(Employee, history.employee_id)
+
+            if employee:
+                repair_assigned_employees[history.asset_id] = employee
+            elif history.employee_name:
+                # Keep the historical name available even if the employee
+                # record is no longer linked to the asset.
+                repair_assigned_employees[history.asset_id] = history.employee_name.strip()
 
         for history in repair_history:
             if history.asset_id in repair_descriptions:
@@ -158,7 +191,8 @@ def index():
         assigned_assets=assigned_assets,
         repair_start_dates=repair_start_dates,
         repair_completion_dates=repair_completion_dates,
-        repair_descriptions=repair_descriptions
+        repair_descriptions=repair_descriptions,
+        repair_assigned_employees=repair_assigned_employees
     )
 
 
