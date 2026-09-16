@@ -896,39 +896,38 @@ body > .asset-action-menu .dropdown-item i {
                     </td>
 
 
-                    <!-- Assigned Employee -->
+                    <!-- Assigned Employee / Repair Description -->
                     <td>
+                        {% if status_value in ['Repair', 'Under Repair'] %}
 
-                        {% if ast.assigned_employee %}
+                        <div class="repair-description-cell" data-asset-id="{{ ast.id }}">
+                            <div class="fw-bold text-dark">
+                                <i class="fas fa-wrench me-1 text-warning"></i>
+                                Repair Description
+                            </div>
+                            <small class="text-muted repair-description-text">Loading...</small>
+                        </div>
+
+                        {% elif ast.assigned_employee %}
 
                         <div class="fw-bold text-dark">
-
                             <i class="fas fa-user me-1 text-primary"></i>
-
                             {{ ast.assigned_employee.name }}
-
                         </div>
 
                         <small class="text-muted">
-
                             {{ ast.assigned_employee.employee_id }}
-
                             &bull;
-
                             {{ ast.assigned_employee.department }}
-
                         </small>
 
                         {% else %}
 
                         <span class="text-muted fs-7">
-
                             <em>Unassigned (In Stock)</em>
-
                         </span>
 
                         {% endif %}
-
                     </td>
 
 
@@ -4387,3 +4386,43 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 {% endblock %}
+
+<script>
+/* Show the repair description only for laptops currently Under Repair. */
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".repair-description-cell").forEach(function (cell) {
+        const assetId = cell.getAttribute("data-asset-id");
+        const textElement = cell.querySelector(".repair-description-text");
+        if (!assetId || !textElement) return;
+
+        fetch("/assets/" + encodeURIComponent(assetId) + "/history")
+            .then(function (response) {
+                if (!response.ok) throw new Error("Unable to load history");
+                return response.json();
+            })
+            .then(function (data) {
+                const history = Array.isArray(data.history) ? data.history : [];
+                const repairEntry = history.find(function (item) {
+                    return item.action === "Sent to Repair";
+                });
+
+                if (!repairEntry || !repairEntry.notes) {
+                    textElement.textContent = "No repair description";
+                    return;
+                }
+
+                let description = repairEntry.notes;
+                const marker = "Notes:";
+                const markerIndex = description.indexOf(marker);
+                if (markerIndex !== -1) {
+                    description = description.substring(markerIndex + marker.length).trim();
+                }
+
+                textElement.textContent = description || "No repair description";
+            })
+            .catch(function () {
+                textElement.textContent = "No repair description";
+            });
+    });
+});
+</script>
