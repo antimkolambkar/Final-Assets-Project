@@ -20,6 +20,134 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
     {% block extra_css %}{% endblock %}
+
+    <!-- Global Employee Search Popup -->
+    <style>
+        .global-search {
+            position: relative;
+            width: 515px;
+        }
+
+        .global-search > .fa-search {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 5;
+            color: #55708f;
+            font-size: 20px;
+            pointer-events: none;
+        }
+
+        .global-search .global-search-input {
+            width: 100%;
+            height: 48px;
+            border-radius: 28px;
+            border: 1px solid #d9e2ec;
+            padding-left: 48px;
+            padding-right: 18px;
+            background: #f8fafc;
+            font-size: 16px;
+        }
+
+        .global-search .global-search-input:focus {
+            background: #fff;
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .18);
+        }
+
+        .global-search-results {
+            position: absolute;
+            top: 56px;
+            left: 28px;
+            right: 0;
+            background: #fff;
+            border: 1px solid #e1e7ef;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 8px 24px rgba(20, 40, 70, .16);
+            max-height: 430px;
+            overflow-y: auto;
+            z-index: 2000;
+            display: none;
+        }
+
+        .global-search-results.show {
+            display: block;
+        }
+
+        .global-search-result {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            padding: 14px 18px;
+            text-decoration: none;
+            color: #172b4d;
+            background: #fff;
+            border: 0;
+            border-bottom: 1px solid #edf1f5;
+            text-align: left;
+            cursor: pointer;
+            transition: background .15s ease;
+        }
+
+        .global-search-result:last-child {
+            border-bottom: 0;
+        }
+
+        .global-search-result:hover,
+        .global-search-result:focus {
+            background: #f5f9ff;
+            outline: none;
+        }
+
+        .global-search-avatar {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            border-radius: 50%;
+            background: #eaf3ff;
+            color: #0d6efd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+        }
+
+        .global-search-name {
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+            color: #111827;
+        }
+
+        .global-search-meta {
+            margin-top: 3px;
+            color: #64748b;
+            font-size: 14px;
+            line-height: 1.3;
+        }
+
+        .global-search-department {
+            margin-top: 2px;
+            color: #7a8797;
+            font-size: 13px;
+        }
+
+        .global-search-loading,
+        .global-search-empty {
+            padding: 18px;
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        @media (max-width: 1100px) {
+            .global-search {
+                width: 430px;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -133,9 +261,6 @@
             </ul>
         </div>
 
-        <!-- /#sidebar-wrapper -->
-
-
         <!-- Page Content -->
         <div id="page-content-wrapper" class="flex-grow-1 d-flex flex-column">
 
@@ -145,25 +270,33 @@
                 <div class="d-flex align-items-center gap-3">
 
                     <!-- Global Search -->
-                    <div class="global-search d-none d-md-block">
+                    <div class="global-search d-none d-md-block" id="global-search-wrapper">
 
                         <i class="fas fa-search"></i>
 
-                        <form action="{{ url_for('assets.index') }}" method="GET">
+                        <form action="{{ url_for('assets.index') }}"
+                              method="GET"
+                              id="global-search-form">
 
                             <input type="text"
                                    name="q"
-                                   class="form-control employee-autocomplete"
-                                   data-autocomplete-url="{{ url_for('employees.get_employee_json', emp_id=0) }}"
+                                   id="global-search-input"
+                                   class="form-control global-search-input"
+                                   data-autocomplete-url="{{ url_for('employees.employee_autocomplete') }}"
                                    placeholder="Global search assets, tickets, employees..."
                                    autocomplete="off">
 
                         </form>
 
+                        <div id="global-search-results"
+                             class="global-search-results"
+                             role="listbox"
+                             aria-label="Search results">
+                        </div>
+
                     </div>
 
                 </div>
-
 
                 <div class="d-flex align-items-center gap-3">
 
@@ -176,7 +309,6 @@
                            class="fas fa-moon text-secondary"></i>
 
                     </button>
-
 
                     <!-- User Profile Menu -->
                     <div class="dropdown">
@@ -204,7 +336,6 @@
                             </span>
 
                         </button>
-
 
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0">
 
@@ -242,7 +373,6 @@
                 </div>
 
             </nav>
-
 
             <!-- Flash Messages Toast Container -->
             <div class="toast-container position-fixed top-0 end-0 p-3">
@@ -295,14 +425,12 @@
 
             </div>
 
-
             <!-- Main Body Content -->
             <main class="container-fluid p-4 flex-grow-1">
 
                 {% block content %}{% endblock %}
 
             </main>
-
 
             <!-- Footer -->
             <footer class="footer mt-auto py-3 bg-white border-top text-center text-muted small">
@@ -319,17 +447,13 @@
 
         </div>
 
-        <!-- /#page-content-wrapper -->
-
     </div>
-
 
     {% else %}
 
         {% block login_content %}{% endblock %}
 
     {% endif %}
-
 
     <!-- Bootstrap 5 JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -339,6 +463,199 @@
 
     <!-- Custom Main JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- Global Employee Search -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const input = document.getElementById('global-search-input');
+        const wrapper = document.getElementById('global-search-wrapper');
+        const resultsBox = document.getElementById('global-search-results');
+        const form = document.getElementById('global-search-form');
+
+        if (!input || !resultsBox || !wrapper) {
+            return;
+        }
+
+        const autocompleteUrl = input.dataset.autocompleteUrl;
+
+        let searchTimer = null;
+        let controller = null;
+
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = value == null ? '' : String(value);
+            return div.innerHTML;
+        }
+
+        function hideResults() {
+            resultsBox.classList.remove('show');
+            resultsBox.innerHTML = '';
+        }
+
+        function showMessage(message, icon) {
+            resultsBox.innerHTML = `
+                <div class="global-search-empty">
+                    <i class="${icon} me-2"></i>
+                    ${escapeHtml(message)}
+                </div>
+            `;
+            resultsBox.classList.add('show');
+        }
+
+        function showResults(employees) {
+
+            if (!employees || employees.length === 0) {
+                showMessage('No employee found', 'fas fa-user-slash');
+                return;
+            }
+
+            resultsBox.innerHTML = employees.map(function (emp) {
+
+                const name = emp.name || 'Unknown Employee';
+                const employeeId = emp.employee_id || '-';
+                const department = emp.department || '';
+
+                return `
+                    <a class="global-search-result"
+                       href="/employees?q=${encodeURIComponent(employeeId)}"
+                       role="option">
+
+                        <div class="global-search-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+
+                        <div class="flex-grow-1">
+                            <div class="global-search-name">
+                                ${escapeHtml(name)}
+                            </div>
+
+                            <div class="global-search-meta">
+                                ${escapeHtml(employeeId)}
+                            </div>
+
+                            ${department ? `
+                                <div class="global-search-department">
+                                    ${escapeHtml(department)}
+                                </div>
+                            ` : ''}
+
+                        </div>
+
+                    </a>
+                `;
+
+            }).join('');
+
+            resultsBox.classList.add('show');
+        }
+
+        async function searchEmployees(query) {
+
+            if (controller) {
+                controller.abort();
+            }
+
+            controller = new AbortController();
+
+            resultsBox.innerHTML = `
+                <div class="global-search-loading">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    Searching employees...
+                </div>
+            `;
+
+            resultsBox.classList.add('show');
+
+            try {
+
+                const response = await fetch(
+                    `${autocompleteUrl}?q=${encodeURIComponent(query)}`,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json'
+                        },
+                        signal: controller.signal
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Search request failed');
+                }
+
+                const employees = await response.json();
+
+                showResults(employees);
+
+            } catch (error) {
+
+                if (error.name === 'AbortError') {
+                    return;
+                }
+
+                console.error('Global employee search error:', error);
+
+                showMessage(
+                    'Unable to search employees',
+                    'fas fa-circle-exclamation'
+                );
+            }
+        }
+
+        input.addEventListener('input', function () {
+
+            const query = this.value.trim();
+
+            clearTimeout(searchTimer);
+
+            if (query.length < 2) {
+                hideResults();
+                return;
+            }
+
+            searchTimer = setTimeout(function () {
+                searchEmployees(query);
+            }, 250);
+        });
+
+        input.addEventListener('focus', function () {
+
+            const query = this.value.trim();
+
+            if (query.length >= 2) {
+                searchEmployees(query);
+            }
+        });
+
+        input.addEventListener('keydown', function (event) {
+
+            if (event.key === 'Escape') {
+                hideResults();
+                input.blur();
+            }
+
+        });
+
+        document.addEventListener('click', function (event) {
+
+            if (!wrapper.contains(event.target)) {
+                hideResults();
+            }
+
+        });
+
+        /*
+         * If the user presses Enter and does not click an employee,
+         * keep the existing global-search behavior and submit to
+         * the Asset Inventory search.
+         */
+        form.addEventListener('submit', function () {
+            hideResults();
+        });
+
+    });
+    </script>
 
     {% block extra_js %}{% endblock %}
 
