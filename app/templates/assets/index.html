@@ -2893,7 +2893,9 @@ body > .asset-action-menu .dropdown-item i {
 
                             {% for vendor in vendors %}
 
-                                {% if vendor.name in ['Techvity', 'Spurge'] %}
+                                {% set vendor_name = (vendor.name or '')|trim|lower %}
+
+                                {% if vendor_name in ['techvity', 'spurge', 'wbg', 'exalogic bangalore', 'exalogic dubai'] %}
 
                                     <option value="{{ vendor.id }}">
                                         {{ vendor.name }}
