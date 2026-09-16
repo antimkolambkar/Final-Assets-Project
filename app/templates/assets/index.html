@@ -116,6 +116,47 @@
     background: #adb5bd;
     border-radius: 10px;
 }
+
+/* =========================================================
+   ASSET STATUS FILTER COLORS
+========================================================= */
+.asset-status-filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.asset-status-filters .btn {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-weight: 500;
+    border-width: 1px;
+    transition: all .2s ease;
+}
+.asset-status-filters .btn-all-assets { color:#0d6efd; border-color:#0d6efd; }
+.asset-status-filters .btn-all-assets:hover,
+.asset-status-filters .btn-all-assets.active { color:#fff; background:#0d6efd; }
+.asset-status-filters .btn-available { color:#198754; border-color:#198754; }
+.asset-status-filters .btn-available:hover,
+.asset-status-filters .btn-available.active { color:#fff; background:#198754; }
+.asset-status-filters .btn-assigned { color:#0d6efd; border-color:#0d6efd; }
+.asset-status-filters .btn-assigned:hover,
+.asset-status-filters .btn-assigned.active { color:#fff; background:#0d6efd; }
+.asset-status-filters .btn-repair { color:#f59e0b; border-color:#f59e0b; }
+.asset-status-filters .btn-repair:hover,
+.asset-status-filters .btn-repair.active { color:#fff; background:#f59e0b; }
+.asset-status-filters .btn-vendor { color:#dc3545; border-color:#dc3545; }
+.asset-status-filters .btn-vendor:hover,
+.asset-status-filters .btn-vendor.active { color:#fff; background:#dc3545; }
+.asset-status-filters .btn-non-repairable { color:#6c757d; border-color:#6c757d; }
+.asset-status-filters .btn-non-repairable:hover,
+.asset-status-filters .btn-non-repairable.active { color:#fff; background:#6c757d; }
+.asset-status-filters .btn-donated { color:#6f42c1; border-color:#6f42c1; }
+.asset-status-filters .btn-donated:hover,
+.asset-status-filters .btn-donated.active { color:#fff; background:#6f42c1; }
 </style>
 
 <script>
@@ -511,57 +552,53 @@ document.addEventListener("DOMContentLoaded", function () {
      ASSET VIEW TABS
 ========================================================= -->
 
-<div class="d-flex gap-2 mb-4">
+<div class="asset-status-filters mb-4">
 
     <!-- All Assets -->
     <a href="{{ url_for('assets.index') }}"
-       class="btn {% if not status_filter %}btn-primary{% else %}btn-outline-primary{% endif %}">
+       class="btn btn-outline-primary btn-all-assets {% if not status_filter %}active{% endif %}">
         <i class="fas fa-laptop me-1"></i>
         All Assets
     </a>
 
-
     <!-- Available Assets -->
     <a href="{{ url_for('assets.index', status='Available') }}"
-       class="btn {% if status_filter == 'Available' %}btn-success{% else %}btn-outline-success{% endif %}">
+       class="btn btn-outline-success btn-available {% if status_filter == 'Available' %}active{% endif %}">
         <i class="fas fa-box-open me-1"></i>
         Available Assets
     </a>
 
-
     <!-- Assigned Assets -->
     <a href="{{ url_for('assets.index', status='Assigned') }}"
-       class="btn {% if status_filter == 'Assigned' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+       class="btn btn-outline-primary btn-assigned {% if status_filter == 'Assigned' %}active{% endif %}">
         <i class="fas fa-user-check me-1"></i>
         Assigned Assets
     </a>
 
-
-    <!-- Repair -->
+    <!-- Under Repair -->
     <a href="{{ url_for('assets.index', status='Repair') }}"
-       class="btn {% if status_filter == 'Repair' %}btn-warning text-dark{% else %}btn-outline-warning{% endif %}">
+       class="btn btn-outline-warning btn-repair {% if status_filter == 'Repair' %}active{% endif %}">
         <i class="fas fa-wrench me-1"></i>
         Under Repair
     </a>
 
-
     <!-- Returned To Vendor -->
     <a href="{{ url_for('assets.index', status='Returned to Vendor') }}"
-       class="btn {% if status_filter == 'Returned to Vendor' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+       class="btn btn-outline-danger btn-vendor {% if status_filter == 'Returned to Vendor' %}active{% endif %}">
         <i class="fas fa-truck me-1"></i>
         Returned to Vendor
     </a>
 
     <!-- Non-Repairable -->
     <a href="{{ url_for('assets.index', status='Non-Repairable') }}"
-       class="btn {% if status_filter == 'Non-Repairable' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+       class="btn btn-outline-secondary btn-non-repairable {% if status_filter == 'Non-Repairable' %}active{% endif %}">
         <i class="fas fa-ban me-1"></i>
         Non-Repairable
     </a>
 
     <!-- Donated Assets -->
     <a href="{{ url_for('assets.index', status='Donated Assets') }}"
-       class="btn {% if status_filter == 'Donated Assets' %}btn-dark{% else %}btn-outline-dark{% endif %}">
+       class="btn btn-donated btn-outline-dark {% if status_filter == 'Donated Assets' %}active{% endif %}">
         <i class="fas fa-hand-holding-heart me-1"></i>
         Donated Assets
     </a>
@@ -640,16 +677,6 @@ document.addEventListener("DOMContentLoaded", function () {
             .asset-table .badge-returned-to-vendor,
             .asset-table .badge-sent-to-vendor {
                 background-color: #6f42c1 !important;
-                color: #ffffff !important;
-            }
-
-            .asset-table .badge-non-repairable {
-                background-color: #6c757d !important;
-                color: #ffffff !important;
-            }
-
-            .asset-table .badge-donated {
-                background-color: #212529 !important;
                 color: #ffffff !important;
             }
         
@@ -875,20 +902,6 @@ body > .asset-action-menu .dropdown-item i {
                             <span class="badge status-badge badge-returned-to-vendor">
                                 <i class="fas fa-truck"></i>
                                 Sent to Vendor
-                            </span>
-
-                        {% elif status_value == 'Non-Repairable' %}
-
-                            <span class="badge status-badge badge-non-repairable">
-                                <i class="fas fa-ban"></i>
-                                Non-Repairable
-                            </span>
-
-                        {% elif status_value == 'Donated Assets' %}
-
-                            <span class="badge status-badge badge-donated">
-                                <i class="fas fa-hand-holding-heart"></i>
-                                Donated Assets
                             </span>
 
                         {% else %}
@@ -1118,38 +1131,6 @@ body > .asset-action-menu .dropdown-item i {
 
                                 </li>
 
-
-
-
-                                <!-- Non-Repairable -->
-                                <li>
-                                    <form action="{{ url_for('assets.mark_non_repairable', asset_id=ast.id) }}"
-                                          method="POST"
-                                          class="m-0">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit"
-                                                class="dropdown-item text-secondary"
-                                                onclick="return confirm('Mark asset {{ ast.asset_id }} as Non-Repairable? This will remove it from Available Assets.');">
-                                            <i class="fas fa-ban me-2"></i>
-                                            Mark as Non-Repairable
-                                        </button>
-                                    </form>
-                                </li>
-
-                                <!-- Charity -->
-                                <li>
-                                    <form action="{{ url_for('assets.send_to_charity', asset_id=ast.id) }}"
-                                          method="POST"
-                                          class="m-0">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit"
-                                                class="dropdown-item text-danger"
-                                                onclick="return confirm('Send asset {{ ast.asset_id }} to Charity? This will move it out of Available Assets.');">
-                                            <i class="fas fa-hand-holding-heart me-2"></i>
-                                            Send to Charity
-                                        </button>
-                                    </form>
-                                </li>
 
                                 {% elif ast.status == 'Assigned' %}
 
