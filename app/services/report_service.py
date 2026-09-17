@@ -1,4 +1,3 @@
-```python
 import io
 import csv
 from datetime import datetime
