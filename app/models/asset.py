@@ -1,11 +1,15 @@
 from datetime import datetime
 from app.extensions import db
 
+
 class AssetStatus:
     AVAILABLE = 'Available'
     ASSIGNED = 'Assigned'
     REPAIR = 'Repair'
+    NON_REPAIRABLE = 'Non-Repairable'
+    DONATED = 'Donated'
     RETURNED_TO_VENDOR = 'Returned to Vendor'
+
 
 class Asset(db.Model):
     __tablename__ = 'assets'
@@ -18,25 +22,92 @@ class Asset(db.Model):
     processor = db.Column(db.String(100), nullable=False)
     ram = db.Column(db.String(50), nullable=False)
     ssd = db.Column(db.String(50), nullable=False)
-    
-    vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'), nullable=True)
-    status = db.Column(db.String(30), nullable=False, default=AssetStatus.AVAILABLE, index=True)
 
-    vendor_return_date = db.Column(db.DateTime, nullable=True)
-    vendor_return_reason = db.Column(db.Text, nullable=True)
-    assigned_employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
-    assignment_date = db.Column(db.DateTime, nullable=True)
-    
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    vendor_id = db.Column(
+        db.Integer,
+        db.ForeignKey('vendors.id'),
+        nullable=True
+    )
+
+    status = db.Column(
+        db.String(30),
+        nullable=False,
+        default=AssetStatus.AVAILABLE,
+        index=True
+    )
+
+    # Asset lifecycle dates
+    stock_date = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    assignment_date = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    repair_start_date = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    repair_completed_date = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    vendor_return_date = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    replacement_date = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    vendor_return_reason = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    remarks = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    assigned_employee_id = db.Column(
+        db.Integer,
+        db.ForeignKey('employees.id'),
+        nullable=True
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    updated_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
 
     # Relationships
-    assignment_history = db.relationship('AssetAssignmentHistory', 
-                                          foreign_keys='AssetAssignmentHistory.asset_id',
-                                          backref='asset', 
-                                          lazy='dynamic', 
-                                          cascade='all, delete-orphan')
-    repair_tickets = db.relationship('VendorRepairTicket', backref='asset', lazy='dynamic')
+    assignment_history = db.relationship(
+        'AssetAssignmentHistory',
+        foreign_keys='AssetAssignmentHistory.asset_id',
+        backref='asset',
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
+
+    repair_tickets = db.relationship(
+        'VendorRepairTicket',
+        backref='asset',
+        lazy='dynamic'
+    )
 
     @property
     def assigned_user_name(self):
@@ -58,21 +129,41 @@ class Asset(db.Model):
         return None
 
     def __repr__(self):
-        return f'<Asset {self.asset_id} - {self.brand} {self.model} ({self.status})>'
+        return (
+            f'<Asset {self.asset_id} - '
+            f'{self.brand} {self.model} ({self.status})>'
+        )
 
 
 class AssetAssignmentHistory(db.Model):
     __tablename__ = 'asset_assignment_history'
 
-    id = db.Column(db.Integer, primary_key=True)
-    asset_id = db.Column(db.Integer, db.ForeignKey('assets.id'), nullable=False)
-    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
-    employee_name = db.Column(db.String(120), nullable=True)
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    asset_id = db.Column(
+        db.Integer,
+        db.ForeignKey('assets.id'),
+        nullable=False
+    )
+
+    employee_id = db.Column(
+        db.Integer,
+        db.ForeignKey('employees.id'),
+        nullable=True
+    )
+
+    employee_name = db.Column(
+        db.String(120),
+        nullable=True
+    )
 
     action = db.Column(
         db.String(50),
         nullable=False
-    )  # Assigned, Returned, Replaced, Sent to Repair, Repaired, Available
+    )
 
     # For multi-replacement tracking
     old_asset_id = db.Column(
@@ -80,24 +171,37 @@ class AssetAssignmentHistory(db.Model):
         db.ForeignKey('assets.id'),
         nullable=True
     )
+
     new_asset_id = db.Column(
         db.Integer,
         db.ForeignKey('assets.id'),
         nullable=True
     )
-    replacement_reason = db.Column(db.Text, nullable=True)
 
-    notes = db.Column(db.Text, nullable=True)
-    performed_by = db.Column(db.String(100), nullable=True)
+    replacement_reason = db.Column(
+        db.Text,
+        nullable=True
+    )
 
-    # Actual date selected by IT/Admin for the asset event
+    notes = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    performed_by = db.Column(
+        db.String(100),
+        nullable=True
+    )
+
+    # Actual date selected by IT/Admin
+    # for the asset event
     event_date = db.Column(
         db.DateTime,
         nullable=False,
         default=datetime.utcnow
     )
 
-    # Date/time when the history record was created
+    # Date/time when history record was created
     timestamp = db.Column(
         db.DateTime,
         default=datetime.utcnow,
