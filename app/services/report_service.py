@@ -1,3 +1,4 @@
+```python
 import io
 import csv
 from datetime import datetime
@@ -29,6 +30,10 @@ class ReportService:
     REPORT_TYPES = {
         'employee': 'Employee Report',
         'asset': 'Asset Report',
+
+        # NEW
+        'asset_inventory': 'Asset Inventory Report',
+
         'assigned_asset': 'Assigned Asset Report',
         'available_asset': 'Available Asset Report',
         'repair_asset': 'Repair Asset Report',
@@ -149,6 +154,223 @@ class ReportService:
                     ast.vendor.name if ast.vendor else '-',
                     ast.status,
                     ast.assigned_user_name
+                ])
+
+        # ==========================================================
+        # ASSET INVENTORY REPORT
+        #
+        # Includes:
+        # Available
+        # Under Repair
+        # Non-Repairable
+        # Donated
+        # ==========================================================
+        elif report_type == 'asset_inventory':
+
+            headers = [
+                'Asset ID',
+                'Brand',
+                'Model',
+                'Serial Number',
+                'Processor',
+                'RAM',
+                'SSD',
+                'Vendor',
+                'Status',
+                'Assigned User',
+                'Stock Date',
+                'Assignment Date',
+                'Repair Start Date',
+                'Repair Completed Date',
+                'Vendor Return Date',
+                'Remarks'
+            ]
+
+            # ------------------------------------------------------
+            # AVAILABLE
+            # ------------------------------------------------------
+
+            inventory_statuses = [
+                AssetStatus.AVAILABLE
+            ]
+
+            # ------------------------------------------------------
+            # UNDER REPAIR
+            # ------------------------------------------------------
+
+            repair_status = getattr(
+                AssetStatus,
+                'REPAIR',
+                None
+            )
+
+            if repair_status is not None:
+
+                inventory_statuses.append(
+                    repair_status
+                )
+
+            # ------------------------------------------------------
+            # NON-REPAIRABLE
+            # ------------------------------------------------------
+
+            non_repairable_status = getattr(
+                AssetStatus,
+                'NON_REPAIRABLE',
+                None
+            )
+
+            if non_repairable_status is not None:
+
+                inventory_statuses.append(
+                    non_repairable_status
+                )
+
+            # ------------------------------------------------------
+            # DONATED
+            # ------------------------------------------------------
+
+            donated_status = getattr(
+                AssetStatus,
+                'DONATED',
+                None
+            )
+
+            if donated_status is not None:
+
+                inventory_statuses.append(
+                    donated_status
+                )
+
+            # ------------------------------------------------------
+            # QUERY
+            # ------------------------------------------------------
+
+            query = Asset.query.filter(
+                Asset.status.in_(
+                    inventory_statuses
+                )
+            )
+
+            if vendor_id:
+
+                query = query.filter_by(
+                    vendor_id=vendor_id
+                )
+
+            query = query.order_by(
+                Asset.asset_id.asc()
+            )
+
+            for ast in query.all():
+
+                rows.append([
+
+                    # Asset ID
+                    ast.asset_id or '-',
+
+                    # Brand
+                    ast.brand or '-',
+
+                    # Model
+                    ast.model or '-',
+
+                    # Serial
+                    ast.serial_number or '-',
+
+                    # Processor
+                    ast.processor or '-',
+
+                    # RAM
+                    ast.ram or '-',
+
+                    # SSD
+                    ast.ssd or '-',
+
+                    # Vendor
+                    (
+                        ast.vendor.name
+                        if ast.vendor
+                        else '-'
+                    ),
+
+                    # Status
+                    ast.status or '-',
+
+                    # Assigned User
+                    ast.assigned_user_name or '-',
+
+                    # Stock Date
+                    (
+                        ast.stock_date.strftime(
+                            '%Y-%m-%d'
+                        )
+                        if getattr(
+                            ast,
+                            'stock_date',
+                            None
+                        )
+                        else '-'
+                    ),
+
+                    # Assignment Date
+                    (
+                        ast.assignment_date.strftime(
+                            '%Y-%m-%d'
+                        )
+                        if getattr(
+                            ast,
+                            'assignment_date',
+                            None
+                        )
+                        else '-'
+                    ),
+
+                    # Repair Start Date
+                    (
+                        ast.repair_start_date.strftime(
+                            '%Y-%m-%d'
+                        )
+                        if getattr(
+                            ast,
+                            'repair_start_date',
+                            None
+                        )
+                        else '-'
+                    ),
+
+                    # Repair Completed Date
+                    (
+                        ast.repair_completed_date.strftime(
+                            '%Y-%m-%d'
+                        )
+                        if getattr(
+                            ast,
+                            'repair_completed_date',
+                            None
+                        )
+                        else '-'
+                    ),
+
+                    # Vendor Return Date
+                    (
+                        ast.vendor_return_date.strftime(
+                            '%Y-%m-%d'
+                        )
+                        if getattr(
+                            ast,
+                            'vendor_return_date',
+                            None
+                        )
+                        else '-'
+                    ),
+
+                    # Remarks
+                    getattr(
+                        ast,
+                        'remarks',
+                        None
+                    ) or '-'
                 ])
 
         # ==========================================================
@@ -323,7 +545,6 @@ class ReportService:
                     department=dept_name
                 ).count()
 
-                # Active + Onboarded are treated as active employees.
                 active_statuses = [
                     AccountStatus.ACTIVE
                 ]
@@ -346,9 +567,6 @@ class ReportService:
                     )
                 ).count()
 
-                # --------------------------------------------------
-                # Blocked / Disabled
-                # --------------------------------------------------
                 blocked_statuses = [
                     AccountStatus.BLOCKED
                 ]
@@ -371,17 +589,11 @@ class ReportService:
                     )
                 ).count()
 
-                # --------------------------------------------------
-                # Offboarded
-                # --------------------------------------------------
                 offboarded = Employee.query.filter_by(
                     department=dept_name,
                     account_status=AccountStatus.OFFBOARDED
                 ).count()
 
-                # --------------------------------------------------
-                # Assigned assets
-                # --------------------------------------------------
                 assigned_count = Asset.query.join(
                     Employee,
                     Asset.assigned_employee_id == Employee.id
@@ -593,7 +805,7 @@ class ReportService:
                 ])
 
         # ==========================================================
-        # BLOCKED / DISABLED / OFFBOARDED EMPLOYEE REPORT
+        # BLOCKED / DISABLED / OFFBOARDED
         # ==========================================================
         elif report_type in [
             'blocked_employee',
@@ -612,27 +824,16 @@ class ReportService:
                 'Last Synced Date'
             ]
 
-            # ------------------------------------------------------
-            # BLOCKED
-            # ------------------------------------------------------
             if report_type == 'blocked_employee':
 
                 target_status = AccountStatus.BLOCKED
 
-            # ------------------------------------------------------
-            # OFFBOARDED
-            # ------------------------------------------------------
             elif report_type == 'offboarded_employee':
 
                 target_status = AccountStatus.OFFBOARDED
 
-            # ------------------------------------------------------
-            # DISABLED
-            # ------------------------------------------------------
             else:
 
-                # The current AccountStatus may not yet contain
-                # DISABLED. Do not crash if it is missing.
                 target_status = getattr(
                     AccountStatus,
                     'DISABLED',
@@ -701,17 +902,12 @@ class ReportService:
                 AssetAssignmentHistory.action == 'Replaced'
             )
 
-            # ------------------------------------------------------
-            # DATE FILTER
-            # ------------------------------------------------------
             if start_date:
-
                 query = query.filter(
                     AssetAssignmentHistory.timestamp >= start_date
                 )
 
             if end_date:
-
                 query = query.filter(
                     AssetAssignmentHistory.timestamp <= end_date
                 )
@@ -725,49 +921,31 @@ class ReportService:
                 old_asset = h.old_asset
                 new_asset = h.new_asset
 
-                # --------------------------------------------------
-                # EMPLOYEE
-                # --------------------------------------------------
                 employee = None
 
                 if h.employee_id:
-
                     employee = Employee.query.get(
                         h.employee_id
                     )
 
-                # --------------------------------------------------
-                # VENDOR
-                # --------------------------------------------------
                 vendor = None
 
                 if new_asset and new_asset.vendor:
-
                     vendor = new_asset.vendor
 
                 elif old_asset and old_asset.vendor:
-
                     vendor = old_asset.vendor
 
-                # --------------------------------------------------
-                # VENDOR FILTER
-                # --------------------------------------------------
                 if vendor_id:
 
                     if not vendor or vendor.id != vendor_id:
                         continue
 
-                # --------------------------------------------------
-                # EMPLOYEE FILTER
-                # --------------------------------------------------
                 if employee_id:
 
                     if not employee or employee.id != employee_id:
                         continue
 
-                # --------------------------------------------------
-                # DEPARTMENT FILTER
-                # --------------------------------------------------
                 if department:
 
                     if (
@@ -776,9 +954,6 @@ class ReportService:
                     ):
                         continue
 
-                # --------------------------------------------------
-                # ADD REPORT ROW
-                # --------------------------------------------------
                 rows.append([
                     (
                         h.timestamp.strftime(
@@ -863,7 +1038,7 @@ class ReportService:
                 ])
 
         # ==========================================================
-        # ASSET HISTORY & REPLACEMENT LOG
+        # ASSET HISTORY
         # ==========================================================
         elif report_type == 'asset_history':
 
@@ -881,9 +1056,6 @@ class ReportService:
 
             query = AssetAssignmentHistory.query
 
-            # ------------------------------------------------------
-            # VENDOR FILTER
-            # ------------------------------------------------------
             if vendor_id:
 
                 query = query.join(
@@ -893,9 +1065,6 @@ class ReportService:
                     Asset.vendor_id == vendor_id
                 )
 
-            # ------------------------------------------------------
-            # DATE FILTER
-            # ------------------------------------------------------
             if start_date:
 
                 query = query.filter(
@@ -951,7 +1120,7 @@ class ReportService:
                 ])
 
         # ==========================================================
-        # AUDIT LOG REPORT
+        # AUDIT LOG
         # ==========================================================
         elif report_type == 'audit':
 
@@ -1196,6 +1365,33 @@ class ReportService:
                     cell.fill = row_alt_fill
 
         # ----------------------------------------------------------
+        # EXCEL FILTER
+        # ----------------------------------------------------------
+
+        if headers:
+
+            last_column = openpyxl.utils.get_column_letter(
+                len(headers)
+            )
+
+            # If there are data rows, filter the complete table.
+            # If there are no data rows, filter the header row.
+            last_row = max(
+                len(rows) + 4,
+                4
+            )
+
+            ws.auto_filter.ref = (
+                f"A4:{last_column}{last_row}"
+            )
+
+        # ----------------------------------------------------------
+        # FREEZE HEADER
+        # ----------------------------------------------------------
+
+        ws.freeze_panes = "A5"
+
+        # ----------------------------------------------------------
         # AUTO COLUMN WIDTH
         # ----------------------------------------------------------
 
@@ -1212,10 +1408,17 @@ class ReportService:
 
             ws.column_dimensions[
                 col_letter
-            ].width = max(
-                max_len + 4,
-                12
+            ].width = min(
+                max(
+                    max_len + 4,
+                    12
+                ),
+                40
             )
+
+        # ----------------------------------------------------------
+        # OUTPUT
+        # ----------------------------------------------------------
 
         output = io.BytesIO()
 
@@ -1268,7 +1471,6 @@ class ReportService:
         writer.writerow(headers)
 
         for r in rows:
-
             writer.writerow(r)
 
         return output.getvalue().encode(
@@ -1468,3 +1670,4 @@ class ReportService:
         buffer.seek(0)
 
         return buffer.getvalue()
+```
