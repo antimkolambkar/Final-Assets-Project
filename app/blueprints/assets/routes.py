@@ -71,10 +71,41 @@ def generate_asset_id():
     return f"AST-{year}-{count:04d}"
 
 
-def generate_vendor_ticket_num():
+def generate_asset_id():
     year = datetime.utcnow().strftime('%Y')
-    count = VendorRepairTicket.query.count() + 1
-    return f"VNR-{year}-{count:04d}"
+    prefix = f"AST-{year}-"
+
+    # Find the highest existing Asset ID for this year
+    existing_ids = (
+        Asset.query
+        .filter(Asset.asset_id.like(f"{prefix}%"))
+        .with_entities(Asset.asset_id)
+        .all()
+    )
+
+    max_number = 0
+
+    for (asset_id,) in existing_ids:
+        if not asset_id:
+            continue
+
+        try:
+            number = int(asset_id.replace(prefix, ""))
+            if number > max_number:
+                max_number = number
+        except ValueError:
+            continue
+
+    # Generate the next available Asset ID
+    next_number = max_number + 1
+
+    # Safety check to prevent duplicate Asset IDs
+    while Asset.query.filter_by(
+        asset_id=f"{prefix}{next_number:04d}"
+    ).first():
+        next_number += 1
+
+    return f"{prefix}{next_number:04d}"
 
 
 # =========================================================
