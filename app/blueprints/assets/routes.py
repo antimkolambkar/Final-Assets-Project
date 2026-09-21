@@ -107,6 +107,44 @@ def generate_asset_id():
 
     return f"{prefix}{next_number:04d}"
 
+def generate_vendor_ticket_num():
+    """Generate a unique vendor repair ticket number."""
+    year = datetime.utcnow().strftime('%Y')
+    prefix = f"VNR-{year}-"
+
+    existing_tickets = (
+        VendorRepairTicket.query
+        .filter(
+            VendorRepairTicket.vendor_ticket_number.like(f"{prefix}%")
+        )
+        .with_entities(VendorRepairTicket.vendor_ticket_number)
+        .all()
+    )
+
+    max_number = 0
+
+    for (ticket_number,) in existing_tickets:
+        if not ticket_number:
+            continue
+
+        try:
+            number = int(ticket_number.replace(prefix, ""))
+            if number > max_number:
+                max_number = number
+        except ValueError:
+            continue
+
+    next_number = max_number + 1
+
+    # Safety check against duplicate ticket numbers
+    while VendorRepairTicket.query.filter_by(
+        vendor_ticket_number=f"{prefix}{next_number:04d}"
+    ).first():
+        next_number += 1
+
+    return f"{prefix}{next_number:04d}"
+
+
 
 # =========================================================
 # ASSET INVENTORY
