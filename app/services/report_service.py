@@ -53,6 +53,71 @@ class ReportService:
     }
 
     @staticmethod
+    def get_returned_by(asset_id):
+        """Return the latest employee/person who returned an asset to stock."""
+        history = (
+            AssetAssignmentHistory.query
+            .filter(
+                AssetAssignmentHistory.asset_id == asset_id,
+                AssetAssignmentHistory.action == 'Returned'
+            )
+            .order_by(
+                AssetAssignmentHistory.event_date.desc(),
+                AssetAssignmentHistory.timestamp.desc()
+            )
+            .first()
+        )
+
+        if not history:
+            return '-'
+
+        return (
+            history.employee_name
+            or history.performed_by
+            or '-'
+        )
+
+    @staticmethod
+    def date_value(obj, field_name):
+        value = getattr(obj, field_name, None)
+        if not value:
+            return '-'
+        return value.strftime('%Y-%m-%d %H:%M') if hasattr(value, 'hour') else value.strftime('%Y-%m-%d')
+
+    @staticmethod
+    def get_latest_history(asset_id, action):
+        """Return the latest history record for an asset/action."""
+        return (
+            AssetAssignmentHistory.query
+            .filter(
+                AssetAssignmentHistory.asset_id == asset_id,
+                AssetAssignmentHistory.action == action
+            )
+            .order_by(
+                AssetAssignmentHistory.event_date.desc(),
+                AssetAssignmentHistory.timestamp.desc()
+            )
+            .first()
+        )
+
+    @staticmethod
+    def get_returned_date(asset_id):
+        history = ReportService.get_latest_history(asset_id, 'Returned')
+        if history and history.event_date:
+            return history.event_date.strftime('%Y-%m-%d')
+        return '-'
+
+    @staticmethod
+    def get_vendor_ticket(asset_id):
+        ticket = (
+            VendorRepairTicket.query
+            .filter_by(asset_id=asset_id)
+            .order_by(VendorRepairTicket.id.desc())
+            .first()
+        )
+        return ticket
+
+    @staticmethod
     def fetch_report_data(
         report_type,
         start_date=None,
@@ -121,38 +186,41 @@ class ReportService:
         elif report_type == 'asset':
 
             headers = [
-                'Asset ID',
-                'Brand',
-                'Model',
-                'Serial Number',
-                'Processor',
-                'RAM',
-                'SSD',
-                'Vendor',
-                'Status',
-                'Assigned User'
+                'Asset ID', 'Brand', 'Model', 'Serial Number',
+                'Processor', 'RAM', 'SSD', 'Vendor', 'Status',
+                'Assigned User', 'Employee ID', 'Department', 'Email',
+                'Returned By', 'Return Date', 'Stock Date',
+                'Assignment Date', 'Repair Start Date',
+                'Repair Completed Date', 'Vendor Return Date',
+                'Replacement Date', 'Vendor Return Reason', 'Remarks'
             ]
 
             query = Asset.query
 
             if vendor_id:
-                query = query.filter_by(
-                    vendor_id=vendor_id
-                )
+                query = query.filter_by(vendor_id=vendor_id)
 
-            for ast in query.all():
-
+            for ast in query.order_by(Asset.asset_id.asc()).all():
+                emp = ast.assigned_employee
                 rows.append([
-                    ast.asset_id,
-                    ast.brand,
-                    ast.model,
-                    ast.serial_number,
-                    ast.processor,
-                    ast.ram,
-                    ast.ssd,
-                    ast.vendor.name if ast.vendor else '-',
-                    ast.status,
-                    ast.assigned_user_name
+                    ast.asset_id or '-', ast.brand or '-', ast.model or '-',
+                    ast.serial_number or '-', ast.processor or '-',
+                    ast.ram or '-', ast.ssd or '-',
+                    ast.vendor.name if ast.vendor else '-', ast.status or '-',
+                    emp.name if emp else (ast.assigned_user_name or '-'),
+                    emp.employee_id if emp else '-',
+                    emp.department if emp else '-',
+                    emp.email if emp else '-',
+                    ReportService.get_returned_by(ast.id),
+                    ReportService.get_returned_date(ast.id),
+                    ReportService.date_value(ast, 'stock_date'),
+                    ReportService.date_value(ast, 'assignment_date'),
+                    ReportService.date_value(ast, 'repair_start_date'),
+                    ReportService.date_value(ast, 'repair_completed_date'),
+                    ReportService.date_value(ast, 'vendor_return_date'),
+                    ReportService.date_value(ast, 'replacement_date'),
+                    getattr(ast, 'vendor_return_reason', None) or '-',
+                    getattr(ast, 'remarks', None) or '-'
                 ])
 
         # ==========================================================
@@ -177,11 +245,18 @@ class ReportService:
                 'Vendor',
                 'Status',
                 'Assigned User',
+                'Employee ID',
+                'Department',
+                'Email',
+                'Returned By',
+                'Return Date',
                 'Stock Date',
                 'Assignment Date',
                 'Repair Start Date',
                 'Repair Completed Date',
                 'Vendor Return Date',
+                'Replacement Date',
+                'Vendor Return Reason',
                 'Remarks'
             ]
 
@@ -262,114 +337,26 @@ class ReportService:
             )
 
             for ast in query.all():
-
+                emp = ast.assigned_employee
                 rows.append([
-
-                    # Asset ID
-                    ast.asset_id or '-',
-
-                    # Brand
-                    ast.brand or '-',
-
-                    # Model
-                    ast.model or '-',
-
-                    # Serial
-                    ast.serial_number or '-',
-
-                    # Processor
-                    ast.processor or '-',
-
-                    # RAM
-                    ast.ram or '-',
-
-                    # SSD
-                    ast.ssd or '-',
-
-                    # Vendor
-                    (
-                        ast.vendor.name
-                        if ast.vendor
-                        else '-'
-                    ),
-
-                    # Status
-                    ast.status or '-',
-
-                    # Assigned User
-                    ast.assigned_user_name or '-',
-
-                    # Stock Date
-                    (
-                        ast.stock_date.strftime(
-                            '%Y-%m-%d'
-                        )
-                        if getattr(
-                            ast,
-                            'stock_date',
-                            None
-                        )
-                        else '-'
-                    ),
-
-                    # Assignment Date
-                    (
-                        ast.assignment_date.strftime(
-                            '%Y-%m-%d'
-                        )
-                        if getattr(
-                            ast,
-                            'assignment_date',
-                            None
-                        )
-                        else '-'
-                    ),
-
-                    # Repair Start Date
-                    (
-                        ast.repair_start_date.strftime(
-                            '%Y-%m-%d'
-                        )
-                        if getattr(
-                            ast,
-                            'repair_start_date',
-                            None
-                        )
-                        else '-'
-                    ),
-
-                    # Repair Completed Date
-                    (
-                        ast.repair_completed_date.strftime(
-                            '%Y-%m-%d'
-                        )
-                        if getattr(
-                            ast,
-                            'repair_completed_date',
-                            None
-                        )
-                        else '-'
-                    ),
-
-                    # Vendor Return Date
-                    (
-                        ast.vendor_return_date.strftime(
-                            '%Y-%m-%d'
-                        )
-                        if getattr(
-                            ast,
-                            'vendor_return_date',
-                            None
-                        )
-                        else '-'
-                    ),
-
-                    # Remarks
-                    getattr(
-                        ast,
-                        'remarks',
-                        None
-                    ) or '-'
+                    ast.asset_id or '-', ast.brand or '-', ast.model or '-',
+                    ast.serial_number or '-', ast.processor or '-',
+                    ast.ram or '-', ast.ssd or '-',
+                    ast.vendor.name if ast.vendor else '-', ast.status or '-',
+                    emp.name if emp else (ast.assigned_user_name or '-'),
+                    emp.employee_id if emp else '-',
+                    emp.department if emp else '-',
+                    emp.email if emp else '-',
+                    ReportService.get_returned_by(ast.id),
+                    ReportService.get_returned_date(ast.id),
+                    ReportService.date_value(ast, 'stock_date'),
+                    ReportService.date_value(ast, 'assignment_date'),
+                    ReportService.date_value(ast, 'repair_start_date'),
+                    ReportService.date_value(ast, 'repair_completed_date'),
+                    ReportService.date_value(ast, 'vendor_return_date'),
+                    ReportService.date_value(ast, 'replacement_date'),
+                    getattr(ast, 'vendor_return_reason', None) or '-',
+                    getattr(ast, 'remarks', None) or '-'
                 ])
 
         # ==========================================================
@@ -378,54 +365,31 @@ class ReportService:
         elif report_type == 'assigned_asset':
 
             headers = [
-                'Asset ID',
-                'Brand & Model',
-                'Serial Number',
-                'Specs (RAM/SSD)',
-                'Assigned User',
-                'Employee ID',
-                'Department',
-                'Email',
-                'Assignment Date'
+                'Asset ID', 'Brand', 'Model', 'Serial Number',
+                'Processor', 'RAM', 'SSD', 'Vendor', 'Status',
+                'Assigned User', 'Employee ID', 'Department', 'Email',
+                'Assignment Date', 'Previous Returned By', 'Remarks'
             ]
 
-            query = Asset.query.filter_by(
-                status=AssetStatus.ASSIGNED
-            )
-
+            query = Asset.query.filter_by(status=AssetStatus.ASSIGNED)
             if vendor_id:
-                query = query.filter_by(
-                    vendor_id=vendor_id
-                )
+                query = query.filter_by(vendor_id=vendor_id)
 
             for ast in query.all():
-
                 emp = ast.assigned_employee
-
-                if department and (
-                    not emp or
-                    emp.department != department
-                ):
+                if department and (not emp or emp.department != department):
                     continue
-
-                if employee_id and (
-                    not emp or
-                    emp.id != employee_id
-                ):
+                if employee_id and (not emp or emp.id != employee_id):
                     continue
-
                 rows.append([
-                    ast.asset_id,
-                    f"{ast.brand} {ast.model}",
-                    ast.serial_number,
-                    f"{ast.ram} / {ast.ssd}",
-                    emp.name if emp else '-',
-                    emp.employee_id if emp else '-',
-                    emp.department if emp else '-',
-                    emp.email if emp else '-',
-                    ast.assignment_date.strftime(
-                        '%Y-%m-%d'
-                    ) if ast.assignment_date else '-'
+                    ast.asset_id or '-', ast.brand or '-', ast.model or '-',
+                    ast.serial_number or '-', ast.processor or '-',
+                    ast.ram or '-', ast.ssd or '-',
+                    ast.vendor.name if ast.vendor else '-', ast.status or '-',
+                    emp.name if emp else (ast.assigned_user_name or '-'),
+                    emp.employee_id if emp else '-', emp.department if emp else '-',
+                    emp.email if emp else '-', ReportService.date_value(ast, 'assignment_date'),
+                    ReportService.get_returned_by(ast.id), getattr(ast, 'remarks', None) or '-'
                 ])
 
         # ==========================================================
@@ -434,38 +398,26 @@ class ReportService:
         elif report_type == 'available_asset':
 
             headers = [
-                'Asset ID',
-                'Brand',
-                'Model',
-                'Serial Number',
-                'Processor',
-                'RAM',
-                'SSD',
-                'Vendor',
-                'Status'
+                'Asset ID', 'Brand', 'Model', 'Serial Number',
+                'Processor', 'RAM', 'SSD', 'Vendor', 'Status',
+                'Assigned User', 'Returned By', 'Return Date',
+                'Stock Date', 'Repair Completed Date', 'Vendor Return Date',
+                'Remarks'
             ]
 
-            query = Asset.query.filter_by(
-                status=AssetStatus.AVAILABLE
-            )
-
+            query = Asset.query.filter_by(status=AssetStatus.AVAILABLE)
             if vendor_id:
-                query = query.filter_by(
-                    vendor_id=vendor_id
-                )
+                query = query.filter_by(vendor_id=vendor_id)
 
             for ast in query.all():
-
                 rows.append([
-                    ast.asset_id,
-                    ast.brand,
-                    ast.model,
-                    ast.serial_number,
-                    ast.processor,
-                    ast.ram,
-                    ast.ssd,
-                    ast.vendor.name if ast.vendor else '-',
-                    ast.status
+                    ast.asset_id or '-', ast.brand or '-', ast.model or '-',
+                    ast.serial_number or '-', ast.processor or '-', ast.ram or '-',
+                    ast.ssd or '-', ast.vendor.name if ast.vendor else '-', ast.status or '-',
+                    ast.assigned_user_name or '-', ReportService.get_returned_by(ast.id),
+                    ReportService.get_returned_date(ast.id), ReportService.date_value(ast, 'stock_date'),
+                    ReportService.date_value(ast, 'repair_completed_date'),
+                    ReportService.date_value(ast, 'vendor_return_date'), getattr(ast, 'remarks', None) or '-'
                 ])
 
         # ==========================================================
@@ -474,44 +426,25 @@ class ReportService:
         elif report_type == 'repair_asset':
 
             headers = [
-                'Asset ID',
-                'Brand & Model',
-                'Serial Number',
-                'Vendor',
-                'Repair Status',
-                'Sent Date',
-                'Returned Date',
-                'Notes'
+                'Vendor Ticket', 'Asset ID', 'Brand', 'Model', 'Serial Number',
+                'Processor', 'RAM', 'SSD', 'Vendor', 'Repair Status',
+                'Sent Date', 'Returned Date', 'Returned By', 'Notes'
             ]
 
             query = VendorRepairTicket.query
-
-            for vrt in query.all():
-
+            for vrt in query.order_by(VendorRepairTicket.id.desc()).all():
                 ast = vrt.asset
-
                 if vendor_id and vrt.vendor_id != vendor_id:
                     continue
-
                 rows.append([
-                    ast.asset_id if ast else '-',
-                    (
-                        f"{ast.brand} {ast.model}"
-                        if ast else '-'
-                    ),
-                    ast.serial_number if ast else '-',
-                    (
-                        vrt.vendor.name
-                        if vrt.vendor else '-'
-                    ),
-                    vrt.repair_status,
-                    vrt.sent_date.strftime(
-                        '%Y-%m-%d'
-                    ) if vrt.sent_date else '-',
-                    vrt.returned_date.strftime(
-                        '%Y-%m-%d'
-                    ) if vrt.returned_date else '-',
-                    vrt.notes or '-'
+                    getattr(vrt, 'vendor_ticket_number', None) or '-',
+                    ast.asset_id if ast else '-', ast.brand if ast else '-',
+                    ast.model if ast else '-', ast.serial_number if ast else '-',
+                    ast.processor if ast else '-', ast.ram if ast else '-', ast.ssd if ast else '-',
+                    vrt.vendor.name if vrt.vendor else '-', vrt.repair_status or '-',
+                    vrt.sent_date.strftime('%Y-%m-%d') if vrt.sent_date else '-',
+                    vrt.returned_date.strftime('%Y-%m-%d') if vrt.returned_date else '-',
+                    ReportService.get_returned_by(ast.id) if ast else '-', vrt.notes or '-'
                 ])
 
         # ==========================================================
@@ -616,59 +549,28 @@ class ReportService:
         elif report_type == 'vendor_return':
 
             headers = [
-                'Asset ID',
-                'Brand',
-                'Model',
-                'Serial Number',
-                'Vendor',
-                'Return Date',
-                'Return Reason',
-                'Status'
+                'Vendor Ticket', 'Asset ID', 'Brand', 'Model', 'Serial Number',
+                'Processor', 'RAM', 'SSD', 'Vendor', 'Return Date', 'Returned By',
+                'Return Reason', 'Status', 'Remarks'
             ]
 
-            query = Asset.query.filter_by(
-                status=AssetStatus.RETURNED_TO_VENDOR
-            )
-
+            query = Asset.query.filter_by(status=AssetStatus.RETURNED_TO_VENDOR)
             if vendor_id:
-                query = query.filter_by(
-                    vendor_id=vendor_id
-                )
-
+                query = query.filter_by(vendor_id=vendor_id)
             if start_date:
-                query = query.filter(
-                    Asset.vendor_return_date >= start_date
-                )
-
+                query = query.filter(Asset.vendor_return_date >= start_date)
             if end_date:
-                query = query.filter(
-                    Asset.vendor_return_date <= end_date
-                )
+                query = query.filter(Asset.vendor_return_date <= end_date)
 
-            query = query.order_by(
-                Asset.vendor_return_date.desc()
-            )
-
-            for ast in query.all():
-
+            for ast in query.order_by(Asset.vendor_return_date.desc()).all():
+                ticket = ReportService.get_vendor_ticket(ast.id)
                 rows.append([
-                    ast.asset_id,
-                    ast.brand or '-',
-                    ast.model or '-',
-                    ast.serial_number or '-',
-                    (
-                        ast.vendor.name
-                        if ast.vendor else '-'
-                    ),
-                    (
-                        ast.vendor_return_date.strftime(
-                            '%Y-%m-%d %H:%M'
-                        )
-                        if ast.vendor_return_date
-                        else '-'
-                    ),
-                    ast.vendor_return_reason or '-',
-                    ast.status
+                    getattr(ticket, 'vendor_ticket_number', None) if ticket else '-',
+                    ast.asset_id or '-', ast.brand or '-', ast.model or '-', ast.serial_number or '-',
+                    ast.processor or '-', ast.ram or '-', ast.ssd or '-',
+                    ast.vendor.name if ast.vendor else '-', ReportService.date_value(ast, 'vendor_return_date'),
+                    ReportService.get_returned_by(ast.id), getattr(ast, 'vendor_return_reason', None) or '-',
+                    ast.status or '-', getattr(ast, 'remarks', None) or '-'
                 ])
 
         # ==========================================================
@@ -729,6 +631,7 @@ class ReportService:
                 'Category',
                 'Priority',
                 'Assigned Engineer',
+                'Resolved By',
                 'Status',
                 'Created Date',
                 'Closed Date',
@@ -781,6 +684,9 @@ class ReportService:
                         eng.full_name
                         if eng else 'Unassigned'
                     ),
+                    getattr(tkt, 'resolved_by', None)
+                    or getattr(tkt, 'resolver_name', None)
+                    or (eng.full_name if eng and tkt.status in [TicketStatus.CLOSED, TicketStatus.RESOLVED] else '-'),
                     tkt.status,
                     (
                         tkt.created_at.strftime(
