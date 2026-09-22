@@ -1024,6 +1024,20 @@ def replace_asset():
         request.form.get('return_to_repair') == 'on'
     )
 
+    send_old_to_vendor = (
+        request.form.get('send_old_to_vendor') == 'on'
+    )
+
+    replacement_vendor_id = request.form.get(
+        'replacement_vendor_id',
+        type=int
+    )
+
+    vendor_return_reason = request.form.get(
+        'vendor_return_reason',
+        ''
+    ).strip()
+
     replacement_date_str = request.form.get(
         'replacement_date',
         ''
@@ -1046,6 +1060,46 @@ def replace_asset():
             'danger'
         )
         return redirect(url_for('assets.index'))
+
+    # Repair and Vendor are mutually exclusive destinations.
+    if return_to_repair and send_old_to_vendor:
+        flash(
+            'Please select either Repair or Vendor for the old laptop, not both.',
+            'danger'
+        )
+        return redirect(url_for('assets.index'))
+
+    # Vendor details are mandatory when the old laptop is sent to a vendor.
+    replacement_vendor = None
+    if send_old_to_vendor:
+        if not replacement_vendor_id:
+            flash(
+                'Please select a vendor for the old replaced laptop.',
+                'danger'
+            )
+            return redirect(url_for('assets.index'))
+
+        if not vendor_return_reason:
+            flash(
+                'Please provide a reason for sending the old replaced laptop to the vendor.',
+                'danger'
+            )
+            return redirect(url_for('assets.index'))
+
+        replacement_vendor = Vendor.query.get_or_404(
+            replacement_vendor_id
+        )
+
+        normalized_vendor_name = normalize_vendor_name(
+            replacement_vendor.name
+        )
+
+        if normalized_vendor_name not in ALLOWED_VENDOR_RETURN_NAMES_NORMALIZED:
+            flash(
+                f'Vendor "{replacement_vendor.name}" is not allowed for vendor return.',
+                'danger'
+            )
+            return redirect(url_for('assets.index'))
 
     old_asset = Asset.query.get_or_404(
         old_asset_id
@@ -1077,11 +1131,21 @@ def replace_asset():
     # OLD ASSET
     # -----------------------------------------------------
 
-    old_asset.status = (
-        AssetStatus.REPAIR
-        if return_to_repair
-        else AssetStatus.AVAILABLE
-    )
+    old_asset.replacement_date = replacement_date
+
+    if send_old_to_vendor:
+        old_asset.status = AssetStatus.RETURNED_TO_VENDOR
+        old_asset.vendor_id = replacement_vendor.id
+        old_asset.vendor_return_date = replacement_date
+        old_asset.vendor_return_reason = vendor_return_reason
+    elif return_to_repair:
+        old_asset.status = AssetStatus.REPAIR
+        old_asset.vendor_return_date = None
+        old_asset.vendor_return_reason = None
+    else:
+        old_asset.status = AssetStatus.AVAILABLE
+        old_asset.vendor_return_date = None
+        old_asset.vendor_return_reason = None
 
     old_asset.assigned_employee_id = None
     old_asset.assignment_date = None
@@ -1093,10 +1157,26 @@ def replace_asset():
     new_asset.status = AssetStatus.ASSIGNED
     new_asset.assigned_employee_id = employee.id
     new_asset.assignment_date = replacement_date
+    new_asset.replacement_date = replacement_date
 
     # -----------------------------------------------------
     # REPLACEMENT HISTORY
     # -----------------------------------------------------
+
+    replacement_notes = (
+        f'Replaced laptop {old_asset.asset_id} '
+        f'with {new_asset.asset_id} '
+        f'for {employee.name}. '
+        f'Replacement Date: {replacement_date_str}. '
+        f'Reason: {reason or "N/A"}'
+    )
+
+    if send_old_to_vendor:
+        replacement_notes += (
+            f' Old laptop sent to Vendor {replacement_vendor.name}. '
+            f'Vendor Return Date: {replacement_date_str}. '
+            f'Vendor Reason: {vendor_return_reason}'
+        )
 
     hist = AssetAssignmentHistory(
         asset_id=new_asset.id,
@@ -1109,38 +1189,76 @@ def replace_asset():
         replacement_reason=(
             reason or 'Laptop replacement request'
         ),
-        notes=(
-            f'Replaced laptop {old_asset.asset_id} '
-            f'with {new_asset.asset_id} '
-            f'for {employee.name}. '
-            f'Replacement Date: {replacement_date_str}. '
-            f'Reason: {reason or "N/A"}'
-        ),
+        notes=replacement_notes,
         performed_by=current_user.full_name
     )
 
     db.session.add(hist)
+
+    # Keep a separate lifecycle entry on the old asset so its own history
+    # clearly shows that it was sent to the vendor as part of the replacement.
+    if send_old_to_vendor:
+        vendor_hist = AssetAssignmentHistory(
+            asset_id=old_asset.id,
+            employee_id=employee.id,
+            employee_name=employee.name,
+            action='Send Back to Vendor',
+            event_date=replacement_date,
+            old_asset_id=old_asset.id,
+            new_asset_id=new_asset.id,
+            replacement_reason=vendor_return_reason,
+            notes=(
+                f'Old laptop {old_asset.asset_id} was replaced with '
+                f'{new_asset.asset_id} for {employee.name} and sent to '
+                f'Vendor {replacement_vendor.name}. '
+                f'Return Date: {replacement_date_str}. '
+                f'Reason: {vendor_return_reason}'
+            ),
+            performed_by=current_user.full_name
+        )
+        db.session.add(vendor_hist)
+
     db.session.commit()
+
+    audit_details = (
+        f'Replaced asset {old_asset.asset_id} '
+        f'with {new_asset.asset_id} '
+        f'for employee {employee.name} '
+        f'on {replacement_date_str}'
+    )
+
+    if send_old_to_vendor:
+        audit_details += (
+            f'. Old asset sent to vendor {replacement_vendor.name}. '
+            f'Reason: {vendor_return_reason}'
+        )
+    elif return_to_repair:
+        audit_details += '. Old asset moved to Repair status.'
+    else:
+        audit_details += '. Old asset moved to Available status.'
 
     AuditService.log(
         action='Asset Replaced',
         entity_type='Asset',
         entity_id=new_asset.asset_id,
-        details=(
-            f'Replaced asset {old_asset.asset_id} '
-            f'with {new_asset.asset_id} '
-            f'for employee {employee.name} '
-            f'on {replacement_date_str}'
-        )
+        details=audit_details
     )
 
-    flash(
-        f'Successfully replaced asset '
-        f'{old_asset.asset_id} with '
-        f'{new_asset.asset_id} for '
-        f'{employee.name}!',
-        'success'
-    )
+    if send_old_to_vendor:
+        flash(
+            f'Successfully replaced asset {old_asset.asset_id} with '
+            f'{new_asset.asset_id} for {employee.name}. Old laptop was '
+            f'sent to Vendor {replacement_vendor.name}.',
+            'success'
+        )
+    else:
+        flash(
+            f'Successfully replaced asset '
+            f'{old_asset.asset_id} with '
+            f'{new_asset.asset_id} for '
+            f'{employee.name}!',
+            'success'
+        )
 
     return redirect(url_for('assets.index'))
 
