@@ -1,1218 +1,331 @@
-/* Enterprise ITAM & Helpdesk System Main JavaScript */
+// 4. Asset History Modal Handler
+// Event delegation: works even when asset buttons are dynamically rendered.
+document.addEventListener('click', function(event) {
 
-document.addEventListener('DOMContentLoaded', function() {
-    // 1. Dark / Light Theme Handler
-    const themeToggleBtn = document.getElementById('theme-toggle-btn');
-    const themeIcon = document.getElementById('theme-icon');
+    const btn = event.target.closest('.btn-view-asset-history');
 
-    const savedTheme = localStorage.getItem('itam_theme') || 'light';
-    setTheme(savedTheme);
-
-    if (themeToggleBtn) {
-        themeToggleBtn.addEventListener('click', function() {
-            const currentTheme =
-                document.documentElement.getAttribute('data-theme') || 'light';
-
-            const newTheme =
-                currentTheme === 'light' ? 'dark' : 'light';
-
-            setTheme(newTheme);
-        });
+    if (!btn) {
+        return;
     }
 
-    function setTheme(theme) {
-        document.documentElement.setAttribute(
-            'data-theme',
-            theme
-        );
+    event.preventDefault();
+    event.stopPropagation();
 
-        localStorage.setItem(
-            'itam_theme',
-            theme
-        );
+    const assetId = btn.getAttribute('data-asset-id');
 
-        if (themeIcon) {
-            if (theme === 'dark') {
-                themeIcon.className =
-                    'fas fa-sun text-warning';
-            } else {
-                themeIcon.className =
-                    'fas fa-moon text-secondary';
-            }
+    if (!assetId) {
+        console.error('Asset history button is missing data-asset-id.');
+        return;
+    }
+
+    fetch(`/assets/${encodeURIComponent(assetId)}/history`, {
+        headers: {
+            'Accept': 'application/json'
         }
-    }
-
-    // 2. Initialize Bootstrap Tooltips & Toasts
-    var tooltipTriggerList = [].slice.call(
-        document.querySelectorAll('[data-bs-toggle="tooltip"]')
-    );
-
-    tooltipTriggerList.map(function(tooltipTriggerEl) {
-        return new bootstrap.Tooltip(
-            tooltipTriggerEl
-        );
-    });
-
-    var toastElList = [].slice.call(
-        document.querySelectorAll('.toast')
-    );
-
-    toastElList.map(function(toastEl) {
-        var toast = new bootstrap.Toast(
-            toastEl,
-            {
-                delay: 5000
-            }
-        );
-
-        toast.show();
-    });
-
-    // 3. Employee Detail Modal Handler
-    const viewEmpButtons =
-        document.querySelectorAll('.btn-view-employee');
-
-    viewEmpButtons.forEach(btn => {
-
-        btn.addEventListener('click', function() {
-
-            const empId =
-                this.getAttribute('data-emp-id');
-
-            fetch(`/employees/${empId}/json`)
-                .then(res => res.json())
-                .then(data => {
-
-                    const editProfileBtn =
-                        document.getElementById(
-                            "editProfileBtn"
-                        );
-
-                    if (editProfileBtn) {
-                        editProfileBtn.dataset.empId =
-                            data.id;
-                    }
-
-                    document.getElementById(
-                        'modal-emp-name'
-                    ).textContent =
-                        data.name;
-
-                    document.getElementById(
-                        'modal-emp-id'
-                    ).textContent =
-                        data.employee_id;
-
-                    document.getElementById(
-                        'modal-emp-email'
-                    ).textContent =
-                        data.email;
-
-                    document.getElementById(
-                        'modal-emp-dept'
-                    ).textContent =
-                        data.department;
-
-                    document.getElementById(
-                        'modal-emp-desig'
-                    ).textContent =
-                        data.designation;
-
-                    document.getElementById(
-                        'modal-emp-manager'
-                    ).textContent =
-                        data.manager;
-
-                    document.getElementById(
-                        'modal-emp-office'
-                    ).textContent =
-                        data.office_location;
-
-                    const statusBadge =
-                        document.getElementById(
-                            'modal-emp-status'
-                        );
-
-                    statusBadge.textContent =
-                        data.account_status;
-
-                    statusBadge.className =
-                        `badge badge-status badge-${data.account_status.toLowerCase()}`;
-
-                    const assetsTableBody =
-                        document.getElementById(
-                            "modal-emp-assets-body"
-                        );
-
-                    assetsTableBody.innerHTML = "";
-
-                    if (
-                        data.assigned_assets.length === 0
-                    ) {
-
-                        assetsTableBody.innerHTML = `
-                            <div class="alert alert-secondary text-center">
-                                No company assets assigned.
-                            </div>
-                        `;
-
-                    } else {
-
-                        data.assigned_assets.forEach(ast => {
-
-                            const row = `
-                                <div class="card border shadow-sm mb-3">
-
-                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-
-                                        <strong>
-                                            💻 ${ast.asset_type || "Laptop"}
-                                        </strong>
-
-                                        <span class="badge bg-success">
-                                            Assigned
-                                        </span>
-
-                                    </div>
-
-                                    <div class="card-body">
-
-                                        <h5 class="fw-bold mb-3">
-                                            ${ast.brand} ${ast.model}
-                                        </h5>
-
-                                        <div class="row">
-
-                                            <div class="col-md-6 mb-2">
-                                                <strong>Asset ID</strong><br>
-                                                ${ast.asset_id}
-                                            </div>
-
-                                            <div class="col-md-6 mb-2">
-                                                <strong>Serial Number</strong><br>
-                                                ${ast.serial_number}
-                                            </div>
-
-                                            <div class="col-md-6 mb-2">
-                                                <strong>Processor</strong><br>
-                                                ${ast.processor}
-                                            </div>
-
-                                            <div class="col-md-6 mb-2">
-                                                <strong>RAM / SSD</strong><br>
-                                                ${ast.ram} / ${ast.ssd}
-                                            </div>
-
-                                            <div class="col-md-6 mb-2">
-                                                <strong>Vendor</strong><br>
-                                                ${ast.vendor_name}
-                                            </div>
-
-                                            <div class="col-md-6 mb-2">
-                                                <strong>Assigned Date</strong><br>
-                                                ${ast.assignment_date}
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
-                            `;
-
-                            assetsTableBody.innerHTML += row;
-
-                        });
-                    }
-
-                    const empModal =
-                        new bootstrap.Modal(
-                            document.getElementById(
-                                "employeeDetailModal"
-                            )
-                        );
-
-                    empModal.show();
-
-                })
-                .catch(err =>
-                    console.error(
-                        'Error fetching employee details:',
-                        err
-                    )
-                );
-        });
-    });
-
-    // 4. Asset History Modal Handler
-    const viewAssetHistButtons =
-        document.querySelectorAll(
-            '.btn-view-asset-history'
-        );
-
-    viewAssetHistButtons.forEach(btn => {
-
-        btn.addEventListener('click', function() {
-
-            const assetId =
-                this.getAttribute(
-                    'data-asset-id'
-                );
-
-            fetch(`/assets/${assetId}/history`)
-                .then(res => res.json())
-                .then(data => {
-
-                    document.getElementById(
-                        'modal-hist-asset-id'
-                    ).textContent =
-                        data.asset_id;
-
-                    document.getElementById(
-                        'modal-hist-brand-model'
-                    ).textContent =
-                        data.brand_model;
-
-                    document.getElementById(
-                        'modal-hist-serial'
-                    ).textContent =
-                        data.serial_number;
-
-                    document.getElementById(
-                        'modal-hist-user'
-                    ).textContent =
-                        data.assigned_user;
-
-                    const histTableBody =
-                        document.getElementById(
-                            'modal-asset-hist-body'
-                        );
-
-                    histTableBody.innerHTML = '';
-
-                    if (
-                        data.history.length === 0
-                    ) {
-
-                        histTableBody.innerHTML =
-                            '<tr><td colspan="6" class="text-center text-muted py-3">No history logs recorded for this asset yet.</td></tr>';
-
-                    } else {
-
-                        data.history.forEach(h => {
-
-                            let actionBadge =
-                                `<span class="badge bg-secondary">${h.action}</span>`;
-
-                            if (
-                                h.action === 'Assigned'
-                            ) {
-                                actionBadge =
-                                    `<span class="badge bg-primary">Assigned</span>`;
-                            }
-
-                            if (
-                                h.action === 'Returned'
-                            ) {
-                                actionBadge =
-                                    `<span class="badge bg-success">Returned</span>`;
-                            }
-
-                            if (
-                                h.action === 'Replaced'
-                            ) {
-                                actionBadge =
-                                    `<span class="badge bg-warning text-dark">
-                                        <i class="fas fa-sync me-1"></i>Replaced
-                                    </span>`;
-                            }
-
-                            const oldNewInfo =
-                                (
-                                    h.old_asset &&
-                                    h.new_asset
-                                )
-                                    ? `<small class="text-muted">
-                                        Old: ${h.old_asset}
-                                        &rarr;
-                                        New: ${h.new_asset}
-                                       </small>`
-                                    : '';
-
-                            const row = `
-                                <tr>
-
-                                    <td>
-                                        <small class="text-muted">
-                                            ${h.timestamp}
-                                        </small>
-                                    </td>
-
-                                    <td>
-                                        ${actionBadge}
-                                    </td>
-
-                                    <td>
-                                        <strong>
-                                            ${h.employee_name}
-                                        </strong>
-                                    </td>
-
-                                    <td>
-                                        ${h.notes}
-                                        ${oldNewInfo}
-                                    </td>
-
-                                    <td>
-                                        <small class="text-secondary">
-                                            ${h.performed_by}
-                                        </small>
-                                    </td>
-
-                                </tr>
-                            `;
-
-                            histTableBody.innerHTML += row;
-
-                        });
-                    }
-
-                    var histModal =
-                        new bootstrap.Modal(
-                            document.getElementById(
-                                'assetHistoryModal'
-                            )
-                        );
-
-                    histModal.show();
-
-                })
-                .catch(err =>
-                    console.error(
-                        'Error fetching asset history:',
-                        err
-                    )
-                );
-        });
-    });
-
-    // 5. Edit Employee Handler
-    const editBtn =
-        document.getElementById(
-            "editProfileBtn"
-        );
-
-    if (editBtn) {
-
-        editBtn.addEventListener(
-            "click",
-            function() {
-
-                const empId =
-                    this.dataset.empId;
-
-                if (!empId) {
-                    alert(
-                        "Open an employee first."
-                    );
-                    return;
-                }
-
-                fetch(`/employees/${empId}/json`)
-                    .then(r => r.json())
-                    .then(emp => {
-
-                        document.getElementById(
-                            "editName"
-                        ).value =
-                            emp.name;
-
-                        document.getElementById(
-                            "editDepartment"
-                        ).value =
-                            emp.department;
-
-                        document.getElementById(
-                            "editDesignation"
-                        ).value =
-                            emp.designation;
-
-                        document.getElementById(
-                            "editManager"
-                        ).value =
-                            emp.manager;
-
-                        document.getElementById(
-                            "editOffice"
-                        ).value =
-                            emp.office_location;
-
-                        document.getElementById(
-                            "editStatus"
-                        ).value =
-                            emp.account_status;
-
-                        document.getElementById(
-                            "editEmployeeForm"
-                        ).action =
-                            `/employees/${empId}/edit`;
-
-                        new bootstrap.Modal(
-                            document.getElementById(
-                                "editEmployeeModal"
-                            )
-                        ).show();
-
-                    });
-
-            }
-        );
-    }
-
-    // 6. Save Employee Edit Form
-    const editForm =
-        document.getElementById(
-            "editEmployeeForm"
-        );
-
-    if (editForm) {
-
-        editForm.addEventListener(
-            "submit",
-            function(e) {
-
-                e.preventDefault();
-
-                fetch(this.action, {
-                    method: "POST",
-                    body: new FormData(this)
-                })
-                .then(response => response.json())
-                .then(data => {
-
-                    if (data.success) {
-
-                        alert(data.message);
-
-                        bootstrap.Modal.getInstance(
-                            document.getElementById(
-                                "editEmployeeModal"
-                            )
-                        ).hide();
-
-                        location.reload();
-
-                    } else {
-
-                        alert(data.message);
-
-                    }
-
-                })
-                .catch(error => {
-
-                    console.error(error);
-
-                    alert(
-                        "Error updating employee."
-                    );
-
-                });
-
-            }
-        );
-    }
-});
-
-
-// =========================================================
-// UNIVERSAL SEARCHABLE SELECT
-// =========================================================
-
-function initializeSearchableSelects() {
-
-    document.querySelectorAll(
-        'select.searchable-select:not([data-searchable-initialized])'
-    ).forEach(function(select) {
-
-        select.setAttribute(
-            'data-searchable-initialized',
-            'true'
-        );
-
-        const wrapper =
-            document.createElement('div');
-
-        wrapper.className =
-            'searchable-select-wrapper';
-
-        const inputGroup =
-            document.createElement('div');
-
-        inputGroup.className =
-            'searchable-select-input-group';
-
-        const icon =
-            document.createElement('span');
-
-        icon.className =
-            'searchable-select-icon';
-
-        icon.innerHTML = `
-            <i class="fas fa-search"></i>
-        `;
-
-        const input =
-            document.createElement('input');
-
-        input.type = 'text';
-
-        input.className =
-            'searchable-select-input';
-
-        input.autocomplete =
-            'off';
-
-        input.placeholder =
-            select.dataset.placeholder ||
-            'Type to search...';
-
-        const arrow =
-            document.createElement('span');
-
-        arrow.className =
-            'searchable-select-arrow';
-
-        arrow.innerHTML = `
-            <i class="fas fa-chevron-down"></i>
-        `;
-
-        const results =
-            document.createElement('div');
-
-        results.className =
-            'searchable-select-results';
-
-        // Move original select into wrapper
-        select.parentNode.insertBefore(
-            wrapper,
-            select
-        );
-
-        wrapper.appendChild(select);
-
-        // Hide original select but keep it for form submission
-        select.style.display = 'none';
-
-        wrapper.appendChild(inputGroup);
-
-        inputGroup.appendChild(icon);
-        inputGroup.appendChild(input);
-        inputGroup.appendChild(arrow);
-
-        wrapper.appendChild(results);
-
-        const options =
-            Array.from(select.options);
-
-        function renderOptions(
-            searchText = ''
-        ) {
-
-            results.innerHTML = '';
-
-            const search =
-                searchText
-                    .trim()
-                    .toLowerCase();
-
-            let found = 0;
-
-            options.forEach(function(option) {
-
-                if (
-                    !option.value &&
-                    !option.textContent.trim()
-                ) {
-                    return;
-                }
-
-                const title =
-                    option.dataset.title ||
-                    option.textContent.trim();
-
-                const subtitle =
-                    option.dataset.subtitle ||
-                    '';
-
-                const searchableText =
-                    `${title} ${subtitle}`
-                        .toLowerCase();
-
-                if (
-                    search &&
-                    !searchableText.includes(
-                        search
-                    )
-                ) {
-                    return;
-                }
-
-                const button =
-                    document.createElement(
-                        'button'
-                    );
-
-                button.type = 'button';
-
-                button.className =
-                    'searchable-select-option';
-
-                button.dataset.value =
-                    option.value;
-
-                const iconClass =
-                    option.dataset.icon ||
-                    'fa-user';
-
-                button.innerHTML = `
-                    <span class="searchable-option-icon">
-                        <i class="fas ${iconClass}"></i>
+    })
+    .then(async response => {
+
+        if (!response.ok) {
+            throw new Error(
+                `History request failed: ${response.status}`
+            );
+        }
+
+        return response.json();
+    })
+    .then(data => {
+
+        // Header information
+        const assetIdElement =
+            document.getElementById('modal-hist-asset-id');
+
+        const brandModelElement =
+            document.getElementById('modal-hist-brand-model');
+
+        const serialElement =
+            document.getElementById('modal-hist-serial');
+
+        const userElement =
+            document.getElementById('modal-hist-user');
+
+        const vendorElement =
+            document.getElementById('modal-hist-vendor');
+
+        if (assetIdElement) {
+            assetIdElement.textContent =
+                data.asset_id || '-';
+        }
+
+        if (brandModelElement) {
+            brandModelElement.textContent =
+                data.brand_model || '-';
+        }
+
+        if (serialElement) {
+            serialElement.textContent =
+                data.serial_number || '-';
+        }
+
+        if (userElement) {
+            userElement.textContent =
+                data.assigned_user || '-';
+        }
+
+        if (vendorElement) {
+            vendorElement.textContent =
+                data.vendor || '-';
+        }
+
+        // History table
+        const histTableBody =
+            document.getElementById(
+                'modal-asset-hist-body'
+            );
+
+        if (!histTableBody) {
+            throw new Error(
+                'modal-asset-hist-body not found.'
+            );
+        }
+
+        histTableBody.innerHTML = '';
+
+        const history =
+            Array.isArray(data.history)
+                ? data.history
+                : [];
+
+        if (history.length === 0) {
+
+            histTableBody.innerHTML = `
+                <tr>
+                    <td colspan="6"
+                        class="text-center text-muted py-3">
+                        No history logs recorded for this asset yet.
+                    </td>
+                </tr>
+            `;
+
+        } else {
+
+            history.forEach(function(h) {
+
+                let actionBadge = `
+                    <span class="badge bg-secondary">
+                        ${escapeHtml(h.action || '-')}
                     </span>
+                `;
 
-                    <span class="searchable-option-content">
-
-                        <span class="searchable-option-title">
-                            ${escapeHtml(title)}
+                if (h.action === 'Assigned') {
+                    actionBadge = `
+                        <span class="badge bg-primary">
+                            Assigned
                         </span>
+                    `;
+                }
 
-                        ${
-                            subtitle
-                                ? `
-                                <small class="searchable-option-subtitle">
-                                    ${escapeHtml(subtitle)}
-                                </small>
-                                `
-                                : ''
+                if (h.action === 'Returned') {
+                    actionBadge = `
+                        <span class="badge bg-success">
+                            Returned
+                        </span>
+                    `;
+                }
+
+                if (h.action === 'Replaced') {
+                    actionBadge = `
+                        <span class="badge bg-warning text-dark">
+                            <i class="fas fa-sync me-1"></i>
+                            Replaced
+                        </span>
+                    `;
+                }
+
+                if (h.action === 'Send Back to Vendor') {
+                    actionBadge = `
+                        <span class="badge bg-danger">
+                            <i class="fas fa-truck me-1"></i>
+                            Sent to Vendor
+                        </span>
+                    `;
+                }
+
+                let oldNewInfo = '';
+
+                if (h.old_asset || h.new_asset) {
+
+                    function formatAsset(asset) {
+
+                        if (!asset) {
+                            return '-';
                         }
 
-                    </span>
-                `;
+                        // New format: object containing
+                        // serial number, model and vendor.
+                        if (typeof asset === 'object') {
 
-                button.addEventListener(
-                    'click',
-                    function() {
+                            const model =
+                                asset.brand_model ||
+                                asset.model ||
+                                '-';
 
-                        select.value =
-                            option.value;
+                            const serial =
+                                asset.serial_number ||
+                                '-';
 
-                        input.value =
-                            title;
+                            const vendor =
+                                asset.vendor ||
+                                '';
 
-                        input.classList.add(
-                            'selected'
-                        );
+                            return `
+                                <div>
+                                    <strong>
+                                        ${escapeHtml(model)}
+                                    </strong>
 
-                        results.classList.remove(
-                            'show'
-                        );
+                                    <span class="text-muted">
+                                        | Serial:
+                                        ${escapeHtml(serial)}
+                                    </span>
+                                </div>
 
-                        select.dispatchEvent(
-                            new Event(
-                                'change',
-                                {
-                                    bubbles: true
+                                ${
+                                    vendor
+                                        ? `
+                                            <div class="text-muted">
+                                                Vendor:
+                                                ${escapeHtml(vendor)}
+                                            </div>
+                                          `
+                                        : ''
                                 }
-                            )
-                        );
+                            `;
+                        }
+
+                        // Old format
+                        return escapeHtml(asset);
                     }
-                );
 
-                results.appendChild(
-                    button
-                );
+                    oldNewInfo = `
+                        <div class="mt-2 small">
 
-                found++;
-
-            });
-
-            if (found === 0) {
-
-                results.innerHTML = `
-                    <div class="searchable-no-results">
-                        <i class="fas fa-search me-2"></i>
-                        No results found
-                    </div>
-                `;
-            }
-        }
-
-        function openResults() {
-
-            renderOptions(
-                input.value
-            );
-
-            results.classList.add(
-                'show'
-            );
-        }
-
-        input.addEventListener(
-            'focus',
-            function() {
-
-                openResults();
-
-            }
-        );
-
-        input.addEventListener(
-            'input',
-            function() {
-
-                // Clear selected value when user changes text
-                select.value = '';
-
-                input.classList.remove(
-                    'selected'
-                );
-
-                openResults();
-
-            }
-        );
-
-        arrow.addEventListener(
-            'click',
-            function() {
-
-                if (
-                    results.classList.contains(
-                        'show'
-                    )
-                ) {
-
-                    results.classList.remove(
-                        'show'
-                    );
-
-                } else {
-
-                    openResults();
-                    input.focus();
-
-                }
-            }
-        );
-
-        // Restore existing selected value
-        if (select.value) {
-
-            const selectedOption =
-                select.options[
-                    select.selectedIndex
-                ];
-
-            if (selectedOption) {
-
-                input.value =
-                    selectedOption.dataset.title ||
-                    selectedOption.textContent.trim();
-
-                input.classList.add(
-                    'selected'
-                );
-            }
-        }
-
-        // Close when clicking outside
-        document.addEventListener(
-            'click',
-            function(event) {
-
-                if (
-                    !wrapper.contains(
-                        event.target
-                    )
-                ) {
-
-                    results.classList.remove(
-                        'show'
-                    );
-                }
-            }
-        );
-
-        renderOptions();
-
-    });
-}
-
-
-// =========================================================
-// LIVE EMPLOYEE AUTOCOMPLETE
-// =========================================================
-
-function initializeEmployeeAutocomplete() {
-
-    const inputs = document.querySelectorAll(
-        'input.employee-autocomplete:not([data-employee-autocomplete-initialized])'
-    );
-
-    inputs.forEach(function(input) {
-
-        input.setAttribute(
-            'data-employee-autocomplete-initialized',
-            'true'
-        );
-
-        /*
-         * IMPORTANT:
-         * Global Search must NOT be wrapped because
-         * wrapping the navbar input can break its layout.
-         */
-        const isGlobalSearch =
-            input.closest('.global-search') !== null;
-
-        let wrapper;
-
-        if (isGlobalSearch) {
-
-            // Keep Global Search structure unchanged.
-            wrapper =
-                input.closest('.global-search');
-
-        } else {
-
-            // Employee page / Asset page search
-            // can safely use the autocomplete wrapper.
-            wrapper =
-                document.createElement('div');
-
-            wrapper.className =
-                'employee-autocomplete-wrapper';
-
-            input.parentNode.insertBefore(
-                wrapper,
-                input
-            );
-
-            wrapper.appendChild(
-                input
-            );
-        }
-
-        const results =
-            document.createElement('div');
-
-        results.className =
-            'employee-autocomplete-results';
-
-        if (isGlobalSearch) {
-
-            /*
-             * Put dropdown inside global search,
-             * without changing the form/input structure.
-             */
-            wrapper.appendChild(
-                results
-            );
-
-        } else {
-
-            wrapper.appendChild(
-                results
-            );
-        }
-
-        let debounceTimer = null;
-
-        function hideResults() {
-
-            results.classList.remove(
-                'show'
-            );
-
-            results.innerHTML = '';
-
-        }
-
-        function showResults(employees) {
-
-            results.innerHTML = '';
-
-            if (!employees.length) {
-
-                results.innerHTML = `
-                    <div class="employee-autocomplete-no-results">
-                        <i class="fas fa-user-slash me-2"></i>
-                        No employees found
-                    </div>
-                `;
-
-                results.classList.add(
-                    'show'
-                );
-
-                return;
-            }
-
-            employees.forEach(function(employee) {
-
-                const option =
-                    document.createElement(
-                        'button'
-                    );
-
-                option.type = 'button';
-
-                option.className =
-                    'employee-autocomplete-option';
-
-                option.innerHTML = `
-                    <div class="employee-autocomplete-icon">
-                        <i class="fas fa-user"></i>
-                    </div>
-
-                    <div class="employee-autocomplete-content">
-
-                        <div class="employee-autocomplete-name">
-                            ${escapeHtml(employee.name)}
-                        </div>
-
-                        <div class="employee-autocomplete-details">
-                            ${escapeHtml(employee.employee_id)}
                             ${
-                                employee.email
-                                    ? ' • ' +
-                                      escapeHtml(
-                                          employee.email
-                                      )
+                                h.old_asset
+                                    ? `
+                                        <div>
+                                            <strong>
+                                                Old Laptop:
+                                            </strong>
+
+                                            ${formatAsset(
+                                                h.old_asset
+                                            )}
+                                        </div>
+                                      `
                                     : ''
                             }
+
+                            ${
+                                h.new_asset
+                                    ? `
+                                        <div class="mt-1">
+                                            <strong>
+                                                New Laptop:
+                                            </strong>
+
+                                            ${formatAsset(
+                                                h.new_asset
+                                            )}
+                                        </div>
+                                      `
+                                    : ''
+                            }
+
                         </div>
+                    `;
+                }
 
-                        ${
-                            employee.department
-                                ? `
-                                <div class="employee-autocomplete-department">
-                                    ${escapeHtml(
-                                        employee.department
-                                    )}
-                                    ${
-                                        employee.designation
-                                            ? ' • ' +
-                                              escapeHtml(
-                                                  employee.designation
-                                              )
-                                            : ''
-                                    }
-                                </div>
-                                `
-                                : ''
-                        }
+                const row = `
+                    <tr>
 
-                    </div>
+                        <td>
+                            <small class="text-muted">
+                                ${escapeHtml(
+                                    h.event_date ||
+                                    h.timestamp ||
+                                    '-'
+                                )}
+                            </small>
+                        </td>
+
+                        <td>
+                            ${actionBadge}
+                        </td>
+
+                        <td>
+                            <strong>
+                                ${escapeHtml(
+                                    h.employee_name || '-'
+                                )}
+                            </strong>
+                        </td>
+
+                        <td>
+                            ${escapeHtml(
+                                h.notes || ''
+                            )}
+
+                            ${oldNewInfo}
+                        </td>
+
+                        <td>
+                            <small class="text-secondary">
+                                ${escapeHtml(
+                                    h.performed_by || '-'
+                                )}
+                            </small>
+                        </td>
+
+                    </tr>
                 `;
 
-                option.addEventListener(
-                    'click',
-                    function() {
-
-                        input.value =
-                            employee.name;
-
-                        hideResults();
-
-                        /*
-                         * Keep existing form behavior.
-                         * The form will submit normally when
-                         * the user presses Enter or clicks Filter.
-                         */
-                        input.dispatchEvent(
-                            new Event(
-                                'change',
-                                {
-                                    bubbles: true
-                                }
-                            )
-                        );
-
-                    }
-                );
-
-                results.appendChild(
-                    option
+                histTableBody.insertAdjacentHTML(
+                    'beforeend',
+                    row
                 );
 
             });
+        }
 
-            results.classList.add(
-                'show'
+        // Open modal
+        const modalElement =
+            document.getElementById(
+                'assetHistoryModal'
+            );
+
+        if (!modalElement) {
+            throw new Error(
+                'assetHistoryModal not found.'
             );
         }
 
-        async function searchEmployees(query) {
+        const historyModal =
+            bootstrap.Modal.getOrCreateInstance(
+                modalElement
+            );
 
-            const url =
-                input.dataset.autocompleteUrl;
+        historyModal.show();
 
-            if (
-                !url ||
-                query.length < 2
-            ) {
+    })
+    .catch(function(error) {
 
-                hideResults();
-
-                return;
-            }
-
-            try {
-
-                const response =
-                    await fetch(
-                        `${url}?q=${encodeURIComponent(query)}`
-                    );
-
-                if (!response.ok) {
-
-                    hideResults();
-
-                    return;
-                }
-
-                const employees =
-                    await response.json();
-
-                showResults(
-                    employees
-                );
-
-            } catch (error) {
-
-                console.error(
-                    'Employee autocomplete error:',
-                    error
-                );
-
-                hideResults();
-
-            }
-        }
-
-        input.addEventListener(
-            'input',
-            function() {
-
-                const query =
-                    this.value.trim();
-
-                clearTimeout(
-                    debounceTimer
-                );
-
-                if (
-                    query.length < 2
-                ) {
-
-                    hideResults();
-
-                    return;
-                }
-
-                debounceTimer =
-                    setTimeout(
-                        function() {
-
-                            searchEmployees(
-                                query
-                            );
-
-                        },
-                        200
-                    );
-            }
+        console.error(
+            'Error fetching asset history:',
+            error
         );
 
-        input.addEventListener(
-            'focus',
-            function() {
-
-                const query =
-                    this.value.trim();
-
-                if (
-                    query.length >= 2
-                ) {
-
-                    searchEmployees(
-                        query
-                    );
-
-                }
-            }
+        alert(
+            'Unable to open Asset History. Please check the Flask terminal for the error.'
         );
-
     });
-
-    // Close autocomplete when clicking outside
-    document.addEventListener(
-        'click',
-        function(event) {
-
-            const insideAutocomplete =
-                event.target.closest(
-                    '.employee-autocomplete-wrapper'
-                );
-
-            const insideGlobalSearch =
-                event.target.closest(
-                    '.global-search'
-                );
-
-            if (
-                !insideAutocomplete &&
-                !insideGlobalSearch
-            ) {
-
-                document
-                    .querySelectorAll(
-                        '.employee-autocomplete-results.show'
-                    )
-                    .forEach(function(results) {
-
-                        results.classList.remove(
-                            'show'
-                        );
-
-                    });
-            }
-        }
-    );
-}
-
-
-// =========================================================
-// ESCAPE HTML SAFELY
-// =========================================================
-
-function escapeHtml(value) {
-
-    const div =
-        document.createElement('div');
-
-    div.textContent =
-        value || '';
-
-    return div.innerHTML;
-}
-
-
-// =========================================================
-// INITIALIZE
-// =========================================================
-
-initializeSearchableSelects();
-
-initializeEmployeeAutocomplete();
+});
