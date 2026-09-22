@@ -2751,24 +2751,139 @@ body > .asset-action-menu .dropdown-item i {
                     </div>
 
 
-                    <!-- REPAIR CHECKBOX -->
+                    <!-- OLD LAPTOP DESTINATION -->
 
-                    <div class="form-check">
+                    <div class="border rounded-3 p-3 bg-light mb-3">
 
-                        <input class="form-check-input"
-                               type="checkbox"
-                               name="return_to_repair"
-                               id="return_to_repair"
-                               checked>
-
-                        <label class="form-check-label text-dark fw-semibold"
-                               for="return_to_repair">
-
-                            Send old replaced laptop directly to Repair status
-
+                        <label class="form-label fw-semibold mb-2">
+                            Old Laptop After Replacement
                         </label>
 
+                        <div class="form-check mb-2">
+
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="return_to_repair"
+                                   id="return_to_repair"
+                                   checked>
+
+                            <label class="form-check-label text-dark fw-semibold"
+                                   for="return_to_repair">
+                                Send old replaced laptop directly to Repair status
+                            </label>
+
+                        </div>
+
+                        <div class="form-check">
+
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   name="send_old_to_vendor"
+                                   id="send_old_to_vendor">
+
+                            <label class="form-check-label text-dark fw-semibold"
+                                   for="send_old_to_vendor">
+                                Send old replaced laptop to Vendor
+                            </label>
+
+                        </div>
+
+                        <div id="replacementVendorFields" class="mt-3 d-none">
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">
+                                    Vendor <span class="text-danger">*</span>
+                                </label>
+
+                                <select name="replacement_vendor_id"
+                                        id="replacement_vendor_id"
+                                        class="form-select searchable-dropdown"
+                                        disabled>
+                                    <option value="">
+                                        -- Select Vendor --
+                                    </option>
+
+                                    {% for v in vendors %}
+                                    <option value="{{ v.id }}">
+                                        {{ v.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="form-label fw-semibold">
+                                    Reason for Sending to Vendor
+                                    <span class="text-danger">*</span>
+                                </label>
+
+                                <textarea name="vendor_return_reason"
+                                          id="vendor_return_reason"
+                                          class="form-control"
+                                          rows="2"
+                                          placeholder="Enter the reason for sending the old laptop to the vendor..."
+                                          disabled></textarea>
+                            </div>
+
+                            <div class="alert alert-warning py-2 small mt-3 mb-0">
+                                <i class="fas fa-info-circle me-1"></i>
+                                The old laptop will be marked as <strong>Returned to Vendor</strong>.
+                            </div>
+
+                        </div>
+
                     </div>
+
+                    <script>
+                    document.addEventListener("DOMContentLoaded", function () {
+                        const repairCheckbox = document.getElementById("return_to_repair");
+                        const vendorCheckbox = document.getElementById("send_old_to_vendor");
+                        const vendorFields = document.getElementById("replacementVendorFields");
+                        const vendorSelect = document.getElementById("replacement_vendor_id");
+                        const vendorReason = document.getElementById("vendor_return_reason");
+
+                        if (!repairCheckbox || !vendorCheckbox || !vendorFields || !vendorSelect || !vendorReason) return;
+
+                        function updateReplacementDestination() {
+                            if (vendorCheckbox.checked) {
+                                repairCheckbox.checked = false;
+                                vendorFields.classList.remove("d-none");
+                                vendorSelect.disabled = false;
+                                vendorSelect.required = true;
+                                vendorReason.disabled = false;
+                                vendorReason.required = true;
+                            } else {
+                                vendorFields.classList.add("d-none");
+                                vendorSelect.disabled = true;
+                                vendorSelect.required = false;
+                                vendorReason.disabled = true;
+                                vendorReason.required = false;
+                                vendorSelect.value = "";
+                                vendorReason.value = "";
+
+                                if (!repairCheckbox.checked) {
+                                    repairCheckbox.checked = true;
+                                }
+                            }
+                        }
+
+                        vendorCheckbox.addEventListener("change", function () {
+                            if (vendorCheckbox.checked) {
+                                repairCheckbox.checked = false;
+                            }
+                            updateReplacementDestination();
+                        });
+
+                        repairCheckbox.addEventListener("change", function () {
+                            if (repairCheckbox.checked) {
+                                vendorCheckbox.checked = false;
+                            }
+                            updateReplacementDestination();
+                        });
+
+                        updateReplacementDestination();
+                    });
+                    </script>
 
                 </div>
 
