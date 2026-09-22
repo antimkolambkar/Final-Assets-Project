@@ -1164,8 +1164,10 @@ def replace_asset():
     # -----------------------------------------------------
 
     replacement_notes = (
-        f'Replaced laptop {old_asset.asset_id} '
-        f'with {new_asset.asset_id} '
+        f'Replaced laptop {old_asset.serial_number or "N/A"} '
+        f'({old_asset.brand} {old_asset.model}) '
+        f'with {new_asset.serial_number or "N/A"} '
+        f'({new_asset.brand} {new_asset.model}) '
         f'for {employee.name}. '
         f'Replacement Date: {replacement_date_str}. '
         f'Reason: {reason or "N/A"}'
@@ -1558,28 +1560,72 @@ def get_asset_history(asset_id):
 
     for h in history:
 
+        old_asset_data = None
+        if h.old_asset:
+            old_asset_data = {
+                'serial_number': h.old_asset.serial_number or '-',
+                'brand_model': (
+                    f'{h.old_asset.brand} {h.old_asset.model}'
+                ).strip(),
+                'vendor': (
+                    h.old_asset.vendor.name
+                    if h.old_asset.vendor
+                    else None
+                )
+            }
+
+        new_asset_data = None
+        if h.new_asset:
+            new_asset_data = {
+                'serial_number': h.new_asset.serial_number or '-',
+                'brand_model': (
+                    f'{h.new_asset.brand} {h.new_asset.model}'
+                ).strip(),
+                'vendor': (
+                    h.new_asset.vendor.name
+                    if h.new_asset.vendor
+                    else None
+                )
+            }
+
+        history_vendor = None
+        if old_asset_data and old_asset_data['vendor']:
+            history_vendor = old_asset_data['vendor']
+        elif new_asset_data and new_asset_data['vendor']:
+            history_vendor = new_asset_data['vendor']
+        elif asset.vendor:
+            history_vendor = asset.vendor.name
+
+        display_notes = h.notes or '-'
+
+        # Replace internal Asset IDs in older history notes with
+        # user-friendly serial numbers so the history never exposes
+        # AST-XXXX identifiers.
+        if h.old_asset and h.old_asset.asset_id:
+            display_notes = display_notes.replace(
+                h.old_asset.asset_id,
+                h.old_asset.serial_number or h.old_asset.asset_id
+            )
+        if h.new_asset and h.new_asset.asset_id:
+            display_notes = display_notes.replace(
+                h.new_asset.asset_id,
+                h.new_asset.serial_number or h.new_asset.asset_id
+            )
+
         h_data.append({
             'id': h.id,
             'action': h.action,
             'employee_name': h.employee_name or '-',
 
-            'old_asset': (
-                h.old_asset.asset_id
-                if h.old_asset
-                else None
-            ),
-
-            'new_asset': (
-                h.new_asset.asset_id
-                if h.new_asset
-                else None
-            ),
+            'old_asset': old_asset_data,
+            'new_asset': new_asset_data,
+            'vendor': history_vendor,
 
             'replacement_reason': (
                 h.replacement_reason or '-'
             ),
 
-            'notes': h.notes or '-',
+            'notes': display_notes,
 
             'performed_by': (
                 h.performed_by or 'System'
@@ -1601,12 +1647,16 @@ def get_asset_history(asset_id):
         })
 
     return jsonify({
-        'asset_id': asset.asset_id,
         'brand_model': (
             f"{asset.brand} {asset.model}"
         ),
-        'serial_number': asset.serial_number,
-        'assigned_user': asset.assigned_user_name,
+        'serial_number': asset.serial_number or '-',
+        'assigned_user': asset.assigned_user_name or '-',
+        'vendor': (
+            asset.vendor.name
+            if asset.vendor
+            else None
+        ),
         'history': h_data
     })
 
